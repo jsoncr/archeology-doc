@@ -1,0 +1,12 @@
+{
+  "name": "medium-ts",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p .",
+    "test": "vitest run",
+    "lint": "eslint src"
+  },
+  "dependencies": { "express": "^4.19.0" },
+  "devDependencies": { "typescript": "^5.4.0", "vitest": "^1.6.0" }
+}

@@ -1,0 +1,296 @@
+//! Índice fuente → notas y marcado de notas desactualizadas (RF-120 a RF-123).
+//!
+//! El índice se reconstruye siempre desde el frontmatter (`sources`) de las
+//! notas del vault: las notas son la fuente de verdad, el estado solo cachea.
+
+use crate::error::Result;
+use crate::frontmatter::NoteFrontmatter;
+use crate::project::Project;
+use crate::state::State;
+use std::collections::BTreeMap;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::time::SystemTime;
+
+/// Parte de archivo de una evidencia `ruta:línea` o `ruta:a-b`.
+pub fn source_file(src: &str) -> &str {
+    match src.rsplit_once(':') {
+        Some((file, lines))
+            if !lines.is_empty() && lines.chars().all(|c| c.is_ascii_digit() || c == '-') =>
+        {
+            file
+        }
+        _ => src,
+    }
+}
+
+/// Rango de líneas de una evidencia, si lo tiene: `a.rs:10` → (10, 10).
+pub fn source_lines(src: &str) -> Option<(usize, usize)> {
+    let (_, lines) = src.rsplit_once(':')?;
+    let (a, b) = match lines.split_once('-') {
+        Some((a, b)) => (a.parse().ok()?, b.parse().ok()?),
+        None => {
+            let n = lines.parse().ok()?;
+            (n, n)
+        }
+    };
+    Some((a, b))
+}
+
+/// Notas `.md` del vault (sin `_templates/`), en rutas absolutas.
+pub fn vault_notes(project: &Project) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    collect(&project.knowledge_dir(), &mut out);
+    out.sort();
+    out
+}
+
+fn collect(dir: &Path, out: &mut Vec<PathBuf>) {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
+    for e in entries.flatten() {
+        let p = e.path();
+        // Sin seguir symlinks: evita ciclos y leer fuera del árbol.
+        let kind = e.file_type().ok();
+        if kind.is_some_and(|t| t.is_dir()) {
+            if p.file_name().map(|n| n == "_templates").unwrap_or(false) {
+                continue;
+            }
+            collect(&p, out);
+        } else if kind.is_some_and(|t| t.is_file())
+            && p.extension().map(|x| x == "md").unwrap_or(false)
+        {
+            out.push(p);
+        }
+    }
+}
+
+/// Mapa archivo fuente → notas que lo citan (rutas relativas a la raíz).
+pub fn source_index(project: &Project) -> BTreeMap<String, Vec<String>> {
+    let mut index: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    for note in vault_notes(project) {
+        let Ok(text) = fs::read_to_string(&note) else {
+            continue;
+        };
+        let Some(fm) = NoteFrontmatter::parse(&text) else {
+            continue;
+        };
+        let rel = project.rel(&note);
+        for src in &fm.sources {
+            let file = source_file(src).to_string();
+            let notes = index.entry(file).or_default();
+            if !notes.contains(&rel) {
+                notes.push(rel.clone());
+            }
+        }
+    }
+    index
+}
+
+/// Actualiza el índice y registra el hash actual de las fuentes citadas por
+/// las notas modificadas desde `since`.
+///
+/// Se llama cuando una nota se (re)genera: a partir de ahí, un cambio en sus
+/// fuentes la volverá `stale`.
+pub fn refresh_hashes(project: &Project, state: &mut State, since: SystemTime) {
+    refresh_where(project, state, |note| {
+        fs::metadata(note)
+            .and_then(|m| m.modified())
+            .map(|m| m >= since)
+            .unwrap_or(false)
+    });
+}
+
+/// Igual que [`refresh_hashes`], para las notas cubiertas por las rutas
+/// `produce` de una tarea (directorios terminados en `/` o archivos).
+pub fn refresh_hashes_for(project: &Project, state: &mut State, produce: &[String]) {
+    let rels: Vec<String> = produce.to_vec();
+    refresh_where(project, state, |note| {
+        let rel = project.rel(note);
+        rels.iter()
+            .any(|p| rel == *p || (p.ends_with('/') && rel.starts_with(p.as_str())))
+    });
+}
+
+fn refresh_where(project: &Project, state: &mut State, include: impl Fn(&Path) -> bool) {
+    state.source_to_notes = source_index(project);
+    for note in vault_notes(project) {
+        if !include(&note) {
+            continue;
+        }
+        let Ok(text) = fs::read_to_string(&note) else {
+            continue;
+        };
+        let Some(fm) = NoteFrontmatter::parse(&text) else {
+            continue;
+        };
+        for src in &fm.sources {
+            let file = source_file(src);
+            if let Some(h) = project.source_hash(file) {
+                state.file_hashes.insert(file.to_string(), h);
+            }
+        }
+    }
+    state.stale_notes = stale_notes(project);
+}
+
+/// Notas cuyo frontmatter tiene `status: stale`.
+pub fn stale_notes(project: &Project) -> Vec<String> {
+    vault_notes(project)
+        .into_iter()
+        .filter(|p| {
+            fs::read_to_string(p)
+                .ok()
+                .and_then(|t| NoteFrontmatter::parse(&t))
+                .map(|fm| fm.status.as_deref() == Some("stale"))
+                .unwrap_or(false)
+        })
+        .map(|p| project.rel(&p))
+        .collect()
+}
+
+/// Carpetas del vault con nota índice (MOC) y su título.
+const MOC_DIRS: &[(&str, &str)] = &[
+    ("modules", "Módulos"),
+    ("features", "Funcionalidades"),
+    ("findings", "Hallazgos"),
+    ("tests", "Reportes de tests"),
+    ("specs", "Cumplimiento de specs"),
+    ("glossary", "Glosario"),
+    ("decisions", "Decisiones"),
+    ("faq", "Preguntas frecuentes"),
+];
+
+/// Nombre de archivo de las notas índice.
+pub const MOC_FILE: &str = "index.md";
+
+/// Escribe `<carpeta>/index.md` con enlaces a las notas de cada tipo
+/// (RF-064). La lista vive en una región gestionada; el resto es del usuario.
+/// Devuelve las notas índice modificadas.
+pub fn write_mocs(project: &Project) -> Result<Vec<String>> {
+    let knowledge = project.knowledge_dir();
+    let wikilinks = project.config.links.style != "relative";
+    let mut changed = Vec::new();
+    for (dir, title) in MOC_DIRS {
+        let folder = knowledge.join(dir);
+        let mut notes: Vec<(String, String, Option<String>)> = Vec::new();
+        let Ok(entries) = fs::read_dir(&folder) else {
+            continue;
+        };
+        let mut paths: Vec<PathBuf> = entries.flatten().map(|e| e.path()).collect();
+        paths.sort();
+        for p in paths {
+            let name = p
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_default();
+            if !name.ends_with(".md") || name == MOC_FILE {
+                continue;
+            }
+            let fm = fs::read_to_string(&p)
+                .ok()
+                .and_then(|t| NoteFrontmatter::parse(&t));
+            let stem = name.trim_end_matches(".md").to_string();
+            let label = fm
+                .as_ref()
+                .and_then(|f| f.title.clone())
+                .unwrap_or_else(|| stem.clone());
+            // Hallazgos: severidad y estado junto al enlace.
+            let extra = fm.as_ref().and_then(|f| {
+                let sev = f.get("severity")?.as_str()?;
+                let st = f.get("state").and_then(|v| v.as_str()).unwrap_or("open");
+                Some(format!("{sev} · {st}"))
+            });
+            notes.push((stem, label, extra));
+        }
+        if notes.is_empty() {
+            continue;
+        }
+        let mut body = String::new();
+        for (stem, label, extra) in &notes {
+            let link = if wikilinks {
+                format!("[[{dir}/{stem}|{label}]]")
+            } else {
+                format!("[{label}](./{stem}.md)")
+            };
+            match extra {
+                Some(e) => body.push_str(&format!("- {link} — {e}\n")),
+                None => body.push_str(&format!("- {link}\n")),
+            }
+        }
+        let path = folder.join(MOC_FILE);
+        let existing = crate::managed::read_or_default(&path, || {
+            format!(
+                "---\nid: moc-{dir}\ntype: moc\ntitle: {title}\nstatus: draft\n---\n\n# {title}\n"
+            )
+        })?;
+        if NoteFrontmatter::parse(&existing)
+            .map(|f| f.locked)
+            .unwrap_or(false)
+        {
+            continue;
+        }
+        let updated = crate::managed::upsert_region(&existing, "index", body.trim_end())?;
+        if fs::read_to_string(&path).ok().as_deref() != Some(updated.as_str()) {
+            fs::write(&path, updated)?;
+            changed.push(project.rel(&path));
+        }
+    }
+    Ok(changed)
+}
+
+/// Resultado de marcar una nota como desactualizada.
+#[derive(Debug, PartialEq, Eq)]
+pub enum MarkResult {
+    Marked,
+    /// `locked: true`: arqueology-doc no la modifica (RF-123).
+    Locked,
+    AlreadyStale,
+    NoFrontmatter,
+}
+
+/// Pone `status: stale` en el frontmatter de la nota, salvo que esté bloqueada.
+pub fn mark_stale(path: &Path) -> Result<MarkResult> {
+    let text = fs::read_to_string(path)?;
+    let Some(fm) = NoteFrontmatter::parse(&text) else {
+        return Ok(MarkResult::NoFrontmatter);
+    };
+    if fm.locked || fm.status.as_deref() == Some("locked") {
+        return Ok(MarkResult::Locked);
+    }
+    if fm.status.as_deref() == Some("stale") {
+        return Ok(MarkResult::AlreadyStale);
+    }
+    fs::write(path, set_frontmatter_field(&text, "status", "stale"))?;
+    Ok(MarkResult::Marked)
+}
+
+/// Reemplaza (o añade) un campo escalar del frontmatter sin tocar el resto.
+pub fn set_frontmatter_field(text: &str, key: &str, value: &str) -> String {
+    crate::frontmatter::set_field(text, key, value)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_source_references() {
+        assert_eq!(source_file("src/a.rs:10-20"), "src/a.rs");
+        assert_eq!(source_file("src/a.rs"), "src/a.rs");
+        assert_eq!(source_file("C:/x.rs"), "C:/x.rs");
+        assert_eq!(source_lines("a.rs:10-20"), Some((10, 20)));
+        assert_eq!(source_lines("a.rs:7"), Some((7, 7)));
+        assert_eq!(source_lines("a.rs"), None);
+    }
+
+    #[test]
+    fn sets_frontmatter_field_only_inside_frontmatter() {
+        let text = "---\nid: a\nstatus: draft\n---\nstatus: body\n";
+        let out = set_frontmatter_field(text, "status", "stale");
+        assert_eq!(out, "---\nid: a\nstatus: stale\n---\nstatus: body\n");
+        let added = set_frontmatter_field("---\nid: a\n---\n", "status", "stale");
+        assert_eq!(added, "---\nid: a\nstatus: stale\n---\n");
+    }
+}

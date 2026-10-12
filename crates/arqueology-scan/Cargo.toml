@@ -1,0 +1,16 @@
+[package]
+name = "arqueology-scan"
+description = "Scanner determinista: inventario de repositorios para arqueology-doc."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+arqueology-core = { path = "../arqueology-core" }
+blake3.workspace = true
+chrono.workspace = true
+ignore.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true

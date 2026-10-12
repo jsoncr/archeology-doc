@@ -1,0 +1,422 @@
+{
+  "name": "arqueology-doc",
+  "displayName": "Arqueology Doc",
+  "description": "Tareas, hallazgos, conocimiento y specs de arqueology-doc dentro del editor.",
+  "version": "0.1.0",
+  "publisher": "arqueology-doc",
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jsoncr/arqueology-doc"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "icon": "media/icon.png",
+  "activationEvents": [
+    "workspaceContains:**/arqueology-doc.toml"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "La extensión ejecuta el CLI `adoc` sobre el proyecto abierto; solo se activa en carpetas de confianza."
+    },
+    "virtualWorkspaces": false
+  },
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "arqueology",
+          "title": "Arqueology",
+          "icon": "media/activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "arqueology": [
+        {
+          "id": "adoc.projects",
+          "name": "Proyectos"
+        },
+        {
+          "id": "adoc.tasks",
+          "name": "Tareas"
+        },
+        {
+          "id": "adoc.findings",
+          "name": "Hallazgos"
+        },
+        {
+          "id": "adoc.questions",
+          "name": "Preguntas"
+        },
+        {
+          "id": "adoc.knowledge",
+          "name": "Conocimiento"
+        },
+        {
+          "id": "adoc.specs",
+          "name": "Specs",
+          "when": "adoc.hasSpecs"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "adoc.tasks",
+        "contents": "No hay un proyecto de arqueology-doc para esta carpeta.\n[Elegir un proyecto registrado](command:adoc.selectProject)\n[Inicializar aquí](command:adoc.init)",
+        "when": "!adoc.hasProject"
+      },
+      {
+        "view": "adoc.tasks",
+        "contents": "No hay tareas todavía.\n[1. Escanear](command:adoc.scan)\n[2. Planificar](command:adoc.plan)",
+        "when": "adoc.hasProject && !adoc.hasTasks"
+      },
+      {
+        "view": "adoc.projects",
+        "contents": "No hay proyectos en ~/.arqueology-doc.\n[Inicializar este proyecto](command:adoc.init)"
+      }
+    ],
+    "commands": [
+      {
+        "command": "adoc.dashboard",
+        "title": "Abrir dashboard",
+        "category": "adoc",
+        "icon": "$(dashboard)"
+      },
+      {
+        "command": "adoc.refresh",
+        "title": "Actualizar",
+        "category": "adoc",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "adoc.menu",
+        "title": "Acciones…",
+        "category": "adoc"
+      },
+      {
+        "command": "adoc.init",
+        "title": "Inicializar proyecto",
+        "category": "adoc"
+      },
+      {
+        "command": "adoc.scan",
+        "title": "Escanear (scan)",
+        "category": "adoc"
+      },
+      {
+        "command": "adoc.plan",
+        "title": "Planificar tareas (plan)",
+        "category": "adoc"
+      },
+      {
+        "command": "adoc.planForce",
+        "title": "Rehacer el plan (plan --force)",
+        "category": "adoc"
+      },
+      {
+        "command": "adoc.inspect",
+        "title": "Ejecutar tareas (inspect)",
+        "category": "adoc",
+        "icon": "$(play)"
+      },
+      {
+        "command": "adoc.resume",
+        "title": "Reintentar fallidas (inspect --resume)",
+        "category": "adoc",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "adoc.review",
+        "title": "Resumen (review)",
+        "category": "adoc"
+      },
+      {
+        "command": "adoc.check",
+        "title": "Validar (check)",
+        "category": "adoc"
+      },
+      {
+        "command": "adoc.sync",
+        "title": "Detectar cambios (sync)",
+        "category": "adoc"
+      },
+      {
+        "command": "adoc.doctor",
+        "title": "Verificar requisitos (doctor)",
+        "category": "adoc"
+      },
+      {
+        "command": "adoc.siteDev",
+        "title": "Sitio: servidor de desarrollo",
+        "category": "adoc"
+      },
+      {
+        "command": "adoc.siteBuild",
+        "title": "Sitio: build",
+        "category": "adoc"
+      },
+      {
+        "command": "adoc.selectAgent",
+        "title": "Cambiar agente o modelo",
+        "category": "adoc",
+        "icon": "$(hubot)"
+      },
+      {
+        "command": "adoc.task.run",
+        "title": "Ejecutar tarea",
+        "category": "adoc",
+        "icon": "$(play)"
+      },
+      {
+        "command": "adoc.task.runInteractive",
+        "title": "Ejecutar en modo interactivo",
+        "category": "adoc",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "adoc.task.answer",
+        "title": "Responder pregunta",
+        "category": "adoc",
+        "icon": "$(reply)"
+      },
+      {
+        "command": "adoc.task.done",
+        "title": "Marcar como hecha (valida la salida)",
+        "category": "adoc",
+        "icon": "$(check)"
+      },
+      {
+        "command": "adoc.task.openLog",
+        "title": "Ver log",
+        "category": "adoc",
+        "icon": "$(output)"
+      },
+      {
+        "command": "adoc.task.copyCommand",
+        "title": "Copiar comando",
+        "category": "adoc",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "adoc.selectProject",
+        "title": "Cambiar de proyecto",
+        "category": "adoc",
+        "icon": "$(folder-library)"
+      },
+      {
+        "command": "adoc.openProjectFolder",
+        "title": "Abrir carpeta en ventana nueva",
+        "category": "adoc",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "adoc.preview",
+        "title": "Ver resultado (preview)",
+        "category": "adoc",
+        "icon": "$(preview)"
+      },
+      {
+        "command": "adoc.report",
+        "title": "Reporte HTML",
+        "category": "adoc",
+        "icon": "$(file-code)"
+      },
+      {
+        "command": "adoc.ask",
+        "title": "Preguntar al agente",
+        "category": "adoc",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "adoc.answerQuestion",
+        "title": "Responder pregunta del agente",
+        "category": "adoc"
+      },
+      {
+        "command": "adoc.graph",
+        "title": "Grafo del conocimiento",
+        "category": "adoc",
+        "icon": "$(type-hierarchy)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "adoc.dashboard",
+          "when": "view == adoc.tasks || view == adoc.projects",
+          "group": "navigation@0"
+        },
+        {
+          "command": "adoc.inspect",
+          "when": "view == adoc.tasks",
+          "group": "navigation@1"
+        },
+        {
+          "command": "adoc.resume",
+          "when": "view == adoc.tasks",
+          "group": "navigation@2"
+        },
+        {
+          "command": "adoc.selectAgent",
+          "when": "view == adoc.tasks",
+          "group": "navigation@3"
+        },
+        {
+          "command": "adoc.refresh",
+          "when": "view =~ /^adoc\\./",
+          "group": "navigation@9"
+        },
+        {
+          "command": "adoc.planForce",
+          "when": "view == adoc.tasks",
+          "group": "1_plan"
+        },
+        {
+          "command": "adoc.check",
+          "when": "view == adoc.tasks",
+          "group": "1_plan"
+        },
+        {
+          "command": "adoc.doctor",
+          "when": "view == adoc.tasks",
+          "group": "1_plan"
+        },
+        {
+          "command": "adoc.preview",
+          "when": "view == adoc.tasks",
+          "group": "navigation@4"
+        },
+        {
+          "command": "adoc.ask",
+          "when": "view == adoc.questions",
+          "group": "navigation@1"
+        },
+        {
+          "command": "adoc.graph",
+          "when": "view == adoc.knowledge",
+          "group": "navigation@1"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "adoc.task.run",
+          "when": "view == adoc.tasks && viewItem =~ /^task\\.(pending|failed|manual|running|question)$/",
+          "group": "inline@1"
+        },
+        {
+          "command": "adoc.task.answer",
+          "when": "view == adoc.tasks && viewItem == task.question",
+          "group": "inline@0"
+        },
+        {
+          "command": "adoc.task.run",
+          "when": "view == adoc.tasks && viewItem =~ /^task\\./",
+          "group": "1_run@1"
+        },
+        {
+          "command": "adoc.task.runInteractive",
+          "when": "view == adoc.tasks && viewItem =~ /^task\\./",
+          "group": "1_run@2"
+        },
+        {
+          "command": "adoc.task.answer",
+          "when": "view == adoc.tasks && viewItem == task.question",
+          "group": "1_run@3"
+        },
+        {
+          "command": "adoc.task.done",
+          "when": "view == adoc.tasks && viewItem =~ /^task\\.(pending|failed|manual|question|running)$/",
+          "group": "2_state@1"
+        },
+        {
+          "command": "adoc.task.openLog",
+          "when": "view == adoc.tasks && viewItem =~ /^task\\./",
+          "group": "3_info@1"
+        },
+        {
+          "command": "adoc.task.copyCommand",
+          "when": "view == adoc.tasks && viewItem =~ /^task\\./",
+          "group": "3_info@2"
+        },
+        {
+          "command": "adoc.openProjectFolder",
+          "when": "view == adoc.projects && viewItem == project.external",
+          "group": "inline@1"
+        },
+        {
+          "command": "adoc.openProjectFolder",
+          "when": "view == adoc.projects",
+          "group": "1_open@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "adoc.task.run",
+          "when": "false"
+        },
+        {
+          "command": "adoc.task.runInteractive",
+          "when": "false"
+        },
+        {
+          "command": "adoc.task.answer",
+          "when": "false"
+        },
+        {
+          "command": "adoc.task.done",
+          "when": "false"
+        },
+        {
+          "command": "adoc.task.openLog",
+          "when": "false"
+        },
+        {
+          "command": "adoc.task.copyCommand",
+          "when": "false"
+        },
+        {
+          "command": "adoc.openProjectFolder",
+          "when": "false"
+        },
+        {
+          "command": "adoc.answerQuestion",
+          "when": "false"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Arqueology Doc",
+      "properties": {
+        "arqueologyDoc.path": {
+          "type": "string",
+          "default": "",
+          "description": "Ruta al binario `adoc`. Vacío: se busca en el PATH y en ~/.cargo/bin. Solo se lee de la configuración de usuario, nunca de la del workspace.",
+          "scope": "machine"
+        },
+        "arqueologyDoc.decorations": {
+          "type": "boolean",
+          "default": true,
+          "description": "Marcar en el editor las líneas citadas como evidencia de hallazgos."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "node -e \"require('fs').rmSync('out',{recursive:true,force:true})\" && tsc -p .",
+    "watch": "tsc -watch -p .",
+    "package": "vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.2.0",
+    "typescript": "^5.4.0"
+  }
+}

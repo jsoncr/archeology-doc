@@ -1,0 +1,2 @@
+CREATE TABLE users (id TEXT PRIMARY KEY, name TEXT NOT NULL);
+CREATE TABLE orders (id TEXT PRIMARY KEY, user_id TEXT REFERENCES users(id), total NUMERIC(10, 2));

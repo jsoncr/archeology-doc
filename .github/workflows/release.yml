@@ -1,0 +1,126 @@
+# Publica una versión: compila los binarios de cada plataforma, arma
+# WEBSITE/download (binarios, extensión, instaladores, SHA256SUMS y
+# latest.json), crea el release en GitHub y despliega el sitio en Pages.
+#
+# Se dispara con un tag `v*` (git tag v0.2.0 && git push origin v0.2.0) o a mano.
+# URL pública del sitio: la de GitHub Pages (https://jsoncr.github.io/arqueology-doc)
+# salvo que se defina la variable del repositorio SITE_URL (p. ej. un dominio
+# propio). Los instaladores la usan para descargar los binarios.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Linux (x86_64 y ARM64) y Windows con zig como linker cruzado
+  # (cargo-zigbuild): Linux contra glibc 2.28, compatible con distros desde 2018.
+  build-linux-windows:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
+        with:
+          toolchain: stable
+          targets: x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu,x86_64-pc-windows-gnu
+      - name: zig y cargo-zigbuild
+        run: pip install ziglang==0.17.0 cargo-zigbuild==0.23.4
+      - name: compilar y empaquetar
+        run: >
+          WEBSITE/dist.sh --native --skip-vsix --out dist
+          --targets "x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu x86_64-pc-windows-gnu"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: bin-linux-windows
+          path: dist/adoc-*
+          if-no-files-found: error
+
+  build-macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
+        with:
+          toolchain: stable
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - name: compilar y empaquetar
+        run: >
+          WEBSITE/dist.sh --native --skip-vsix --out dist
+          --targets "aarch64-apple-darwin x86_64-apple-darwin"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: bin-macos
+          path: dist/adoc-*
+          if-no-files-found: error
+
+  # Junta los binarios, empaqueta la extensión, aplica SITE_URL a los
+  # instaladores y genera SHA256SUMS y latest.json.
+  assemble:
+    needs: [build-linux-windows, build-macos]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: bin-*
+          path: WEBSITE/download
+          merge-multiple: true
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
+      - id: pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
+      - name: extensión, instaladores y sumas
+        env:
+          SITE_URL: ${{ vars.SITE_URL || steps.pages.outputs.base_url }}
+        run: WEBSITE/dist.sh --no-build --base-url "${SITE_URL%/}/download"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: download
+          path: WEBSITE/download
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+        with:
+          path: WEBSITE
+
+  github-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: assemble
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: download
+          path: download
+      - name: crear el release con los archivos
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh release create "$TAG" download/* --repo "$GITHUB_REPOSITORY" --title "$TAG" --generate-notes
+
+  deploy-site:
+    needs: assemble
+    runs-on: ubuntu-22.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5

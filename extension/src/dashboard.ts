@@ -1,0 +1,256 @@
+// Dashboard del proyecto: resumen, tareas (con tiempos), hallazgos,
+// documentación, preguntas y, en otra pestaña, el grafo del conocimiento.
+//
+// El webview solo dibuja (media/dashboard.js); los datos salen de
+// `adoc status` y `adoc graph`, y las acciones vuelven aquí como mensajes.
+
+import * as crypto from 'crypto';
+import * as path from 'path';
+import * as vscode from 'vscode';
+import * as cli from './cli';
+import { Status } from './types';
+
+export type DashboardTab = 'summary' | 'project' | 'tasks' | 'findings' | 'docs' | 'questions' | 'graph';
+
+/** Lo que el dashboard necesita del controlador. */
+export interface DashboardHost {
+  root: string | undefined;
+  status: Status | undefined;
+  run(args: string[]): void;
+  scheduleRefresh(delay?: number): void;
+}
+
+type Message =
+  | { type: 'ready' }
+  | { type: 'refresh' }
+  | { type: 'dashboard-ready' }
+  | { type: 'open'; file: string; line?: number }
+  | { type: 'run'; args: string[] }
+  | { type: 'command'; id: string }
+  | { type: 'answer'; task: string; text: string }
+  | { type: 'ask'; question: string };
+
+/** Comandos de VS Code que el webview puede pedir. */
+const ALLOWED_COMMANDS = new Set(['adoc.selectAgent']);
+/** Subcomandos de `adoc` que el webview puede lanzar. */
+const ALLOWED_RUN = new Set(['scan', 'plan', 'inspect', 'check', 'preview', 'report']);
+const TASK_ID = /^[A-Za-z0-9_][A-Za-z0-9_-]*$/;
+
+/**
+ * El webview no se trata como confiable: muestra texto escrito por agentes.
+ * Si alguna vez se colara HTML, solo podría pedir las acciones de los botones.
+ */
+function allowedRun(args: unknown): args is string[] {
+  if (!Array.isArray(args) || !args.every((a) => typeof a === 'string')) {
+    return false;
+  }
+  const [cmd, ...rest] = args as string[];
+  if (cmd === 'task') {
+    // task run <id> [--interactive]
+    return (
+      rest[0] === 'run' &&
+      TASK_ID.test(rest[1] ?? '') &&
+      (rest.length === 2 || (rest.length === 3 && rest[2] === '--interactive'))
+    );
+  }
+  if (cmd === 'plan') {
+    return rest.length === 0 || (rest.length === 1 && rest[0] === '--force');
+  }
+  return ALLOWED_RUN.has(cmd) && rest.length === 0;
+}
+
+/** `true` si `file` está dentro de alguna de las carpetas `roots`. */
+function isInside(file: string, roots: (string | undefined)[]): boolean {
+  const target = path.resolve(file);
+  return roots.some((r) => {
+    if (!r) {
+      return false;
+    }
+    const rel = path.relative(path.resolve(r), target);
+    return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+  });
+}
+
+export class DashboardPanel {
+  private static current: DashboardPanel | undefined;
+  private readonly panel: vscode.WebviewPanel;
+  private disposed = false;
+
+  static show(extensionUri: vscode.Uri, host: DashboardHost, tab: DashboardTab = 'summary'): void {
+    if (!DashboardPanel.current) {
+      DashboardPanel.current = new DashboardPanel(extensionUri, host);
+    }
+    const d = DashboardPanel.current;
+    d.panel.reveal(vscode.ViewColumn.Active);
+    void d.panel.webview.postMessage({ type: 'tab', tab });
+    d.pushStatus();
+  }
+
+  /** El estado cambió: actualizar el panel si está abierto. */
+  static update(): void {
+    const d = DashboardPanel.current;
+    if (d) {
+      d.pushStatus();
+      void d.pushGraph();
+    }
+  }
+
+  private constructor(private readonly extensionUri: vscode.Uri, private readonly host: DashboardHost) {
+    this.panel = vscode.window.createWebviewPanel(
+      'adoc.dashboard',
+      'arqueology-doc',
+      vscode.ViewColumn.Active,
+      {
+        enableScripts: true,
+        retainContextWhenHidden: true,
+        localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media')],
+      },
+    );
+    this.panel.iconPath = vscode.Uri.joinPath(extensionUri, 'media', 'icon.png');
+    this.panel.webview.html = this.html();
+    this.panel.onDidDispose(() => {
+      this.disposed = true;
+      DashboardPanel.current = undefined;
+    });
+    this.panel.webview.onDidReceiveMessage((msg: Message) => void this.handle(msg));
+  }
+
+  private async handle(msg: Message): Promise<void> {
+    switch (msg.type) {
+      case 'dashboard-ready':
+        this.pushStatus();
+        break;
+      case 'ready':
+      case 'refresh':
+        // `ready`/`refresh` los envía el grafo.
+        await this.pushGraph();
+        if (msg.type === 'refresh') {
+          this.host.scheduleRefresh(0);
+        }
+        break;
+      case 'open': {
+        const project = this.host.status?.project;
+        if (typeof msg.file !== 'string' || !isInside(msg.file, [project?.root, project?.workspace])) {
+          break;
+        }
+        const options: vscode.TextDocumentShowOptions = { viewColumn: vscode.ViewColumn.Beside, preview: true };
+        if (msg.line) {
+          const pos = new vscode.Position(Math.max(0, msg.line - 1), 0);
+          options.selection = new vscode.Range(pos, pos);
+        }
+        try {
+          await vscode.window.showTextDocument(vscode.Uri.file(msg.file), options);
+        } catch {
+          void vscode.window.showWarningMessage(`No se pudo abrir ${msg.file}`);
+        }
+        break;
+      }
+      case 'run':
+        if (allowedRun(msg.args)) {
+          this.host.run(msg.args);
+        }
+        break;
+      case 'command':
+        if (ALLOWED_COMMANDS.has(msg.id)) {
+          await vscode.commands.executeCommand(msg.id);
+        }
+        break;
+      case 'answer':
+        if (this.host.root && TASK_ID.test(String(msg.task)) && typeof msg.text === 'string' && msg.text.trim()) {
+          try {
+            await cli.exec(this.host.root, ['task', 'answer', msg.task, msg.text.trim()]);
+            void vscode.window.showInformationMessage(`Respuesta guardada en ${msg.task}; se ejecutará en el próximo inspect.`);
+          } catch (err) {
+            void vscode.window.showErrorMessage((err as Error).message);
+          }
+          this.host.scheduleRefresh(0);
+        }
+        break;
+      case 'ask':
+        if (typeof msg.question === 'string' && msg.question.trim()) {
+          this.host.run(['ask', msg.question.trim()]);
+        }
+        break;
+    }
+  }
+
+  private pushStatus(): void {
+    if (!this.disposed) {
+      void this.panel.webview.postMessage({ type: 'status', status: this.host.status ?? null });
+    }
+  }
+
+  private async pushGraph(): Promise<void> {
+    if (this.disposed || !this.host.root) {
+      return;
+    }
+    try {
+      const graph = JSON.parse(await cli.exec(this.host.root, ['graph', '--format', 'json']));
+      await this.panel.webview.postMessage({ type: 'graph', graph });
+    } catch {
+      // Sin vault todavía: la pestaña del grafo queda vacía.
+    }
+  }
+
+  private html(): string {
+    const webview = this.panel.webview;
+    const media = (f: string) => webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'media', f));
+    const nonce = crypto.randomBytes(16).toString('base64');
+    return `<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="${media('dashboard.css')}">
+</head>
+<body>
+  <header class="top">
+    <div class="title">
+      <h1 id="name">arqueology-doc</h1>
+      <div class="meta" id="meta"></div>
+    </div>
+    <div class="actions">
+      <button class="primary" data-run="inspect" title="adoc inspect">▶ Ejecutar tareas</button>
+      <button data-run="inspect --resume" title="adoc inspect --resume">↻ Reintentar</button>
+      <button data-command="adoc.selectAgent" title="adoc agent use">Agente</button>
+      <button data-run="preview" title="adoc preview">Ver sitio</button>
+      <button data-run="report" title="adoc report">Reporte</button>
+      <button id="reload" title="Actualizar">⟳</button>
+    </div>
+  </header>
+  <div id="outdated" class="outdated" hidden></div>
+  <nav class="tabs" id="tabs">
+    <button data-tab="summary" class="active">Resumen</button>
+    <button data-tab="project">Proyecto</button>
+    <button data-tab="tasks">Tareas</button>
+    <button data-tab="findings">Hallazgos</button>
+    <button data-tab="docs">Documentación</button>
+    <button data-tab="questions">Preguntas</button>
+    <button data-tab="graph">Grafo</button>
+  </nav>
+  <main>
+    <section data-panel="summary" class="panel active" id="summary"></section>
+    <section data-panel="project" class="panel" id="project"></section>
+    <section data-panel="tasks" class="panel" id="tasks"></section>
+    <section data-panel="findings" class="panel" id="findings"></section>
+    <section data-panel="docs" class="panel" id="docs"></section>
+    <section data-panel="questions" class="panel" id="questions"></section>
+    <section data-panel="graph" class="panel graph-panel">
+      <canvas id="graph"></canvas>
+      <div id="bar">
+        <input id="search" type="search" placeholder="Buscar nota…">
+        <button id="fit">Ajustar</button>
+        <button id="refresh">Actualizar</button>
+        <span id="stats"></span>
+      </div>
+      <div id="filters"></div>
+      <div id="tip" hidden></div>
+    </section>
+  </main>
+  <script nonce="${nonce}" src="${media('graph.js')}"></script>
+  <script nonce="${nonce}" src="${media('dashboard.js')}"></script>
+</body>
+</html>`;
+  }
+}

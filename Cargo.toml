@@ -1,0 +1,41 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/arqueology-core",
+    "crates/arqueology-scan",
+    "crates/arqueology-agents",
+    "crates/arqueology-openspec",
+    "crates/arqueology-registry",
+    "crates/arqueology-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/jsoncr/arqueology-doc"
+description = "Inspecciona proyectos de software y genera documentación, conocimiento y contexto para agentes de IA."
+
+[workspace.dependencies]
+anyhow = "1"
+blake3 = "1"
+chrono = { version = "0.4", default-features = false, features = ["serde", "std", "clock"] }
+clap = { version = "4", features = ["derive", "wrap_help"] }
+directories = "5"
+ignore = "0.4"
+indicatif = "0.17"
+libc = "0.2"
+minijinja = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+thiserror = "1"
+toml = "0.8"
+toml_edit = "0.22"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1

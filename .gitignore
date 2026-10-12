@@ -1,0 +1,11 @@
+/target
+*.tmp
+.DS_Store
+.arqueology-doc/
+node_modules/
+extension/out/
+extension/*.vsix
+
+# Descargas del sitio: las genera WEBSITE/dist.sh o el workflow de release.
+WEBSITE/download/*
+!WEBSITE/download/README.md
