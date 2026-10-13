@@ -1,8 +1,8 @@
-# arqueology-doc
+# archeology-doc
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.png">
-  <img src="assets/logo.png" alt="arqueology-doc" width="360">
+  <img src="assets/logo.png" alt="archeology-doc" width="360">
 </picture>
 
 CLI escrito en Rust que inspecciona proyectos de software — nuevos o legacy, pequeños o grandes — y genera:
@@ -11,9 +11,9 @@ CLI escrito en Rust que inspecciona proyectos de software — nuevos o legacy, p
 - **documentación con VitePress** (`docs/`, manual de usuario, guías, referencia),
 - **contexto y memoria para agentes de IA** (`AGENTS.md`, `knowledge/memory/`),
 - **integración con OpenSpec**: cruza specs ↔ código y detecta desfases,
-- un **registro global** de los proyectos en los que trabajas (`~/.arqueology-doc/`).
+- un **registro global** de los proyectos en los que trabajas (`~/.archeology-doc/`).
 
-La investigación la realizan los agentes que ya usas (Claude Code, Codex, OpenCode, Devin…); arqueology-doc orquesta, estructura y valida.
+La investigación la realizan los agentes que ya usas (Claude Code, Codex, OpenCode, Devin…); archeology-doc orquesta, estructura y valida.
 
 ## Instalación
 
@@ -28,23 +28,33 @@ Desde el código (instaladores y build de descargas en [WEBSITE/](WEBSITE/README
 
 ```bash
 WEBSITE/installers/install.sh  # compila este clon con cargo
-cargo install --path crates/arqueology-cli
+cargo install --path crates/archeology-cli
 # o desde el repo:
 cargo build --release
-# binarios en target/release/: `adoc` (corto) y `arqueology-doc` (equivalente)
+# binarios en target/release/: `adoc` (corto) y `archeology-doc` (equivalente)
 
 adoc doctor                    # verifica git, Node, VitePress, OpenSpec y agentes
 adoc site setup                # opcional: VitePress compartido para todos los proyectos
 ```
+
+Desinstalar:
+
+```bash
+adoc uninstall                 # quita los binarios `adoc` y `archeology-doc`
+adoc uninstall --purge         # además borra ~/.archeology-doc (registro, estado, aprobaciones, VitePress)
+```
+
+Los proyectos no se tocan: `archeology-doc.toml`, `knowledge/`, `docs/` y las regiones de `AGENTS.md`
+quedan en cada repositorio. Si se instaló con `cargo install`, usa `cargo uninstall archeology-cli`.
 
 ## Uso rápido
 
 ```bash
 cd mi-proyecto-legacy
 
-adoc init            # crea arqueology-doc.toml + estructura
+adoc init            # crea archeology-doc.toml + estructura
 adoc scan            # inventario determinista → inventory.json + knowledge/00-overview.md
-adoc plan            # genera tareas acotadas en ~/.arqueology-doc/projects/<proyecto>/tasks/
+adoc plan            # genera tareas acotadas en ~/.archeology-doc/projects/<proyecto>/tasks/
 adoc inspect         # ejecuta con el agente configurado (o exporta en modo manual)
 adoc review          # resumen: hallazgos, tests, progreso
 adoc check           # validaciones para CI (frontmatter, evidencias, enlaces)
@@ -70,11 +80,11 @@ adoc resume                     # retoma la inspección pendiente
 
 ```
 mi-proyecto/                          # solo configuración y resultados
-├── arqueology-doc.toml               # config + ID del proyecto (versionable)
+├── archeology-doc.toml               # config + ID del proyecto (versionable)
 ├── knowledge/  docs/  llms.txt       # vault Obsidian, sitio VitePress
 └── AGENTS.md  CLAUDE.md  .agents/    # contexto para agentes (regiones gestionadas)
 
-~/.arqueology-doc/                    # estado de trabajo, fuera del repositorio
+~/.archeology-doc/                    # estado de trabajo, fuera del repositorio
 ├── registry.toml                     # índice de proyectos
 ├── vitepress/                        # VitePress compartido (`adoc site setup`)
 └── projects/<nombre>-<id8>/          # por proyecto
@@ -83,8 +93,8 @@ mi-proyecto/                          # solo configuración y resultados
     └── runs/<fecha>-<id>/            # run.log y un log por tarea
 ```
 
-Los proyectos con el estado antiguo en `<proyecto>/.arqueology-doc/` se migran solos al primer comando,
-y el registro de `~/Library/Application Support/arqueology-doc` (o `~/.config/…`) también.
+Los proyectos con el estado antiguo en `<proyecto>/.archeology-doc/` se migran solos al primer comando,
+y el registro de `~/Library/Application Support/archeology-doc` (o `~/.config/…`) también.
 
 ## Agentes
 
@@ -117,7 +127,7 @@ Agentes predefinidos (modo no interactivo con permiso de escritura):
 Los flags de cada CLI cambian con el tiempo: `adoc agent test` y `adoc doctor` los comprueban, y cualquier
 adaptador se puede redefinir en `[agent.adapters.<nombre>]`.
 
-**Seguridad.** `arqueology-doc.toml` viaja con el repositorio y puede venir de terceros, así que un
+**Seguridad.** `archeology-doc.toml` viaja con el repositorio y puede venir de terceros, así que un
 adaptador que no sea idéntico a uno predefinido no se ejecuta (ni siquiera `--version`) hasta que lo
 revisas y lo apruebas:
 
@@ -126,13 +136,13 @@ adoc agent trust mi-agente     # muestra command, args y env, y pide confirmaci�
 adoc agent untrust mi-agente   # retira la aprobación
 ```
 
-La aprobación se guarda en `~/.arqueology-doc/trusted-adapters.toml`, ligada al proyecto y a la
+La aprobación se guarda en `~/.archeology-doc/trusted-adapters.toml`, ligada al proyecto y a la
 definición exacta: si el adaptador cambia en el repositorio, hay que volver a aprobarlo. Los
 adaptadores `copilot`, `amp`, `aider` y `cursor` corren sin confirmaciones (pueden ejecutar comandos
 de shell): `inspect` lo avisa. Úsalos solo con repositorios de confianza. `adoc preview` y
 `adoc site` ejecutan la configuración de VitePress del proyecto (JavaScript).
 
-`agent use` edita `arqueology-doc.toml` conservando su formato. Con `manual`, `inspect` marca
+`agent use` edita `archeology-doc.toml` conservando su formato. Con `manual`, `inspect` marca
 las tareas como manuales; se ejecutan en esa herramienta y se cierran con `adoc task done <id>`.
 Al cambiar a un agente con CLI, las tareas manuales sin completar vuelven a `pending` y basta `adoc inspect`;
 las tareas `done` nunca se tocan.
@@ -245,7 +255,7 @@ usa la opción 1. `adoc doctor` muestra cuál se usará. Para verificar en CI: `
 
 | Variable | Uso |
 |----------|-----|
-| `ARQUEOLOGY_DOC_CONFIG_DIR` | Directorio de configuración (por defecto `~/.arqueology-doc`). Útil en tests y CI. |
+| `ARCHEOLOGY_DOC_CONFIG_DIR` | Directorio de configuración (por defecto `~/.archeology-doc`). Útil en tests y CI. |
 | `RUST_LOG` | Filtro de logs (`-v`/`-vv` equivalen a `info`/`debug`). |
 
 ## Extensión de VS Code
@@ -254,21 +264,26 @@ usa la opción 1. `adoc doctor` muestra cuál se usará. Para verificar en CI: `
 preguntas), hallazgos con salto a la evidencia, conocimiento por tipo y specs; barra de estado con progreso
 y agente; marcas en el editor en las líneas citadas por hallazgos. Ver [extension/README.md](extension/README.md).
 
+Al iniciar comprueba las herramientas: si falta `adoc` ofrece instalarlo (ejecuta el instalador oficial en
+un terminal visible y verifica el SHA-256), y si faltan git, Node o VitePress ofrece instalarlos o enlaza su
+descarga. Nada se instala sin un clic. Comando: *adoc: Instalar herramientas*; se desactiva con
+`archeologyDoc.checkToolsOnStartup`.
+
 ```bash
 cd extension && npm install && npm run package
-code --install-extension arqueology-doc-0.1.0.vsix
+code --install-extension archeology-doc-0.1.0.vsix
 ```
 
 ## Estructura del repo
 
 ```
 crates/
-  arqueology-core/      # modelos, estado, plantillas, validación
-  arqueology-scan/      # scanner e inventario
-  arqueology-agents/    # orquestador y adaptadores
-  arqueology-openspec/  # spec bridge
-  arqueology-registry/  # registro global
-  arqueology-cli/       # binario
+  archeology-core/      # modelos, estado, plantillas, validación
+  archeology-scan/      # scanner e inventario
+  archeology-agents/    # orquestador y adaptadores
+  archeology-openspec/  # spec bridge
+  archeology-registry/  # registro global
+  archeology-cli/       # binario
 templates/              # plantillas de notas, tareas y sitio
 fixtures/               # repos de prueba: small-node, medium-ts, legacy-py, with-openspec
 ```

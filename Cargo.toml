@@ -1,19 +1,19 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/arqueology-core",
-    "crates/arqueology-scan",
-    "crates/arqueology-agents",
-    "crates/arqueology-openspec",
-    "crates/arqueology-registry",
-    "crates/arqueology-cli",
+    "crates/archeology-core",
+    "crates/archeology-scan",
+    "crates/archeology-agents",
+    "crates/archeology-openspec",
+    "crates/archeology-registry",
+    "crates/archeology-cli",
 ]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/jsoncr/arqueology-doc"
+repository = "https://github.com/jsoncr/archeology-doc"
 description = "Inspecciona proyectos de software y genera documentación, conocimiento y contexto para agentes de IA."
 
 [workspace.dependencies]

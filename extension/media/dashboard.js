@@ -1,4 +1,4 @@
-// Dashboard de arqueology-doc (webview). Dibuja el JSON de `adoc status`;
+// Dashboard de archeology-doc (webview). Dibuja el JSON de `adoc status`;
 // las acciones se envían a la extensión con postMessage.
 
 (function () {
@@ -461,7 +461,7 @@
       fn();
     } catch (err) {
       $(id).innerHTML = `<div class="box warn"><b>No se pudo mostrar esta sección.</b><div class="sub">${esc(err && err.message)}</div>
-        <div class="sub">Si actualizaste la extensión, actualiza también el CLI: <code>cargo install --path crates/arqueology-cli --force</code></div></div>`;
+        <div class="sub">Si actualizaste la extensión, actualiza también el CLI: <code>cargo install --path crates/archeology-cli --force</code></div></div>`;
       console.error(err);
     }
   }
@@ -469,7 +469,7 @@
   function render() {
     if (!status) {
       for (const id of ['summary', 'project', 'tasks', 'findings', 'docs', 'questions']) {
-        $(id).innerHTML = empty('No hay un proyecto de arqueology-doc activo. Abre una carpeta con <code>arqueology-doc.toml</code> o ejecuta <code>adoc init</code>.');
+        $(id).innerHTML = empty('No hay un proyecto de archeology-doc activo. Abre una carpeta con <code>archeology-doc.toml</code> o ejecuta <code>adoc init</code>.');
       }
       return;
     }
@@ -478,7 +478,7 @@
     $('meta').textContent = `${status.agent.active}${status.agent.model ? ' · ' + status.agent.model : ''} · perfil ${status.profile} · ${status.progress}% · ${status.project.root}`;
     $('outdated').hidden = !status.__outdated.length;
     $('outdated').innerHTML = status.__outdated.length
-      ? `⚠ El CLI <code>adoc</code> instalado es anterior a la extensión (faltan: ${esc(status.__outdated.join(', '))}). Actualízalo: <code>cargo install --path crates/arqueology-cli --force</code>`
+      ? `⚠ El CLI <code>adoc</code> instalado es anterior a la extensión (faltan: ${esc(status.__outdated.join(', '))}). Actualízalo: <code>cargo install --path crates/archeology-cli --force</code>`
       : '';
     safe('summary', renderSummary);
     safe('project', renderProject);

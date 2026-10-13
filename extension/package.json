@@ -1,13 +1,13 @@
 {
-  "name": "arqueology-doc",
-  "displayName": "Arqueology Doc",
-  "description": "Tareas, hallazgos, conocimiento y specs de arqueology-doc dentro del editor.",
+  "name": "archeology-doc",
+  "displayName": "Archeology Doc",
+  "description": "Tareas, hallazgos, conocimiento y specs de archeology-doc dentro del editor.",
   "version": "0.1.0",
-  "publisher": "arqueology-doc",
+  "publisher": "archeology-doc",
   "license": "MIT OR Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jsoncr/arqueology-doc"
+    "url": "https://github.com/jsoncr/archeology-doc"
   },
   "engines": {
     "vscode": "^1.85.0"
@@ -17,7 +17,7 @@
   ],
   "icon": "media/icon.png",
   "activationEvents": [
-    "workspaceContains:**/arqueology-doc.toml"
+    "workspaceContains:**/archeology-doc.toml"
   ],
   "capabilities": {
     "untrustedWorkspaces": {
@@ -31,14 +31,14 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "arqueology",
-          "title": "Arqueology",
+          "id": "archeology",
+          "title": "Archeology",
           "icon": "media/activity.svg"
         }
       ]
     },
     "views": {
-      "arqueology": [
+      "archeology": [
         {
           "id": "adoc.projects",
           "name": "Proyectos"
@@ -69,7 +69,7 @@
     "viewsWelcome": [
       {
         "view": "adoc.tasks",
-        "contents": "No hay un proyecto de arqueology-doc para esta carpeta.\n[Elegir un proyecto registrado](command:adoc.selectProject)\n[Inicializar aquí](command:adoc.init)",
+        "contents": "No hay un proyecto de archeology-doc para esta carpeta.\n[Elegir un proyecto registrado](command:adoc.selectProject)\n[Inicializar aquí](command:adoc.init)",
         "when": "!adoc.hasProject"
       },
       {
@@ -79,7 +79,7 @@
       },
       {
         "view": "adoc.projects",
-        "contents": "No hay proyectos en ~/.arqueology-doc.\n[Inicializar este proyecto](command:adoc.init)"
+        "contents": "No hay proyectos en ~/.archeology-doc.\n[Inicializar este proyecto](command:adoc.init)"
       }
     ],
     "commands": [
@@ -244,6 +244,12 @@
         "title": "Grafo del conocimiento",
         "category": "adoc",
         "icon": "$(type-hierarchy)"
+      },
+      {
+        "command": "adoc.installTools",
+        "title": "Instalar herramientas (adoc, VitePress)",
+        "category": "adoc",
+        "icon": "$(desktop-download)"
       }
     ],
     "menus": {
@@ -392,18 +398,29 @@
       ]
     },
     "configuration": {
-      "title": "Arqueology Doc",
+      "title": "Archeology Doc",
       "properties": {
-        "arqueologyDoc.path": {
+        "archeologyDoc.path": {
           "type": "string",
           "default": "",
           "description": "Ruta al binario `adoc`. Vacío: se busca en el PATH y en ~/.cargo/bin. Solo se lee de la configuración de usuario, nunca de la del workspace.",
           "scope": "machine"
         },
-        "arqueologyDoc.decorations": {
+        "archeologyDoc.decorations": {
           "type": "boolean",
           "default": true,
           "description": "Marcar en el editor las líneas citadas como evidencia de hallazgos."
+        },
+        "archeologyDoc.checkToolsOnStartup": {
+          "type": "boolean",
+          "default": true,
+          "description": "Al iniciar, comprobar que adoc, git, Node y VitePress estén instalados y ofrecer instalar lo que falte."
+        },
+        "archeologyDoc.downloadUrl": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "URL https de la carpeta /download desde la que se instala adoc. Vacío: https://jsoncr.github.io/archeology-doc/download."
         }
       }
     }

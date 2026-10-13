@@ -3,7 +3,7 @@
 # latest.json), crea el release en GitHub y despliega el sitio en Pages.
 #
 # Se dispara con un tag `v*` (git tag v0.2.0 && git push origin v0.2.0) o a mano.
-# URL pública del sitio: la de GitHub Pages (https://jsoncr.github.io/arqueology-doc)
+# URL pública del sitio: la de GitHub Pages (https://jsoncr.github.io/archeology-doc)
 # salvo que se defina la variable del repositorio SITE_URL (p. ej. un dominio
 # propio). Los instaladores la usan para descargar los binarios.
 name: Release

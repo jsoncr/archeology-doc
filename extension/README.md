@@ -1,25 +1,30 @@
-# Arqueology Doc para VS Code
+# Archeology Doc para VS Code
 
 Interfaz visual sobre el CLI [`adoc`](../README.md): ver lo generado y ejecutar tareas sin recordar
 comandos. Funciona también en editores basados en VS Code (Cursor, Windsurf, Devin Desktop).
 
 ## Requisitos
 
-- El CLI instalado: `cargo install --path crates/arqueology-cli` (o la ruta en `arqueologyDoc.path`).
-- Una carpeta con `arqueology-doc.toml` (o `adoc init` desde la propia extensión).
+- El CLI `adoc`. Si no está, la extensión ofrece instalarlo al iniciar (instalador oficial de
+  `https://jsoncr.github.io/archeology-doc/download`, con verificación SHA-256). También se puede indicar
+  la ruta en `archeologyDoc.path` o instalarlo con `cargo install --path crates/archeology-cli`.
+- Para el sitio de documentación: git, Node 18+ y VitePress. La comprobación al iniciar ofrece
+  `adoc site setup` o enlaza la descarga de lo que falte (comando *adoc: Instalar herramientas*;
+  se desactiva con `archeologyDoc.checkToolsOnStartup`).
+- Una carpeta con `archeology-doc.toml` (o `adoc init` desde la propia extensión).
 
 ## Qué ofrece
 
-**Proyecto activo**: se toma del registro global `~/.arqueology-doc/` (lo que muestra
+**Proyecto activo**: se toma del registro global `~/.archeology-doc/` (lo que muestra
 `adoc projects list`). Funciona aunque abras una subcarpeta del proyecto, la carpeta padre o un monorepo
 con varios proyectos; la vista **Proyectos** los lista todos (progreso, agente, hallazgos) y un clic
 cambia el activo. La elección se recuerda por workspace.
 
-**Panel "Arqueology"** (barra de actividad):
+**Panel "Archeology"** (barra de actividad):
 
 | Vista | Contenido | Acciones |
 |-------|-----------|----------|
-| Proyectos | Registrados en `~/.arqueology-doc/`; el activo en verde | clic: usar ese proyecto; abrir en ventana nueva |
+| Proyectos | Registrados en `~/.archeology-doc/`; el activo en verde | clic: usar ese proyecto; abrir en ventana nueva |
 | Tareas | Agrupadas por estado: pregunta, fallidas, pendientes, manuales, hechas | ▶ ejecutar, ejecutar interactivo, responder pregunta, marcar hecha, ver log, copiar comando |
 | Preguntas | Del agente (clic: responder), para el equipo técnico y FAQ | botón: preguntar al agente |
 | Hallazgos | Por severidad; cada evidencia `ruta:línea` abre el código en esa línea | clic: abre la nota |
@@ -47,7 +52,7 @@ vecinos y un clic abre la nota (o el código en la línea citada).
 Clic: abre el dashboard (el menú de acciones está en `adoc: Acciones…`).
 
 **Editor**: las líneas citadas por un hallazgo abierto llevan una marca en el margen; al pasar el cursor
-se ve el hallazgo con un enlace a su nota (`arqueologyDoc.decorations` para desactivarlo).
+se ve el hallazgo con un enlace a su nota (`archeologyDoc.decorations` para desactivarlo).
 
 **Paleta** (`adoc: …`): ver resultado (preview), reporte HTML, preguntar al agente, escanear, planificar, ejecutar, reintentar, validar, sync, sitio, doctor y
 cambiar agente o modelo.
@@ -61,8 +66,8 @@ actualiza solo cuando cambian las tareas o el vault.
 cd extension
 npm install
 npm run compile      # o npm run watch
-npm run package      # genera arqueology-doc-<versión>.vsix
-code --install-extension arqueology-doc-0.1.0.vsix
+npm run package      # genera archeology-doc-<versión>.vsix
+code --install-extension archeology-doc-0.1.0.vsix
 ```
 
 Para depurar: abrir `extension/` en VS Code y pulsar F5.

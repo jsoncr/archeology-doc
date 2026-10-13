@@ -15,9 +15,9 @@ locked: false
 
 # {{ title }}
 
-<!-- arqueology-doc:begin summary -->
+<!-- archeology-doc:begin summary -->
 {{ summary }}
-<!-- arqueology-doc:end summary -->
+<!-- archeology-doc:end summary -->
 
 ## Actores
 

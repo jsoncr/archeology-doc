@@ -98,7 +98,7 @@ export class DashboardPanel {
   private constructor(private readonly extensionUri: vscode.Uri, private readonly host: DashboardHost) {
     this.panel = vscode.window.createWebviewPanel(
       'adoc.dashboard',
-      'arqueology-doc',
+      'archeology-doc',
       vscode.ViewColumn.Active,
       {
         enableScripts: true,
@@ -207,7 +207,7 @@ export class DashboardPanel {
 <body>
   <header class="top">
     <div class="title">
-      <h1 id="name">arqueology-doc</h1>
+      <h1 id="name">archeology-doc</h1>
       <div class="meta" id="meta"></div>
     </div>
     <div class="actions">

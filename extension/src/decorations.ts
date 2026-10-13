@@ -40,7 +40,7 @@ export class FindingDecorations implements vscode.Disposable {
   }
 
   private render(): void {
-    const enabled = vscode.workspace.getConfiguration('arqueologyDoc').get<boolean>('decorations', true);
+    const enabled = vscode.workspace.getConfiguration('archeologyDoc').get<boolean>('decorations', true);
     for (const editor of vscode.window.visibleTextEditors) {
       const bySeverity = new Map<string, vscode.DecorationOptions[]>();
       if (enabled && this.status) {

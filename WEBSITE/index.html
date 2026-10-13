@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>arqueology-doc · documenta cualquier proyecto con tus agentes de IA</title>
+  <title>archeology-doc · documenta cualquier proyecto con tus agentes de IA</title>
   <meta name="description" content="CLI en Rust que inspecciona proyectos nuevos o legacy y genera base de conocimiento, documentación VitePress y contexto para agentes de IA, con evidencias verificables.">
   <link rel="icon" href="assets/favicon.png" type="image/png">
   <link rel="apple-touch-icon" href="assets/icon.png">
@@ -18,7 +18,7 @@
     <div class="wrap nav-inner">
       <a class="brand" href="#">
         <img src="assets/icon.png" alt="" width="30" height="30">
-        <span>arqueology-doc</span>
+        <span>archeology-doc</span>
       </a>
       <nav>
         <a href="#como-funciona">Cómo funciona</a>
@@ -37,14 +37,14 @@
     <section class="hero">
       <div class="wrap hero-grid">
         <div class="hero-logo">
-          <img class="logo-light" src="assets/logo.png" alt="arqueology-doc" width="540" height="363">
-          <img class="logo-dark" src="assets/logo-dark.png" alt="arqueology-doc" width="540" height="363">
+          <img class="logo-light" src="assets/logo.png" alt="archeology-doc" width="540" height="363">
+          <img class="logo-dark" src="assets/logo-dark.png" alt="archeology-doc" width="540" height="363">
         </div>
         <div class="hero-text">
         <p class="eyebrow">CLI open source · Rust · local-first</p>
         <h1>Excava cualquier proyecto.<br><span class="accent">Documéntalo con evidencia.</span></h1>
         <p class="lead">
-          <strong>arqueology-doc</strong> (<code>adoc</code>) inspecciona proyectos nuevos o legacy y, con el
+          <strong>archeology-doc</strong> (<code>adoc</code>) inspecciona proyectos nuevos o legacy y, con el
           agente de IA que ya usas, genera una base de conocimiento navegable, documentación, hallazgos y
           contexto para agentes. Cada afirmación cita su fuente <code>ruta:línea</code>.
         </p>
@@ -154,7 +154,7 @@
             <a class="btn dl" data-file="adoc-x86_64-apple-darwin.tar.gz" href="download/adoc-x86_64-apple-darwin.tar.gz" download>Intel <small></small></a>
           </div>
           <p class="note">Descargado desde el navegador, macOS lo marca en cuarentena:
-            <code>xattr -d com.apple.quarantine adoc arqueology-doc</code> y muévelos a <code>~/.local/bin</code>.
+            <code>xattr -d com.apple.quarantine adoc archeology-doc</code> y muévelos a <code>~/.local/bin</code>.
             Con el comando de terminal no hace falta.</p>
         </div>
 
@@ -176,18 +176,18 @@
           <div class="downloads-row">
             <a class="btn dl" data-file="adoc-x86_64-pc-windows-gnu.zip" href="download/adoc-x86_64-pc-windows-gnu.zip" download>Windows x64 (.zip) <small></small></a>
           </div>
-          <p class="note">El instalador lo deja en <code>%LOCALAPPDATA%\Programs\arqueology-doc\bin</code> y lo añade a tu
+          <p class="note">El instalador lo deja en <code>%LOCALAPPDATA%\Programs\archeology-doc\bin</code> y lo añade a tu
             PATH, sin permisos de administrador. En Windows ARM64 funciona con la emulación x64.</p>
         </div>
 
         <div class="panel" data-panel="source" role="tabpanel" id="panel-source" aria-labelledby="tab-source">
           <div class="code" data-copy><pre><code><span class="c"># Necesita Rust (rustup.rs). Instala `adoc` en ~/.cargo/bin</span>
-git clone https://github.com/jsoncr/arqueology-doc.git
-cd arqueology-doc
+git clone https://github.com/jsoncr/archeology-doc.git
+cd archeology-doc
 WEBSITE/installers/install.sh
 
 <span class="c"># o directamente con cargo</span>
-cargo install --path crates/arqueology-cli --locked</code></pre></div>
+cargo install --path crates/archeology-cli --locked</code></pre></div>
         </div>
 
         <p class="step-label">Extras</p>
@@ -196,7 +196,9 @@ curl -fsSL <span data-base>https://tu-sitio/download/</span>install.sh | sh -s -
 
 <span class="c"># Verifica requisitos: git, Node, VitePress, OpenSpec y agentes</span>
 adoc doctor</code></pre></div>
-        <p class="note">Se instalan dos binarios equivalentes: <code>adoc</code> (corto) y <code>arqueology-doc</code>.</p>
+        <p class="note">Se instalan dos binarios equivalentes: <code>adoc</code> (corto) y <code>archeology-doc</code>.
+          Para desinstalar: <code>adoc uninstall</code> (con <code>--purge</code> borra también
+          <code>~/.archeology-doc</code>; los archivos de tus proyectos no se tocan).</p>
 
         <h3 class="downloads-title" id="descargas">Todas las descargas <span class="muted" id="dl-version"></span></h3>
         <div class="table-wrap">
@@ -275,15 +277,15 @@ adoc inspect --agent codex            <span class="c"># solo para esta corrida</
           </ul>
         </div>
         <div>
-          <div class="code" data-copy><pre><code>cd arqueology-doc/extension
+          <div class="code" data-copy><pre><code>cd archeology-doc/extension
 npm install
 npm run package
-code --install-extension arqueology-doc-0.1.0.vsix</code></pre></div>
+code --install-extension archeology-doc-0.1.0.vsix</code></pre></div>
           <div class="mock" aria-hidden="true">
             <div class="mock-bar"><span></span><span></span><span></span></div>
             <div class="mock-body">
               <div class="mock-side">
-                <b>ARQUEOLOGY</b>
+                <b>ARCHEOLOGY</b>
                 <i>▾ Tareas</i>
                 <i class="q">❓ T-004 · pregunta</i>
                 <i>⏳ T-005 · module</i>
@@ -317,7 +319,7 @@ code --install-extension arqueology-doc-0.1.0.vsix</code></pre></div>
           <h2>Qué queda en tu proyecto</h2>
           <p class="sub">Solo resultados, en Markdown. El estado de trabajo vive fuera del repositorio.</p>
           <div class="code"><pre><code>mi-proyecto/
-├── arqueology-doc.toml     <span class="c"># config + ID</span>
+├── archeology-doc.toml     <span class="c"># config + ID</span>
 ├── AGENTS.md               <span class="c"># contexto para agentes</span>
 ├── knowledge/              <span class="c"># vault Obsidian</span>
 │   ├── 00-overview.md
@@ -343,7 +345,7 @@ code --install-extension arqueology-doc-0.1.0.vsix</code></pre></div>
 
   <footer class="footer">
     <div class="wrap">
-      <span>arqueology-doc · MIT OR Apache-2.0</span>
+      <span>archeology-doc · MIT OR Apache-2.0</span>
       <span class="muted">Hecho en Rust 🦀</span>
     </div>
   </footer>

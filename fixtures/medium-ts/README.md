@@ -2,7 +2,7 @@
 
 Servicio de pedidos. Ver `docs/architecture.md`.
 
-Fixture mediano de arqueology-doc con contradicciones sembradas:
+Fixture mediano de archeology-doc con contradicciones sembradas:
 
 - `docs/architecture.md` dice que el IVA es 12%; `src/services/tax.ts` usa 13%.
 - El redondeo de precios está implementado distinto en `pricing.ts` y `utils/format.ts`.

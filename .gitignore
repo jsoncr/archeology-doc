@@ -1,7 +1,7 @@
 /target
 *.tmp
 .DS_Store
-.arqueology-doc/
+.archeology-doc/
 node_modules/
 extension/out/
 extension/*.vsix

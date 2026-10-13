@@ -11,9 +11,9 @@ locked: false
 
 # {{ project_name }} — Overview
 
-<!-- arqueology-doc:begin inventory -->
+<!-- archeology-doc:begin inventory -->
 {{ summary }}
-<!-- arqueology-doc:end inventory -->
+<!-- archeology-doc:end inventory -->
 
 > Inventario determinista generado por `adoc scan`.
 > La interpretación del sistema la completan las tareas de inspección.

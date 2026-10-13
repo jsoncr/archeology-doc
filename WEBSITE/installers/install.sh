@@ -1,5 +1,5 @@
 #!/bin/sh
-# Instalador de arqueology-doc (CLI `adoc`) para macOS y Linux.
+# Instalador de archeology-doc (CLI `adoc`) para macOS y Linux.
 #
 #   curl -fsSL https://<sitio>/download/install.sh | sh
 #   curl -fsSL https://<sitio>/download/install.sh | sh -s -- --with-vscode
@@ -17,18 +17,18 @@
 #   --repo <url>       repositorio a clonar al compilar desde el código
 #   --ref <tag|commit> versión del código a compilar (recomendado con --from-source)
 #
-# Variables: ARQUEOLOGY_DOC_DOWNLOAD (URL de /download), ARQUEOLOGY_DOC_INSTALL_DIR,
-# ARQUEOLOGY_DOC_REPO (--repo), ARQUEOLOGY_DOC_REF (--ref).
+# Variables: ARCHEOLOGY_DOC_DOWNLOAD (URL de /download), ARCHEOLOGY_DOC_INSTALL_DIR,
+# ARCHEOLOGY_DOC_REPO (--repo), ARCHEOLOGY_DOC_REF (--ref).
 set -eu
 
 # `WEBSITE/dist.sh --base-url` reemplaza este valor en la copia publicada en /download.
 DEFAULT_DOWNLOAD="__ADOC_DOWNLOAD_BASE__"
-DEFAULT_REPO="https://github.com/jsoncr/arqueology-doc.git"
+DEFAULT_REPO="https://github.com/jsoncr/archeology-doc.git"
 
-DOWNLOAD="${ARQUEOLOGY_DOC_DOWNLOAD:-$DEFAULT_DOWNLOAD}"
-INSTALL_DIR="${ARQUEOLOGY_DOC_INSTALL_DIR:-$HOME/.local/bin}"
-REPO="${ARQUEOLOGY_DOC_REPO:-$DEFAULT_REPO}"
-REF="${ARQUEOLOGY_DOC_REF:-}"
+DOWNLOAD="${ARCHEOLOGY_DOC_DOWNLOAD:-$DEFAULT_DOWNLOAD}"
+INSTALL_DIR="${ARCHEOLOGY_DOC_INSTALL_DIR:-$HOME/.local/bin}"
+REPO="${ARCHEOLOGY_DOC_REPO:-$DEFAULT_REPO}"
+REF="${ARCHEOLOGY_DOC_REF:-}"
 WITH_VITEPRESS=0
 WITH_VSCODE=0
 FROM_SOURCE=0
@@ -55,7 +55,7 @@ fail() { printf '  \033[31m✗\033[0m %s\n' "$*" >&2; exit 1; }
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT INT TERM
 
-bold "arqueology-doc · instalación"
+bold "archeology-doc · instalación"
 
 # Plataforma → target de Rust de los binarios publicados.
 detect_target() {
@@ -98,7 +98,7 @@ sha256() {
 # Entonces se compila ese código. Con `curl | sh`, $0 es "sh" y no aplica.
 SRC=""
 CLONE_ROOT="$(dirname "$0")/../.."
-if [ -f "$CLONE_ROOT/crates/arqueology-cli/Cargo.toml" ]; then
+if [ -f "$CLONE_ROOT/crates/archeology-cli/Cargo.toml" ]; then
   SRC="$(cd "$CLONE_ROOT" && pwd)"
   FROM_SOURCE=1
 fi
@@ -122,7 +122,7 @@ install_binary() {
   ok "SHA-256 verificado"
   tar -xzf "$TMP_DIR/$archive" -C "$TMP_DIR"
   mkdir -p "$INSTALL_DIR"
-  for bin in adoc arqueology-doc; do
+  for bin in adoc archeology-doc; do
     install -m 755 "$TMP_DIR/adoc-$target/$bin" "$INSTALL_DIR/$bin"
   done
   ADOC="$INSTALL_DIR/adoc"
@@ -138,7 +138,7 @@ install_from_source() {
   ok "cargo $(cargo --version | awk '{print $2}')"
   if [ -z "$SRC" ]; then
     command -v git >/dev/null 2>&1 || fail "falta git para clonar $REPO"
-    SRC="$TMP_DIR/arqueology-doc"
+    SRC="$TMP_DIR/archeology-doc"
     if [ -n "$REF" ]; then
       echo "  clonando $REPO @ ${REF}…"
       # `fetch` de una ref concreta funciona igual con tags y con commits.
@@ -154,7 +154,7 @@ install_from_source() {
   ok "código fuente en $SRC"
   echo "  compilando (la primera vez tarda unos minutos)…"
   # `--locked`: se compila con las versiones de Cargo.lock, sin resolver otras.
-  cargo install --path "$SRC/crates/arqueology-cli" --force --locked --quiet \
+  cargo install --path "$SRC/crates/archeology-cli" --force --locked --quiet \
     || fail "falló la compilación (ver el error arriba)"
   ADOC="${CARGO_INSTALL_ROOT:-${CARGO_HOME:-$HOME/.cargo}}/bin/adoc"
 }
@@ -186,11 +186,11 @@ if [ "$WITH_VSCODE" = 1 ]; then
     warn "falta el comando \`code\` (VS Code → Shell Command: Install 'code' command in PATH)"
   elif [ -n "$SRC" ] && command -v npm >/dev/null 2>&1; then
     (cd "$SRC/extension" && npm ci --no-fund --no-audit --silent && npm run --silent compile \
-      && npm run --silent package -- -o arqueology-doc.vsix >/dev/null) \
-      && code --install-extension "$SRC/extension/arqueology-doc.vsix" --force >/dev/null \
+      && npm run --silent package -- -o archeology-doc.vsix >/dev/null) \
+      && code --install-extension "$SRC/extension/archeology-doc.vsix" --force >/dev/null \
       && ok "extensión de VS Code instalada"
-  elif fetch "$DOWNLOAD/arqueology-doc.vsix" "$TMP_DIR/arqueology-doc.vsix" 2>/dev/null; then
-    code --install-extension "$TMP_DIR/arqueology-doc.vsix" --force >/dev/null \
+  elif fetch "$DOWNLOAD/archeology-doc.vsix" "$TMP_DIR/archeology-doc.vsix" 2>/dev/null; then
+    code --install-extension "$TMP_DIR/archeology-doc.vsix" --force >/dev/null \
       && ok "extensión de VS Code instalada"
   else
     warn "no se pudo obtener la extensión"

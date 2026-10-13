@@ -1,17 +1,17 @@
-# Instalador de arqueology-doc (CLI `adoc`) para Windows.
+# Instalador de archeology-doc (CLI `adoc`) para Windows.
 #
 #   irm https://<sitio>/download/install.ps1 | iex
 #   & ([scriptblock]::Create((irm https://<sitio>/download/install.ps1))) -WithVSCode
 #
 # Descarga el binario precompilado desde la carpeta /download del sitio,
-# verifica su SHA-256, lo instala en %LOCALAPPDATA%\Programs\arqueology-doc\bin
+# verifica su SHA-256, lo instala en %LOCALAPPDATA%\Programs\archeology-doc\bin
 # y añade esa carpeta al PATH del usuario (sin permisos de administrador).
 #
-# Variables: ARQUEOLOGY_DOC_DOWNLOAD (URL de /download), ARQUEOLOGY_DOC_INSTALL_DIR.
+# Variables: ARCHEOLOGY_DOC_DOWNLOAD (URL de /download), ARCHEOLOGY_DOC_INSTALL_DIR.
 param(
     [switch]$WithVSCode,
     [switch]$WithVitepress,
-    [string]$InstallDir = $(if ($env:ARQUEOLOGY_DOC_INSTALL_DIR) { $env:ARQUEOLOGY_DOC_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA 'Programs\arqueology-doc\bin' })
+    [string]$InstallDir = $(if ($env:ARCHEOLOGY_DOC_INSTALL_DIR) { $env:ARCHEOLOGY_DOC_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA 'Programs\archeology-doc\bin' })
 )
 
 $ErrorActionPreference = 'Stop'
@@ -20,16 +20,16 @@ $ErrorActionPreference = 'Stop'
 
 # `WEBSITE/dist.sh --base-url` reemplaza este valor en la copia publicada en /download.
 $DefaultDownload = '__ADOC_DOWNLOAD_BASE__'
-$Download = if ($env:ARQUEOLOGY_DOC_DOWNLOAD) { $env:ARQUEOLOGY_DOC_DOWNLOAD } else { $DefaultDownload }
+$Download = if ($env:ARCHEOLOGY_DOC_DOWNLOAD) { $env:ARCHEOLOGY_DOC_DOWNLOAD } else { $DefaultDownload }
 
 function Ok($m) { Write-Host "  [ok] $m" -ForegroundColor Green }
 function Warn($m) { Write-Host "  [!] $m" -ForegroundColor Yellow }
 function Fail($m) { Write-Host "  [x] $m" -ForegroundColor Red; throw $m }
 
-Write-Host 'arqueology-doc · instalación' -ForegroundColor White
+Write-Host 'archeology-doc · instalación' -ForegroundColor White
 
 if ($Download -like '__ADOC_*') {
-    Fail 'este instalador no tiene URL de descarga configurada; define ARQUEOLOGY_DOC_DOWNLOAD'
+    Fail 'este instalador no tiene URL de descarga configurada; define ARCHEOLOGY_DOC_DOWNLOAD'
 }
 
 $arch = $env:PROCESSOR_ARCHITECTURE
@@ -56,7 +56,7 @@ try {
 
     Expand-Archive -Path $zip -DestinationPath $tmp -Force
     New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
-    foreach ($bin in 'adoc.exe', 'arqueology-doc.exe') {
+    foreach ($bin in 'adoc.exe', 'archeology-doc.exe') {
         Copy-Item -Force (Join-Path $tmp "adoc-$target\$bin") (Join-Path $InstallDir $bin)
     }
     $adoc = Join-Path $InstallDir 'adoc.exe'
@@ -81,8 +81,8 @@ try {
 
     if ($WithVSCode) {
         if (Get-Command code -ErrorAction SilentlyContinue) {
-            $vsix = Join-Path $tmp 'arqueology-doc.vsix'
-            Invoke-WebRequest -UseBasicParsing -Uri "$Download/arqueology-doc.vsix" -OutFile $vsix
+            $vsix = Join-Path $tmp 'archeology-doc.vsix'
+            Invoke-WebRequest -UseBasicParsing -Uri "$Download/archeology-doc.vsix" -OutFile $vsix
             & code --install-extension $vsix --force | Out-Null
             Ok 'extensión de VS Code instalada'
         } else {

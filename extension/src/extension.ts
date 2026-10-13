@@ -1,4 +1,4 @@
-// Extensión de arqueology-doc: interfaz sobre el CLI `adoc` (RF-140 a RF-144).
+// Extensión de archeology-doc: interfaz sobre el CLI `adoc` (RF-140 a RF-144).
 //
 // No duplica lógica: lee `adoc status --format json` y ejecuta comandos en el
 // terminal integrado. El CLI sigue siendo la única fuente de verdad.
@@ -7,13 +7,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import * as cli from './cli';
+import * as tools from './tools';
 import { FindingDecorations } from './decorations';
 import { DashboardPanel } from './dashboard';
 import { FindingsTree, KnowledgeTree, ProjectNode, ProjectsTree, QuestionsTree, SpecsTree, TaskNode, TasksTree } from './trees';
 import { matchProject } from './match';
 import { ProjectRow, Status } from './types';
 
-const CONFIG_FILE = 'arqueology-doc.toml';
+const CONFIG_FILE = 'archeology-doc.toml';
 /** Clave en workspaceState del proyecto elegido para este workspace. */
 const ACTIVE_KEY = 'adoc.activeProject';
 
@@ -72,12 +73,12 @@ class Controller implements vscode.Disposable {
 
   /**
    * Determina el proyecto activo a partir del registro global
-   * (`~/.arqueology-doc/registry.toml`):
+   * (`~/.archeology-doc/registry.toml`):
    * 1. el elegido antes en este workspace, si sigue registrado;
    * 2. un proyecto cuya ruta es una carpeta abierta;
    * 3. uno que contiene la carpeta abierta (estás en una subcarpeta);
    * 4. uno dentro de la carpeta abierta (carpeta padre o monorepo), el más reciente;
-   * 5. sin registro: la carpeta con arqueology-doc.toml más cercana.
+   * 5. sin registro: la carpeta con archeology-doc.toml más cercana.
    */
   async locate(): Promise<void> {
     const folders = workspaceFolders();
@@ -141,7 +142,7 @@ class Controller implements vscode.Disposable {
       clearTimeout(this.timer);
     }
     this.timer = setTimeout(() => {
-      this.refresh().catch((err) => console.error('arqueology-doc: refresh', err));
+      this.refresh().catch((err) => console.error('archeology-doc: refresh', err));
     }, delay);
   }
 
@@ -169,16 +170,7 @@ class Controller implements vscode.Disposable {
       if (/ENOENT|not found|no such file/i.test(message) && !this.warnedMissingCli) {
         this.warnedMissingCli = true;
         // Sin `await`: la activación no debe esperar a que se cierre el aviso.
-        void vscode.window
-          .showWarningMessage(
-            'No se encontró el CLI `adoc`. Instálalo con `cargo install --path crates/arqueology-cli` o configura arqueologyDoc.path.',
-            'Configurar ruta',
-          )
-          .then((choice) => {
-            if (choice) {
-              void vscode.commands.executeCommand('workbench.action.openSettings', 'arqueologyDoc.path');
-            }
-          });
+        void tools.checkTools(this);
       }
       this.statusBar.text = '$(warning) adoc';
       this.statusBar.tooltip = message;
@@ -202,7 +194,7 @@ class Controller implements vscode.Disposable {
       this.statusBar.hide();
       return;
     }
-    // Las tareas viven fuera del repo (~/.arqueology-doc/projects/…): se vigilan aparte.
+    // Las tareas viven fuera del repo (~/.archeology-doc/projects/…): se vigilan aparte.
     if (status.project.workspace !== this.watchedWorkspace) {
       this.workspaceWatcher?.dispose();
       this.watchedWorkspace = status.project.workspace;
@@ -230,7 +222,7 @@ class Controller implements vscode.Disposable {
 
   run(args: string[]): void {
     if (!this.root) {
-      void vscode.window.showWarningMessage('Abre una carpeta con un proyecto de arqueology-doc.');
+      void vscode.window.showWarningMessage('Abre una carpeta con un proyecto de archeology-doc.');
       return;
     }
     cli.runInTerminal(this.root, args);
@@ -285,7 +277,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     if (!project) {
       const rows = ctl.projects.filter((p) => p.available);
       if (!rows.length) {
-        void vscode.window.showInformationMessage('No hay proyectos registrados en ~/.arqueology-doc.');
+        void vscode.window.showInformationMessage('No hay proyectos registrados en ~/.archeology-doc.');
         return;
       }
       const pick = await vscode.window.showQuickPick(
@@ -295,7 +287,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           detail: p.path,
           project: p,
         })),
-        { title: 'Proyecto de arqueology-doc' },
+        { title: 'Proyecto de archeology-doc' },
       );
       project = pick?.project;
     }
@@ -411,7 +403,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       { label: '$(play) Ejecutar tareas', description: 'adoc inspect', command: 'adoc.inspect' },
       { label: '$(debug-restart) Reintentar fallidas', description: 'adoc inspect --resume', command: 'adoc.resume' },
       { label: '$(hubot) Cambiar agente o modelo', description: 'adoc agent use', command: 'adoc.selectAgent' },
-      { label: '$(folder-library) Cambiar de proyecto', description: '~/.arqueology-doc', command: 'adoc.selectProject' },
+      { label: '$(folder-library) Cambiar de proyecto', description: '~/.archeology-doc', command: 'adoc.selectProject' },
       { label: '$(search) Escanear', description: 'adoc scan', command: 'adoc.scan' },
       { label: '$(list-ordered) Planificar', description: 'adoc plan', command: 'adoc.plan' },
       { label: '$(list-ordered) Rehacer el plan', description: 'adoc plan --force', command: 'adoc.planForce' },
@@ -422,14 +414,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       { label: '$(globe) Sitio (dev)', description: 'adoc site dev', command: 'adoc.siteDev' },
       { label: '$(pulse) Verificar requisitos', description: 'adoc doctor', command: 'adoc.doctor' },
     ];
-    const pick = await vscode.window.showQuickPick(items, { title: 'arqueology-doc' });
+    const pick = await vscode.window.showQuickPick(items, { title: 'archeology-doc' });
     if (pick) {
       await vscode.commands.executeCommand(pick.command);
     }
   });
 
-  // Sin `await`: el primer estado se carga en segundo plano.
-  ctl.refresh().catch((err) => console.error('arqueology-doc: refresh', err));
+  context.subscriptions.push(
+    vscode.commands.registerCommand('adoc.installTools', () => tools.checkTools(ctl, true)),
+  );
+
+  // Sin `await`: el primer estado y la comprobación de herramientas van en segundo plano.
+  ctl.refresh().catch((err) => console.error('archeology-doc: refresh', err));
+  tools.checkTools(ctl).catch((err) => console.error('archeology-doc: herramientas', err));
 }
 
 export function deactivate(): void {}

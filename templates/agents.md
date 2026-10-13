@@ -1,6 +1,6 @@
-## Contexto para agentes (arqueology-doc)
+## Contexto para agentes (archeology-doc)
 
-Este proyecto está documentado con **arqueology-doc**. El conocimiento vive en
+Este proyecto está documentado con **archeology-doc**. El conocimiento vive en
 `{{ knowledge_dir }}/` (vault Markdown compatible con Obsidian).
 
 ### Al iniciar una sesión
@@ -26,4 +26,4 @@ Este proyecto está documentado con **arqueology-doc**. El conocimiento vive en
 - Nunca modifiques `openspec/specs/` directamente; los cambios van en
   `openspec/changes/`.
 - No edites notas con `locked: true` ni el contenido de las regiones
-  `<!-- arqueology-doc:begin ... -->`: solo arqueology-doc las regenera.
+  `<!-- archeology-doc:begin ... -->`: solo archeology-doc las regenera.

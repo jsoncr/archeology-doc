@@ -13,7 +13,7 @@ locked: false
 
 # {{ title }}
 
-> Decisión inferida por arqueology-doc — verificar con el equipo antes de darla por buena.
+> Decisión inferida por archeology-doc — verificar con el equipo antes de darla por buena.
 
 ## Contexto
 

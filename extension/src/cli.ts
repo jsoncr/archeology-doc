@@ -20,13 +20,28 @@ const EXEC_TIMEOUT_MS = 120_000;
  * repositorio abierto no puede decidir qué programa se ejecuta.
  */
 export function adocPath(): string {
-  const configured = vscode.workspace.getConfiguration('arqueologyDoc').inspect<string>('path')?.globalValue;
+  // `arqueologyDoc.path`: clave con el nombre anterior del proyecto.
+  const configured =
+    vscode.workspace.getConfiguration('archeologyDoc').inspect<string>('path')?.globalValue ||
+    vscode.workspace.getConfiguration('arqueologyDoc').inspect<string>('path')?.globalValue;
   if (configured) {
     return configured;
   }
-  // VS Code abierto desde el Dock no siempre hereda el PATH del shell.
-  const cargo = path.join(os.homedir(), '.cargo', 'bin', process.platform === 'win32' ? 'adoc.exe' : 'adoc');
-  return fs.existsSync(cargo) ? cargo : 'adoc';
+  return installedAdoc() ?? 'adoc';
+}
+
+/**
+ * `adoc` en las carpetas donde lo dejan los instaladores (o cargo). VS Code
+ * abierto desde el Dock no siempre hereda el PATH del shell.
+ */
+export function installedAdoc(): string | undefined {
+  const exe = process.platform === 'win32' ? 'adoc.exe' : 'adoc';
+  const dirs =
+    process.platform === 'win32'
+      ? [path.join(process.env.LOCALAPPDATA ?? path.join(os.homedir(), 'AppData', 'Local'), 'Programs', 'archeology-doc', 'bin')]
+      : [path.join(os.homedir(), '.local', 'bin')];
+  dirs.push(path.join(os.homedir(), '.cargo', 'bin'));
+  return dirs.map((d) => path.join(d, exe)).find((f) => fs.existsSync(f));
 }
 
 /** Ejecuta `adoc <args>` y devuelve stdout; rechaza con stderr si falla. */
@@ -66,13 +81,13 @@ export async function status(root: string): Promise<Status> {
   return JSON.parse(await exec(root, ['status', '--format', 'json'])) as Status;
 }
 
-/** Directorio global de arqueology-doc (registro, espacios de trabajo). */
+/** Directorio global de archeology-doc (registro, espacios de trabajo). */
 export function configDir(): string {
-  const env = process.env.ARQUEOLOGY_DOC_CONFIG_DIR;
-  return env ? path.resolve(env) : path.join(os.homedir(), '.arqueology-doc');
+  const env = process.env.ARCHEOLOGY_DOC_CONFIG_DIR;
+  return env ? path.resolve(env) : path.join(os.homedir(), '.archeology-doc');
 }
 
-/** Proyectos del registro global (`~/.arqueology-doc/registry.toml`). */
+/** Proyectos del registro global (`~/.archeology-doc/registry.toml`). */
 export async function projects(): Promise<ProjectRow[]> {
   return JSON.parse(await exec(os.homedir(), ['projects', 'list', '--format', 'json'])) as ProjectRow[];
 }

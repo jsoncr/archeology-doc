@@ -1,4 +1,4 @@
-# Sitio de arqueology-doc
+# Sitio de archeology-doc
 
 Página estática (HTML + CSS + JS, sin build ni dependencias): qué es el proyecto, cómo funciona, instalación
 con bash, comandos, agentes soportados y la extensión de VS Code. Tema claro/oscuro automático (botón ◐). El logo tiene dos versiones: `assets/logo.png` (fondos claros) y `assets/logo-dark.png` (texto claro, para fondos oscuros); `assets/icon.png` es el icono de la app y `favicon.png` el favicon.
@@ -40,6 +40,6 @@ En otro hosting estático (Netlify, Cloudflare Pages, S3) sube `WEBSITE/` despu�
 
 ## Repositorio
 
-<https://github.com/jsoncr/arqueology-doc>. Con GitHub Pages el sitio queda en
-<https://jsoncr.github.io/arqueology-doc> y los instaladores descargan de
-`https://jsoncr.github.io/arqueology-doc/download`. Con un dominio propio, define `SITE_URL`.
+<https://github.com/jsoncr/archeology-doc>. Con GitHub Pages el sitio queda en
+<https://jsoncr.github.io/archeology-doc> y los instaladores descargan de
+`https://jsoncr.github.io/archeology-doc/download`. Con un dominio propio, define `SITE_URL`.

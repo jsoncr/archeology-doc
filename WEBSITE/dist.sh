@@ -1,5 +1,5 @@
 #!/bin/sh
-# Compila los binarios de arqueology-doc para cada plataforma y arma la
+# Compila los binarios de archeology-doc para cada plataforma y arma la
 # carpeta de descargas del sitio: WEBSITE/download/.
 #
 #   WEBSITE/dist.sh                                  # todo lo posible en esta máquina
@@ -17,13 +17,13 @@
 # - Extensión de VS Code: `npm run package` en extension/.
 #
 # Resultado en WEBSITE/download/:
-#   adoc-<target>.tar.gz | .zip   binarios `adoc` y `arqueology-doc` + licencias
-#   arqueology-doc.vsix           extensión de VS Code
+#   adoc-<target>.tar.gz | .zip   binarios `adoc` y `archeology-doc` + licencias
+#   archeology-doc.vsix           extensión de VS Code
 #   install.sh, install.ps1       instaladores con --base-url ya aplicado
 #   SHA256SUMS, latest.json       sumas y manifiesto que lee la página
 #
 # --base-url es la URL pública de la carpeta /download; los instaladores la
-# usan para descargar. Sin ella, los instaladores piden ARQUEOLOGY_DOC_DOWNLOAD.
+# usan para descargar. Sin ella, los instaladores piden ARCHEOLOGY_DOC_DOWNLOAD.
 set -eu
 
 SITE="$(cd "$(dirname "$0")" && pwd)"
@@ -97,7 +97,7 @@ package() { # package <target> <dir con los binarios>
   case "$target" in *windows*) ext=".exe" ;; esac
   pkg="$STAGE/adoc-$target"
   rm -rf "$pkg"; mkdir -p "$pkg"
-  for bin in adoc arqueology-doc; do
+  for bin in adoc archeology-doc; do
     cp "$bindir/$bin$ext" "$pkg/"
   done
   cp "$ROOT/README.md" "$ROOT/LICENSE-MIT" "$ROOT/LICENSE-APACHE" "$pkg/"
@@ -116,7 +116,7 @@ package() { # package <target> <dir con los binarios>
 for t in $mac_targets; do
   say "compilando $t"
   rustup target add "$t" >/dev/null 2>&1 || true
-  cargo build --release --locked --manifest-path "$ROOT/Cargo.toml" -p arqueology-cli --target "$t"
+  cargo build --release --locked --manifest-path "$ROOT/Cargo.toml" -p archeology-cli --target "$t"
   package "$t" "$ROOT/target/$t/release"
 done
 
@@ -128,7 +128,7 @@ if [ -n "$docker_targets" ] && has_zigbuild; then
     # Sufijo de glibc solo en Linux: el binario corre en glibc >= 2.28.
     zt="$t"
     case "$t" in *-linux-gnu) zt="$t.2.28" ;; esac
-    cargo zigbuild --release --locked --manifest-path "$ROOT/Cargo.toml" -p arqueology-cli --target "$zt"
+    cargo zigbuild --release --locked --manifest-path "$ROOT/Cargo.toml" -p archeology-cli --target "$zt"
     package "$t" "$ROOT/target/$t/release"
   done
   docker_targets=""
@@ -162,7 +162,7 @@ if [ -n "$docker_targets" ]; then
         for t in $TARGETS; do
           rustup target add "$t" >/dev/null
           echo "--> $t"
-          cargo build --release --locked -p arqueology-cli --target "$t"
+          cargo build --release --locked -p archeology-cli --target "$t"
         done
         # Los archivos quedan con el usuario del host, no root.
         chown -R "$(stat -c %u:%g /work)" /work/target/docker
@@ -178,8 +178,8 @@ if [ "$SKIP_VSIX" = 0 ]; then
   if command -v npm >/dev/null 2>&1; then
     say "empaquetando la extensión de VS Code"
     (cd "$ROOT/extension" && npm ci --no-fund --no-audit --silent && npm run --silent compile \
-      && npm run --silent package -- -o "$OUT/arqueology-doc.vsix" >/dev/null)
-    echo "  ✓ arqueology-doc.vsix"
+      && npm run --silent package -- -o "$OUT/archeology-doc.vsix" >/dev/null)
+    echo "  ✓ archeology-doc.vsix"
   else
     warn "sin npm: no se empaqueta la extensión"
   fi
@@ -195,12 +195,12 @@ for f in install.sh install.ps1; do
   fi
 done
 chmod 755 "$OUT/install.sh"
-[ -n "$BASE_URL" ] || warn "sin --base-url: los instaladores necesitarán ARQUEOLOGY_DOC_DOWNLOAD"
+[ -n "$BASE_URL" ] || warn "sin --base-url: los instaladores necesitarán ARCHEOLOGY_DOC_DOWNLOAD"
 
 # 5. Sumas SHA-256 y manifiesto para la página.
 say "SHA256SUMS y latest.json"
 cd "$OUT"
-files="$(ls adoc-*.tar.gz adoc-*.zip arqueology-doc.vsix install.sh install.ps1 2>/dev/null || true)"
+files="$(ls adoc-*.tar.gz adoc-*.zip archeology-doc.vsix install.sh install.ps1 2>/dev/null || true)"
 : > SHA256SUMS
 for f in $files; do
   if command -v sha256sum >/dev/null 2>&1; then sha256sum "$f"; else shasum -a 256 "$f"; fi >> SHA256SUMS
