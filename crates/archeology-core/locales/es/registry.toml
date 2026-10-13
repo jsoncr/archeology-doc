@@ -1,0 +1,9 @@
+# Mensajes de archeology-registry (idioma de la interfaz). Mantener las
+# mismas claves y marcadores en locales/en/registry.toml.
+
+[registry]
+config_moved = "configuración movida de {from} a {to}"
+corrupt = "registro global corrupto: {path}"
+ambiguous = "'{query}' es ambiguo; usa el ID completo de uno de estos proyectos:\n{list}"
+ambiguous_item = "  - {name} ({id}) en {path}"
+locked = "registro global bloqueado por otro proceso ({path}); reintenta"

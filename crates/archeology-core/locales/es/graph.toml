@@ -1,0 +1,81 @@
+# Grafo del conocimiento: `adoc graph` (idioma de la interfaz, `t!`), la
+# sección del grafo de `adoc review` (idioma de la interfaz) y el grafo del
+# reporte HTML y del sitio (idioma de la documentación del proyecto, `tl!`).
+# Marcadores: {nombre}. Mantener las mismas claves y marcadores en
+# locales/en/graph.toml.
+
+[cli.help.graph.arg]
+open = "Genera el grafo HTML interactivo y lo abre en el navegador"
+out = "Ruta del archivo HTML (por defecto, graph.html en el espacio de trabajo del proyecto)"
+
+[graph.cli]
+written = "Grafo escrito en {path}"
+needs_html = "--open y --out generan el grafo HTML: úsalos con --format html o sin --format."
+
+# Textos del renderizador (assets/graph.js). `stats` conserva sus marcadores
+# para el navegador: {nodes} y {edges}.
+[graph.web]
+search = "Buscar nota…"
+fit = "Ajustar"
+refresh = "Actualizar"
+zoom_in = "Acercar"
+zoom_out = "Alejar"
+stats = "{nodes} nodos · {edges} relaciones"
+stale = "desactualizada"
+legend = "Tipos"
+open = "Abrir archivo"
+close = "Cerrar"
+path = "Ruta"
+empty = "La base de conocimiento todavía no tiene notas."
+edge_relation = "Relación"
+edge_evidence = "Evidencia (código)"
+
+[graph.kind]
+overview = "Overview"
+module = "Módulos"
+feature = "Funcionalidades"
+finding = "Hallazgos"
+test-report = "Tests"
+spec-report = "Specs"
+glossary = "Glosario"
+decision = "Decisiones"
+memory = "Memoria"
+faq = "FAQ"
+moc = "Índices"
+code = "Código"
+unknown = "Sin tipo"
+
+# Página HTML independiente (`adoc graph --format html`).
+[graph.page]
+title = "Grafo del conocimiento · {name}"
+counts = "{notes} notas · {code} archivos de código · {edges} relaciones"
+hint = "Arrastra para mover · rueda para acercar · clic en un nodo para ver su ruta"
+no_script = "El grafo necesita JavaScript."
+
+# Sección del grafo de `adoc review` (texto y markdown).
+[graph.review]
+heading = "== Grafo =="
+md_heading = "## Grafo"
+counts = "Notas: {notes} · archivos de código: {code} · relaciones: {edges}"
+edges = "Relaciones por tipo: {counts}"
+orphans = "Notas huérfanas ({count}): {names}"
+no_orphans = "Notas huérfanas: ninguna"
+top = "Más conectadas: {items}"
+hint = "Ábrelo con `adoc graph --open`."
+hint_site = "Ábrelo con `adoc graph --open` o en el sitio: {link} (`adoc preview`)."
+
+# Grafo del reporte HTML, del reporte markdown y de la página del sitio.
+[doc.graph]
+title = "Grafo del conocimiento"
+intro = "Notas de la base de conocimiento y sus relaciones (enlaces, hallazgos relacionados, módulos, tests) más el código citado como evidencia. Arrastra para mover, usa la rueda para acercar y haz clic en una nota para abrirla."
+report_intro = "Notas de la base de conocimiento y sus relaciones más el código citado como evidencia. Haz clic en un nodo para ver su ruta y abrir el archivo."
+counts = "**Notas:** {notes} · **archivos de código:** {code} · **relaciones:** {edges}"
+counts_html = "{notes} notas · {code} archivos de código · {edges} relaciones"
+edges = "Relaciones por tipo: {counts}"
+top_heading = "Notas más conectadas"
+top_item = "{title} — {count} conexiones"
+orphans_heading = "Notas huérfanas"
+orphans_hint = "Notas sin ningún enlace ni relación (no cuentan los índices)."
+no_orphans = "Ninguna: todas las notas están conectadas."
+more = "… y {count} más"
+cover_link = "[Grafo del conocimiento](/grafo)"

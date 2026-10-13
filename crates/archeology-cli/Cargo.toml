@@ -1,0 +1,42 @@
+[package]
+name = "archeology-cli"
+description = "CLI de archeology-doc: inspección de proyectos y generación de documentación."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "archeology_cli"
+path = "src/lib.rs"
+
+[[bin]]
+name = "archeology-doc"
+path = "src/main.rs"
+
+[[bin]]
+name = "adoc"
+path = "src/bin/adoc.rs"
+
+[dependencies]
+anyhow.workspace = true
+archeology-agents = { path = "../archeology-agents" }
+archeology-core = { path = "../archeology-core" }
+archeology-openspec = { path = "../archeology-openspec" }
+archeology-registry = { path = "../archeology-registry" }
+archeology-scan = { path = "../archeology-scan" }
+chrono.workspace = true
+clap.workspace = true
+indicatif.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+toml.workspace = true
+toml_edit.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+assert_cmd = "2"
+predicates = "3"
+tempfile = "3"

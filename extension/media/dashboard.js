@@ -4,6 +4,8 @@
 (function () {
   'use strict';
   const vscode = acquireVsCodeApi();
+  // Textos en el idioma de la extensión (media/i18n.js); sin él, se ven las claves.
+  const { t, lang } = window.AdocI18n || { t: (k) => k, lang: 'en' };
   const $ = (id) => document.getElementById(id);
   let status = null;
   let findingFilter = { severity: 'all', state: 'open' };
@@ -28,7 +30,7 @@
     return `${v < 10 && i ? v.toFixed(1) : Math.round(v)} ${units[i]}`;
   }
 
-  const num = (n) => (n === null || n === undefined ? '—' : Number(n).toLocaleString('es'));
+  const num = (n) => (n === null || n === undefined ? '—' : Number(n).toLocaleString(lang));
 
   // Colores de lenguajes (los más comunes); el resto, gris.
   const LANG_COLORS = {
@@ -50,10 +52,10 @@
   function ago(iso) {
     if (!iso) return '—';
     const d = (Date.now() - new Date(iso).getTime()) / 1000;
-    if (d < 60) return 'hace un momento';
-    if (d < 3600) return `hace ${Math.round(d / 60)} min`;
-    if (d < 86400) return `hace ${Math.round(d / 3600)} h`;
-    return `hace ${Math.round(d / 86400)} días`;
+    if (d < 60) return t('web.ago.now');
+    if (d < 3600) return t('web.ago.minutes', { n: Math.round(d / 60) });
+    if (d < 86400) return t('web.ago.hours', { n: Math.round(d / 3600) });
+    return t('web.ago.days', { n: Math.round(d / 86400) });
   }
 
   /** Markdown mínimo para el extracto del overview (sobre texto ya escapado). */
@@ -86,12 +88,14 @@
   }
 
   const SEVERITIES = ['critical', 'high', 'medium', 'low'];
-  const SEV_LABEL = { critical: 'Crítico', high: 'Alto', medium: 'Medio', low: 'Bajo', unknown: '—' };
-  const STATUS_LABEL = { pending: 'Pendiente', done: 'Hecha', failed: 'Fallida', running: 'En curso', manual: 'Manual', question: 'Pregunta' };
-  const KIND_LABEL = {
-    overview: 'Overview', module: 'Módulos', feature: 'Funcionalidades', finding: 'Hallazgos', 'test-report': 'Tests',
-    'spec-report': 'Specs', glossary: 'Glosario', decision: 'Decisiones', memory: 'Memoria', faq: 'FAQ', moc: 'Índices',
-  };
+  const SEV_LABEL = { unknown: '—' };
+  for (const x of SEVERITIES) SEV_LABEL[x] = t(`web.sev.${x}`);
+  const STATUS_LABEL = {};
+  for (const x of ['pending', 'done', 'failed', 'running', 'manual', 'question']) STATUS_LABEL[x] = t(`web.status.${x}`);
+  const KIND_LABEL = {};
+  for (const k of ['overview', 'module', 'feature', 'finding', 'test-report', 'spec-report', 'glossary', 'decision', 'memory', 'faq', 'moc']) {
+    KIND_LABEL[k] = t(`kind.${k}`);
+  }
   const pill = (cls, text) => `<span class="pill ${esc(cls)}">${esc(text)}</span>`;
   const openLink = (file, text, line) =>
     `<a href="#" data-open="${esc(file)}"${line ? ` data-line="${line}"` : ''}>${text}</a>`;
@@ -111,22 +115,22 @@
     if (!total) return '';
     return `<div class="langbar">${langs
       .filter((l) => l.lines > 0)
-      .map((l) => `<i style="width:${(100 * l.lines) / total}%;background:${LANG_COLORS[l.name] || '#8b949e'}" title="${esc(l.name)}: ${num(l.lines)} líneas"></i>`)
+      .map((l) => `<i style="width:${(100 * l.lines) / total}%;background:${LANG_COLORS[l.name] || '#8b949e'}" title="${esc(t('web.linesTitle', { name: l.name, n: num(l.lines) }))}"></i>`)
       .join('')}</div>`;
   }
 
   function inventoryStrip(inv) {
     const main = inv.languages[0];
     return `<div class="strip">
-      <span><b>${num(inv.total_files)}</b> archivos</span>
-      <span><b>${bytes(inv.total_bytes)}</b> en disco</span>
-      <span><b>${num(inv.total_lines)}</b> líneas</span>
-      <span><b>${num(inv.code_files)}</b> archivos de código</span>
-      ${main ? `<span>principal: <b>${esc(main.name)}</b></span>` : ''}
-      <span><b>${inv.modules.length}</b> módulos</span>
-      <span><b>${inv.test_files.length}</b> tests${inv.disabled_tests.length ? ` <span class="medium">(${inv.disabled_tests.length} desactivados)</span>` : ''}</span>
-      ${inv.git ? `<span><b>${num(inv.git.commits_analyzed)}</b> commits · ${inv.git.authors.length} autores</span>` : ''}
-      <a href="#" data-goto="project">más detalles</a>
+      <span>${t('web.strip.files', { n: `<b>${num(inv.total_files)}</b>` })}</span>
+      <span>${t('web.strip.disk', { n: `<b>${bytes(inv.total_bytes)}</b>` })}</span>
+      <span>${t('web.strip.lines', { n: `<b>${num(inv.total_lines)}</b>` })}</span>
+      <span>${t('web.strip.codeFiles', { n: `<b>${num(inv.code_files)}</b>` })}</span>
+      ${main ? `<span>${t('web.strip.main', { name: `<b>${esc(main.name)}</b>` })}</span>` : ''}
+      <span>${t('web.strip.modules', { n: `<b>${inv.modules.length}</b>` })}</span>
+      <span>${t('web.strip.tests', { n: `<b>${inv.test_files.length}</b>` })}${inv.disabled_tests.length ? ` <span class="medium">(${t('web.disabled', { n: inv.disabled_tests.length })})</span>` : ''}</span>
+      ${inv.git ? `<span>${t('web.strip.commits', { n: `<b>${num(inv.git.commits_analyzed)}</b>`, authors: inv.git.authors.length })}</span>` : ''}
+      <a href="#" data-goto="project">${t('web.strip.more')}</a>
     </div>${langBar(inv.languages, inv.total_lines)}`;
   }
 
@@ -134,28 +138,28 @@
     const inv = status.inventory;
     if (!inv) {
       $('project').innerHTML =
-        empty('No hay inventario: ejecuta <code>adoc scan</code> (o actualiza el CLI si ya lo hiciste).') +
-        `<p>${runBtn('scan', 'Escanear')}</p>`;
+        empty(t('web.project.noInventory')) +
+        `<p>${runBtn('scan', t('web.scan'))}</p>`;
       return;
     }
     const textBytes = inv.languages.reduce((a, l) => a + l.bytes, 0);
     const card = (value, label, extra = '') =>
       `<div class="card static"><div class="value">${value}</div><div class="label">${label}</div>${extra}</div>`;
-    let html = `<div class="row-info"><span>Inventario del ${esc(new Date(inv.generated_at).toLocaleString('es'))} (${ago(inv.generated_at)})</span><span class="grow"></span>${runBtn('scan', 'Volver a escanear')}</div>`;
+    let html = `<div class="row-info"><span>${t('web.project.inventoryOf', { date: esc(new Date(inv.generated_at).toLocaleString(lang)), ago: ago(inv.generated_at) })}</span><span class="grow"></span>${runBtn('scan', t('web.rescan'))}</div>`;
     html += `<div class="cards">
-      ${card(num(inv.total_files), 'Archivos', `<div class="sub">${num(inv.code_files)} de código</div>`)}
-      ${card(bytes(inv.total_bytes), 'Tamaño en disco', `<div class="sub">${bytes(textBytes)} texto · ${bytes(Math.max(0, inv.total_bytes - textBytes))} binarios/otros</div>`)}
-      ${card(num(inv.total_lines), 'Líneas', `<div class="sub">${inv.languages.length} lenguajes</div>`)}
-      ${card(inv.modules.length, 'Módulos', `<div class="sub">perfil ${esc(status.profile)}</div>`)}
-      ${card(inv.test_files.length, 'Archivos de test', `<div class="sub">${inv.test_frameworks.length ? esc(inv.test_frameworks.join(', ')) : 'sin framework detectado'}${inv.disabled_tests.length ? ` · <span class="medium">${inv.disabled_tests.length} desactivados</span>` : ''}</div>`)}
-      ${card(inv.entrypoints.length, 'Puntos de entrada')}
-      ${inv.git ? card(num(inv.git.commits_analyzed), 'Commits analizados', `<div class="sub">${inv.git.authors.length} autores</div>`) : ''}
-      ${card(Object.values(inv.markers_by_kind).reduce((a, b) => a + b, 0), 'Marcadores', `<div class="sub">${Object.entries(inv.markers_by_kind).map(([k, v]) => `${esc(k)} ${v}`).join(' · ') || 'ninguno'}</div>`)}
+      ${card(num(inv.total_files), t('web.files'), `<div class="sub">${t('web.card.codeSub', { n: num(inv.code_files) })}</div>`)}
+      ${card(bytes(inv.total_bytes), t('web.card.diskSize'), `<div class="sub">${t('web.card.diskSub', { text: bytes(textBytes), other: bytes(Math.max(0, inv.total_bytes - textBytes)) })}</div>`)}
+      ${card(num(inv.total_lines), t('web.lines'), `<div class="sub">${t('web.card.languagesSub', { n: inv.languages.length })}</div>`)}
+      ${card(inv.modules.length, t('web.modules'), `<div class="sub">${t('web.profileOf', { profile: esc(status.profile) })}</div>`)}
+      ${card(inv.test_files.length, t('web.card.testFiles'), `<div class="sub">${inv.test_frameworks.length ? esc(inv.test_frameworks.join(', ')) : t('web.card.noFramework')}${inv.disabled_tests.length ? ` · <span class="medium">${t('web.disabled', { n: inv.disabled_tests.length })}</span>` : ''}</div>`)}
+      ${card(inv.entrypoints.length, t('web.card.entrypoints'))}
+      ${inv.git ? card(num(inv.git.commits_analyzed), t('web.card.commits'), `<div class="sub">${t('web.authorsCount', { n: inv.git.authors.length })}</div>`) : ''}
+      ${card(Object.values(inv.markers_by_kind).reduce((a, b) => a + b, 0), t('web.card.markers'), `<div class="sub">${Object.entries(inv.markers_by_kind).map(([k, v]) => `${esc(k)} ${v}`).join(' · ') || t('web.none')}</div>`)}
     </div>`;
 
     // Lenguajes.
-    html += `<div class="cols"><div class="box"><h3>Lenguajes</h3>${langBar(inv.languages, inv.total_lines)}
-      <table class="compact"><thead><tr><th>Lenguaje</th><th class="r">Archivos</th><th class="r">Líneas</th><th class="r">Peso</th><th class="r">%</th></tr></thead><tbody>
+    html += `<div class="cols"><div class="box"><h3>${t('web.languages')}</h3>${langBar(inv.languages, inv.total_lines)}
+      <table class="compact"><thead><tr><th>${t('web.th.language')}</th><th class="r">${t('web.files')}</th><th class="r">${t('web.lines')}</th><th class="r">${t('web.th.size')}</th><th class="r">%</th></tr></thead><tbody>
       ${inv.languages
         .map(
           (l) => `<tr><td><span class="dot" style="background:${LANG_COLORS[l.name] || '#8b949e'}"></span> ${esc(l.name)}</td>
@@ -169,48 +173,48 @@
     const chips = (list) => (list.length ? list.map((x) => `<span class="tag">${esc(x)}</span>`).join(' ') : '<span class="muted">—</span>');
     const files = (list, max = 12) =>
       list.length
-        ? `<ul class="files">${list.slice(0, max).map((f) => `<li>${openLink(`${status.project.root}/${f.replace(/ \(.*\)$/, '')}`, `<code>${esc(f)}</code>`)}</li>`).join('')}${list.length > max ? `<li class="muted">+${list.length - max} más</li>` : ''}</ul>`
+        ? `<ul class="files">${list.slice(0, max).map((f) => `<li>${openLink(`${status.project.root}/${f.replace(/ \(.*\)$/, '')}`, `<code>${esc(f)}</code>`)}</li>`).join('')}${list.length > max ? `<li class="muted">${t('web.moreCount', { n: list.length - max })}</li>` : ''}</ul>`
         : '<span class="muted">—</span>';
-    html += `<div class="box"><h3>Stack</h3><dl>
-      <dt>Frameworks</dt><dd>${chips(inv.frameworks)}</dd>
-      <dt>Tests</dt><dd>${chips(inv.test_frameworks)}</dd>
-      <dt>Manifiestos</dt><dd>${files(inv.manifests)}</dd>
-      <dt>Entrada</dt><dd>${files(inv.entrypoints)}</dd>
+    html += `<div class="box"><h3>${t('web.stack')}</h3><dl>
+      <dt>${t('web.frameworks')}</dt><dd>${chips(inv.frameworks)}</dd>
+      <dt>${t('web.tests')}</dt><dd>${chips(inv.test_frameworks)}</dd>
+      <dt>${t('web.manifests')}</dt><dd>${files(inv.manifests)}</dd>
+      <dt>${t('web.entry')}</dt><dd>${files(inv.entrypoints)}</dd>
       <dt>CI</dt><dd>${files(inv.ci_files)}</dd>
-      <dt>Documentación previa</dt><dd>${files(inv.doc_files, 6)}</dd>
+      <dt>${t('web.priorDocs')}</dt><dd>${files(inv.doc_files, 6)}</dd>
     </dl></div></div>`;
 
     // Git.
     if (inv.git) {
       const g = inv.git;
       const maxHot = g.hotspots.length ? g.hotspots[0][1] : 1;
-      html += `<div class="cols"><div class="box"><h3>Historial git</h3><dl>
-        <dt>Último commit</dt><dd>${g.last_commit_hash ? `<code>${esc(g.last_commit_hash)}</code> ${esc(g.last_commit_subject || '')} <span class="muted">· ${ago(g.last_commit_date)}</span>` : '—'}</dd>
-        <dt>Commits</dt><dd>${num(g.commits_analyzed)} analizados</dd>
-        <dt>Autores</dt><dd>${g.authors.map((a) => esc(a.replace(/^\s*\d+\s+/, ''))).join('<br>') || '—'}</dd>
+      html += `<div class="cols"><div class="box"><h3>${t('web.gitHistory')}</h3><dl>
+        <dt>${t('web.lastCommit')}</dt><dd>${g.last_commit_hash ? `<code>${esc(g.last_commit_hash)}</code> ${esc(g.last_commit_subject || '')} <span class="muted">· ${ago(g.last_commit_date)}</span>` : '—'}</dd>
+        <dt>Commits</dt><dd>${t('web.analyzed', { n: num(g.commits_analyzed) })}</dd>
+        <dt>${t('web.authors')}</dt><dd>${g.authors.map((a) => esc(a.replace(/^\s*\d+\s+/, ''))).join('<br>') || '—'}</dd>
       </dl></div>
-      <div class="box"><h3>Archivos más modificados</h3>
+      <div class="box"><h3>${t('web.hotspots')}</h3>
         ${g.hotspots.length ? `<table class="compact">${g.hotspots
           .map(([f, n]) => `<tr><td>${openLink(`${status.project.root}/${f}`, `<code>${esc(f)}</code>`)}</td><td class="r nowrap">${n}</td><td class="hot"><i style="width:${(100 * n) / maxHot}%"></i></td></tr>`)
-          .join('')}</table>` : empty('Sin datos.')}
+          .join('')}</table>` : empty(t('web.noData'))}
       </div></div>`;
     }
 
     // Módulos.
-    html += `<div class="box"><h3>Módulos (${inv.modules.length})</h3><table class="compact"><thead><tr><th>Módulo</th><th>Ruta</th><th class="r">Archivos</th><th class="r">Código</th><th class="r">Peso</th><th>Lenguajes</th><th>Tests</th></tr></thead><tbody>
+    html += `<div class="box"><h3>${t('web.modules')} (${inv.modules.length})</h3><table class="compact"><thead><tr><th>${t('web.th.module')}</th><th>${t('web.th.path')}</th><th class="r">${t('web.files')}</th><th class="r">${t('web.th.code')}</th><th class="r">${t('web.th.size')}</th><th>${t('web.languages')}</th><th>${t('web.tests')}</th></tr></thead><tbody>
       ${[...inv.modules]
         .sort((a, b) => b.bytes - a.bytes)
         .map(
           (m) => `<tr><td><b>${esc(m.name)}</b></td><td><code>${esc(m.path)}${m.recursive === false ? '/*' : '/'}</code></td><td class="r">${num(m.files)}</td>
           <td class="r">${num(m.code_files)}</td><td class="r">${bytes(m.bytes)}</td><td>${esc((m.languages || []).join(', '))}</td>
-          <td>${m.has_tests ? '<span class="ok">sí</span>' : '<span class="muted">no</span>'}</td></tr>`,
+          <td>${m.has_tests ? `<span class="ok">${t('web.yes')}</span>` : `<span class="muted">${t('web.no')}</span>`}</td></tr>`,
         )
         .join('')}
       </tbody></table></div>`;
 
     // Marcadores.
     if (inv.markers.length) {
-      html += `<div class="box"><h3>Marcadores en el código</h3><table class="compact">${inv.markers
+      html += `<div class="box"><h3>${t('web.codeMarkers')}</h3><table class="compact">${inv.markers
         .map((m) => `<tr><td>${pill(m.kind === 'TODO' ? 'pending' : 'question', m.kind)}</td><td>${openLink(`${status.project.root}/${m.path}`, `<code>${esc(m.path)}:${m.line}</code>`, m.line)}</td><td class="muted">${esc(m.text)}</td></tr>`)
         .join('')}</table></div>`;
     }
@@ -222,56 +226,56 @@
   function renderSummary() {
     const s = status;
     const total = s.tasks.length;
-    const done = s.tasks.filter((t) => t.status === 'done').length;
+    const done = s.tasks.filter((x) => x.status === 'done').length;
     const pending = total - done;
     const open = s.findings.filter((f) => f.state === 'open' || f.state === 'confirmed');
     const q = s.questions;
-    const failed = s.tasks.filter((t) => t.status === 'failed');
+    const failed = s.tasks.filter((x) => x.status === 'failed');
     const sev = SEVERITIES.filter((x) => s.severity_totals[x]).map((x) => `<span class="${x}">${s.severity_totals[x]} ${SEV_LABEL[x].toLowerCase()}</span>`).join(' · ');
 
     const card = (value, label, extra = '', tab = '') =>
       `<div class="card"${tab ? ` data-goto="${tab}"` : ''}><div class="value">${value}</div><div class="label">${label}</div>${extra}</div>`;
     let html = `<div class="cards">
-      ${card(`${s.progress}%`, `Plan · ${done}/${total} tareas`, `<div class="bar"><i style="width:${Math.min(100, s.progress)}%"></i></div>`, 'tasks')}
-      ${card(pending, 'Tareas por hacer', failed.length ? `<div class="sub failed">${failed.length} fallidas</div>` : '', 'tasks')}
-      ${card(open.length, 'Hallazgos abiertos', sev ? `<div class="sub">${sev}</div>` : '', 'findings')}
-      ${card(q.agent.length + q.team.length, 'Preguntas pendientes', `<div class="sub">${q.agent.length} del agente · ${q.team.length} del equipo</div>`, 'questions')}
-      ${card(s.features_without_tests.length, 'Funcionalidades sin tests', `<div class="sub">${s.missing_scenarios} escenarios faltantes</div>`, 'docs')}
-      ${card(ms(s.timing.total_agent_ms), 'Tiempo de agente', `<div class="sub">${s.timing.runs} corridas · última ${ago(s.timing.last_run_at)}</div>`, 'tasks')}
-      ${card(s.timing.estimated_remaining_ms ? `~${ms(s.timing.estimated_remaining_ms)}` : '—', 'Estimación restante', `<div class="sub">promedio ${ms(s.timing.avg_done_ms)} por tarea</div>`, 'tasks')}
-      ${card(s.notes.length, 'Notas', s.stale_notes.length ? `<div class="sub stale">${s.stale_notes.length} desactualizadas</div>` : '<div class="sub">al día</div>', 'docs')}
+      ${card(`${s.progress}%`, t('web.sum.plan', { done, total }), `<div class="bar"><i style="width:${Math.min(100, s.progress)}%"></i></div>`, 'tasks')}
+      ${card(pending, t('web.sum.todo'), failed.length ? `<div class="sub failed">${t('web.sum.failed', { n: failed.length })}</div>` : '', 'tasks')}
+      ${card(open.length, t('web.sum.openFindings'), sev ? `<div class="sub">${sev}</div>` : '', 'findings')}
+      ${card(q.agent.length + q.team.length, t('web.sum.pendingQuestions'), `<div class="sub">${t('web.sum.questionsSub', { agent: q.agent.length, team: q.team.length })}</div>`, 'questions')}
+      ${card(s.features_without_tests.length, t('web.sum.featuresNoTests'), `<div class="sub">${t('web.sum.missingScenarios', { n: s.missing_scenarios })}</div>`, 'docs')}
+      ${card(ms(s.timing.total_agent_ms), t('web.sum.agentTime'), `<div class="sub">${t('web.sum.runsSub', { n: s.timing.runs, ago: ago(s.timing.last_run_at) })}</div>`, 'tasks')}
+      ${card(s.timing.estimated_remaining_ms ? `~${ms(s.timing.estimated_remaining_ms)}` : '—', t('web.sum.remaining'), `<div class="sub">${t('web.sum.avgSub', { time: ms(s.timing.avg_done_ms) })}</div>`, 'tasks')}
+      ${card(s.notes.length, t('web.sum.notes'), s.stale_notes.length ? `<div class="sub stale">${t('web.sum.staleSub', { n: s.stale_notes.length })}</div>` : `<div class="sub">${t('web.sum.upToDate')}</div>`, 'docs')}
     </div>`;
 
     // Lo que requiere atención, en orden de urgencia.
     const items = [];
-    for (const a of q.agent) items.push(`<li class="q">❓ <b>${esc(a.task)}</b> pregunta: ${esc(a.question)} <a href="#" data-goto="questions">Responder</a></li>`);
-    for (const t of failed) items.push(`<li class="failed">✗ <b>${esc(t.id)}</b> falló${t.last_run && t.last_run.reason ? `: ${esc(t.last_run.reason.slice(0, 160))}` : ''} ${runBtn(`task run ${t.id}`, 'Reintentar')}</li>`);
+    for (const a of q.agent) items.push(`<li class="q">❓ ${t('web.att.asks', { task: esc(a.task), question: esc(a.question) })} <a href="#" data-goto="questions">${t('web.answer')}</a></li>`);
+    for (const f of failed) items.push(`<li class="failed">✗ ${t('web.att.failed', { id: esc(f.id) })}${f.last_run && f.last_run.reason ? `: ${esc(f.last_run.reason.slice(0, 160))}` : ''} ${runBtn(`task run ${f.id}`, t('web.retry'))}</li>`);
     for (const f of open.filter((f) => f.severity === 'critical' || f.severity === 'high').slice(0, 6)) {
       items.push(`<li>${pill(f.severity, SEV_LABEL[f.severity])} ${openLink(f.file, esc(f.title))}</li>`);
     }
-    if (s.stale_notes.length) items.push(`<li class="stale">⟳ ${s.stale_notes.length} notas desactualizadas por cambios en el código ${runBtn('inspect', 'Regenerar')}</li>`);
-    if (q.team.length) items.push(`<li>👥 ${q.team.length} dudas para el equipo técnico <a href="#" data-goto="questions">Ver</a></li>`);
-    html += `<div class="cols"><div class="box"><h3>Necesita atención</h3>${items.length ? `<ul class="attention">${items.join('')}</ul>` : empty('Nada pendiente. 🎉')}</div>`;
+    if (s.stale_notes.length) items.push(`<li class="stale">⟳ ${t('web.att.stale', { n: s.stale_notes.length })} ${runBtn('inspect', t('web.regenerate'))}</li>`);
+    if (q.team.length) items.push(`<li>👥 ${t('web.att.team', { n: q.team.length })} <a href="#" data-goto="questions">${t('web.view')}</a></li>`);
+    html += `<div class="cols"><div class="box"><h3>${t('web.att.title')}</h3>${items.length ? `<ul class="attention">${items.join('')}</ul>` : empty(t('web.att.none'))}</div>`;
 
     // Agente y perfil.
-    html += `<div class="box"><h3>Proyecto</h3><dl>
-      <dt>Agente</dt><dd>${esc(s.agent.active)}${s.agent.model ? ` · ${esc(s.agent.model)}` : ''} <span class="muted">(${esc(s.agent.mode)})</span></dd>
-      <dt>Perfil</dt><dd>${esc(s.profile)}</dd>
-      <dt>Ruta</dt><dd><code>${esc(s.project.root)}</code></dd>
-      <dt>Estado de trabajo</dt><dd><code>${esc(s.project.workspace)}</code></dd>
+    html += `<div class="box"><h3>${t('web.project')}</h3><dl>
+      <dt>${t('web.agent')}</dt><dd>${esc(s.agent.active)}${s.agent.model ? ` · ${esc(s.agent.model)}` : ''} <span class="muted">(${esc(s.agent.mode)})</span></dd>
+      <dt>${t('web.profile')}</dt><dd>${esc(s.profile)}</dd>
+      <dt>${t('web.th.path')}</dt><dd><code>${esc(s.project.root)}</code></dd>
+      <dt>${t('web.workState')}</dt><dd><code>${esc(s.project.workspace)}</code></dd>
     </dl>`;
     if (s.specs && s.specs.totals) {
-      const t = s.specs.totals;
-      const totalReq = Object.values(t).reduce((a, b) => a + b, 0) || 1;
-      const seg = (k, cls) => (t[k] ? `<i class="${cls}" style="width:${(100 * t[k]) / totalReq}%" title="${k}: ${t[k]}"></i>` : '');
+      const totals = s.specs.totals;
+      const totalReq = Object.values(totals).reduce((a, b) => a + b, 0) || 1;
+      const seg = (k, cls) => (totals[k] ? `<i class="${cls}" style="width:${(100 * totals[k]) / totalReq}%" title="${k}: ${totals[k]}"></i>` : '');
       html += `<h3>Specs (OpenSpec)</h3><div class="stack">${seg('implemented', 'ok')}${seg('partial', 'medium')}${seg('contradicted', 'high')}${seg('not-found', 'critical')}${seg('unevaluated', 'none')}</div>
-        <div class="sub">${Object.entries(t).map(([k, v]) => `${esc(k)}: ${v}`).join(' · ')}</div>`;
+        <div class="sub">${Object.entries(totals).map(([k, v]) => `${esc(k)}: ${v}`).join(' · ')}</div>`;
     }
     html += `</div></div>`;
 
     if (s.overview_excerpt) {
       const overview = s.notes.find((n) => n.kind === 'overview');
-      html += `<div class="box overview"><h3>Sobre el proyecto ${overview ? openLink(overview.file, '<span class="muted">abrir overview</span>') : ''}</h3>${md(s.overview_excerpt)}</div>`;
+      html += `<div class="box overview"><h3>${t('web.aboutProject')} ${overview ? openLink(overview.file, `<span class="muted">${t('web.openOverview')}</span>`) : ''}</h3>${md(s.overview_excerpt)}</div>`;
     }
     if (s.inventory) {
       html = inventoryStrip(s.inventory) + html;
@@ -286,32 +290,32 @@
     const order = { question: 0, failed: 1, running: 2, pending: 3, manual: 4, done: 5 };
     const tasks = [...s.tasks].sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9) || a.id.localeCompare(b.id));
     let html = `<div class="row-info">
-      <span>Tiempo total de agente: <b>${ms(s.timing.total_agent_ms)}</b></span>
-      <span>Promedio por tarea: <b>${ms(s.timing.avg_done_ms)}</b></span>
-      <span>Estimación restante: <b>${s.timing.estimated_remaining_ms ? '~' + ms(s.timing.estimated_remaining_ms) : '—'}</b></span>
-      <span>Última corrida: <b>${ago(s.timing.last_run_at)}</b></span>
+      <span>${t('web.tasks.totalTime', { time: `<b>${ms(s.timing.total_agent_ms)}</b>` })}</span>
+      <span>${t('web.tasks.avg', { time: `<b>${ms(s.timing.avg_done_ms)}</b>` })}</span>
+      <span>${t('web.tasks.remaining', { time: `<b>${s.timing.estimated_remaining_ms ? '~' + ms(s.timing.estimated_remaining_ms) : '—'}</b>` })}</span>
+      <span>${t('web.tasks.lastRun', { time: `<b>${ago(s.timing.last_run_at)}</b>` })}</span>
       <span class="grow"></span>
-      ${runBtn('plan --force', 'Rehacer plan')}
+      ${runBtn('plan --force', t('web.replan'))}
     </div>`;
     if (!tasks.length) {
-      $('tasks').innerHTML = html + empty('No hay tareas. Ejecuta <code>adoc scan</code> y <code>adoc plan</code>.') + `<p>${runBtn('scan', 'Escanear')} ${runBtn('plan', 'Planificar')}</p>`;
+      $('tasks').innerHTML = html + empty(t('web.tasks.none')) + `<p>${runBtn('scan', t('web.scan'))} ${runBtn('plan', t('web.plan'))}</p>`;
       return;
     }
-    html += `<table><thead><tr><th>Estado</th><th>Tarea</th><th>Tipo</th><th>Módulos</th><th>Duración</th><th>Intentos</th><th>Última</th><th></th></tr></thead><tbody>`;
-    for (const t of tasks) {
-      const r = t.last_run;
-      const modules = (t.module || '').split(',').filter(Boolean);
+    html += `<table><thead><tr><th>${t('web.th.status')}</th><th>${t('web.th.task')}</th><th>${t('web.th.type')}</th><th>${t('web.modules')}</th><th>${t('web.th.duration')}</th><th>${t('web.th.attempts')}</th><th>${t('web.th.last')}</th><th></th></tr></thead><tbody>`;
+    for (const task of tasks) {
+      const r = task.last_run;
+      const modules = (task.module || '').split(',').filter(Boolean);
       const scope = modules.length > 3 ? `${esc(modules.slice(0, 3).join(', '))} <span class="muted">+${modules.length - 3}</span>` : esc(modules.join(', ') || '—');
       const actions = [
-        t.status !== 'done' ? runBtn(`task run ${t.id}`, '▶', 'Ejecutar') : runBtn(`task run ${t.id}`, '↻', 'Volver a ejecutar'),
-        runBtn(`task run ${t.id} --interactive`, '💬', 'Sesión interactiva'),
-        t.status === 'question' ? `<button class="sm" data-goto="questions" title="Responder">✍</button>` : '',
-        t.log ? `<button class="sm" data-open="${esc(t.log)}" title="Ver log">log</button>` : '',
+        task.status !== 'done' ? runBtn(`task run ${task.id}`, '▶', t('web.run')) : runBtn(`task run ${task.id}`, '↻', t('web.rerun')),
+        runBtn(`task run ${task.id} --interactive`, '💬', t('web.interactive')),
+        task.status === 'question' ? `<button class="sm" data-goto="questions" title="${esc(t('web.answer'))}">✍</button>` : '',
+        task.log ? `<button class="sm" data-open="${esc(task.log)}" title="${esc(t('web.viewLog'))}">log</button>` : '',
       ].join('');
       html += `<tr>
-        <td>${pill(t.status, STATUS_LABEL[t.status] || t.status)}</td>
-        <td>${openLink(t.file, `<b>${esc(t.id)}</b>`)}${t.question ? `<div class="sub q">❓ ${esc(t.question)}</div>` : ''}${r && r.reason && t.status !== 'done' ? `<div class="sub failed">${esc(r.reason.slice(0, 140))}</div>` : ''}</td>
-        <td>${esc(t.kind)}</td>
+        <td>${pill(task.status, STATUS_LABEL[task.status] || task.status)}</td>
+        <td>${openLink(task.file, `<b>${esc(task.id)}</b>`)}${task.question ? `<div class="sub q">❓ ${esc(task.question)}</div>` : ''}${r && r.reason && task.status !== 'done' ? `<div class="sub failed">${esc(r.reason.slice(0, 140))}</div>` : ''}</td>
+        <td>${esc(task.kind)}</td>
         <td class="scope">${scope}</td>
         <td>${r ? ms(r.duration_ms) : '—'}</td>
         <td>${r ? r.attempts : '—'}</td>
@@ -327,9 +331,9 @@
   function renderFindings() {
     const s = status;
     const chips = ['all', ...SEVERITIES]
-      .map((x) => `<button class="chip ${findingFilter.severity === x ? 'on' : ''}" data-sev="${x}">${x === 'all' ? 'Todas' : SEV_LABEL[x]}${x !== 'all' && s.severity_totals[x] ? ` · ${s.severity_totals[x]}` : ''}</button>`)
+      .map((x) => `<button class="chip ${findingFilter.severity === x ? 'on' : ''}" data-sev="${x}">${x === 'all' ? t('web.sevAll') : SEV_LABEL[x]}${x !== 'all' && s.severity_totals[x] ? ` · ${s.severity_totals[x]}` : ''}</button>`)
       .join('');
-    const states = [['open', 'Abiertos'], ['all', 'Todos'], ['resolved', 'Resueltos'], ['dismissed', 'Descartados']]
+    const states = ['open', 'all', 'resolved', 'dismissed'].map((v) => [v, t(`web.state.${v}`)])
       .map(([v, l]) => `<option value="${v}" ${findingFilter.state === v ? 'selected' : ''}>${l}</option>`)
       .join('');
     const rank = (f) => SEVERITIES.indexOf(f.severity) + 1 || 9;
@@ -337,12 +341,12 @@
       .filter((f) => findingFilter.severity === 'all' || f.severity === findingFilter.severity)
       .filter((f) => findingFilter.state === 'all' || (findingFilter.state === 'open' ? f.state === 'open' || f.state === 'confirmed' : f.state === findingFilter.state))
       .sort((a, b) => rank(a) - rank(b));
-    let html = `<div class="row-info">${chips}<select id="fstate">${states}</select><span class="grow"></span>${runBtn('check', 'Validar')}</div>`;
+    let html = `<div class="row-info">${chips}<select id="fstate">${states}</select><span class="grow"></span>${runBtn('check', t('web.validate'))}</div>`;
     if (!list.length) {
-      $('findings').innerHTML = html + empty(s.findings.length ? 'Ningún hallazgo con este filtro.' : 'Todavía no hay hallazgos: los genera la tarea de contradicciones.');
+      $('findings').innerHTML = html + empty(s.findings.length ? t('web.findings.noneFilter') : t('web.findings.none'));
       return;
     }
-    html += `<table><thead><tr><th>Severidad</th><th>Hallazgo</th><th>Tipo</th><th>Estado</th><th>Evidencia</th></tr></thead><tbody>`;
+    html += `<table><thead><tr><th>${t('web.th.severity')}</th><th>${t('web.th.finding')}</th><th>${t('web.th.type')}</th><th>${t('web.th.status')}</th><th>${t('web.th.evidence')}</th></tr></thead><tbody>`;
     for (const f of list) {
       html += `<tr><td>${pill(f.severity, SEV_LABEL[f.severity] || f.severity)}</td><td>${openLink(f.file, esc(f.title))}</td>
         <td>${esc(f.kind)}</td><td>${esc(f.state)}</td><td>${f.sources.map(evidenceLink).join(' ')}</td></tr>`;
@@ -359,23 +363,23 @@
     for (const n of s.notes) if (n.kind !== 'finding') counts[n.kind] = (counts[n.kind] || 0) + 1;
     const kinds = Object.keys(counts).sort((a, b) => (KIND_LABEL[a] || a).localeCompare(KIND_LABEL[b] || b));
     let html = `<div class="row-info">
-      <button class="chip ${docsFilter === 'all' ? 'on' : ''}" data-kind="all">Todo · ${Object.values(counts).reduce((a, b) => a + b, 0)}</button>
+      <button class="chip ${docsFilter === 'all' ? 'on' : ''}" data-kind="all">${t('web.docs.all', { n: Object.values(counts).reduce((a, b) => a + b, 0) })}</button>
       ${kinds.map((k) => `<button class="chip ${docsFilter === k ? 'on' : ''}" data-kind="${esc(k)}">${esc(KIND_LABEL[k] || k)} · ${counts[k]}</button>`).join('')}
-      <span class="grow"></span>${runBtn('preview', 'Ver sitio')} ${runBtn('report', 'Reporte HTML')} <button class="sm" data-goto="graph">Grafo</button>
+      <span class="grow"></span>${runBtn('preview', t('web.viewSite'))} ${runBtn('report', t('web.htmlReport'))} <button class="sm" data-goto="graph">${t('web.graph')}</button>
     </div>`;
     if (s.features_without_tests.length && (docsFilter === 'all' || docsFilter === 'feature')) {
-      html += `<div class="box warn"><b>${s.features_without_tests.length} funcionalidades sin reporte de tests:</b> ${s.features_without_tests.map(esc).join(', ')}</div>`;
+      html += `<div class="box warn"><b>${t('web.docs.noTests', { n: s.features_without_tests.length })}</b> ${s.features_without_tests.map(esc).join(', ')}</div>`;
     }
     const notes = s.notes
       .filter((n) => n.kind !== 'finding' && (docsFilter === 'all' || n.kind === docsFilter))
       .sort((a, b) => (KIND_LABEL[a.kind] || a.kind).localeCompare(KIND_LABEL[b.kind] || b.kind) || a.title.localeCompare(b.title));
     if (!notes.length) {
-      $('docs').innerHTML = html + empty('Todavía no hay notas: las escriben los agentes con <code>adoc inspect</code>.');
+      $('docs').innerHTML = html + empty(t('web.docs.none'));
       return;
     }
-    html += `<table><thead><tr><th>Nota</th><th>Tipo</th><th>Estado</th><th>Evidencias</th></tr></thead><tbody>`;
+    html += `<table><thead><tr><th>${t('web.th.note')}</th><th>${t('web.th.type')}</th><th>${t('web.th.status')}</th><th>${t('web.th.evidence')}</th></tr></thead><tbody>`;
     for (const n of notes) {
-      html += `<tr><td>${openLink(n.file, esc(n.title))}${stale.has(n.file) ? ' ' + pill('stale', 'desactualizada') : ''}</td>
+      html += `<tr><td>${openLink(n.file, esc(n.title))}${stale.has(n.file) ? ' ' + pill('stale', t('web.stale')) : ''}</td>
         <td>${esc(KIND_LABEL[n.kind] || n.kind)}</td><td>${esc(n.status || '—')}</td><td>${n.sources.length || '—'}</td></tr>`;
     }
     $('docs').innerHTML = html + '</tbody></table>';
@@ -386,35 +390,35 @@
   function renderQuestions() {
     const q = status.questions;
     const openQuestions = `${status.project.knowledge}/memory/open-questions.md`;
-    let html = `<div class="box ask"><h3>Preguntar al agente</h3>
-      <div class="ask-row"><input id="ask" placeholder="¿Cómo se calcula el total de una reserva?"><button class="primary" id="askBtn">Preguntar</button></div>
-      <div class="sub">La respuesta, con evidencias, queda en <code>knowledge/faq/</code> y en la FAQ.</div></div>`;
+    let html = `<div class="box ask"><h3>${t('web.q.askTitle')}</h3>
+      <div class="ask-row"><input id="ask" placeholder="${esc(t('web.q.placeholder'))}"><button class="primary" id="askBtn">${t('web.q.ask')}</button></div>
+      <div class="sub">${t('web.q.askHint')}</div></div>`;
 
-    html += `<h3>Del agente <span class="muted">· bloquean tareas</span></h3>`;
+    html += `<h3>${t('web.q.fromAgent')} <span class="muted">· ${t('web.q.blocking')}</span></h3>`;
     html += q.agent.length
       ? q.agent
           .map(
             (a) => `<div class="box qbox"><div><b>${esc(a.task)}</b> · ${esc(a.question)}</div>
-          <div class="ask-row"><input data-answer-input="${esc(a.task)}" placeholder="Tu respuesta…"><button class="primary" data-answer="${esc(a.task)}">Responder</button>
-          ${runBtn(`task run ${a.task} --interactive`, '💬 En vivo', 'Responder en una sesión interactiva')}</div></div>`,
+          <div class="ask-row"><input data-answer-input="${esc(a.task)}" placeholder="${esc(t('web.q.yourAnswer'))}"><button class="primary" data-answer="${esc(a.task)}">${t('web.answer')}</button>
+          ${runBtn(`task run ${a.task} --interactive`, `💬 ${t('web.q.live')}`, t('web.q.liveTitle'))}</div></div>`,
           )
           .join('')
-      : empty('Ninguna: los agentes no están esperando respuesta.');
+      : empty(t('web.q.noneAgent'));
 
-    html += `<h3>Para el equipo técnico <span class="muted">· ${openLink(openQuestions, 'abrir open-questions.md')}</span></h3>`;
+    html += `<h3>${t('web.q.team')} <span class="muted">· ${openLink(openQuestions, t('web.q.openFile'))}</span></h3>`;
     html += q.team.length
-      ? `<ul class="team">${q.team.map((t) => `<li>${esc(t.replace(/^\d{4}-\d{2}-\d{2} · /, ''))}</li>`).join('')}</ul>`
-      : empty('Ninguna registrada.');
+      ? `<ul class="team">${q.team.map((entry) => `<li>${esc(entry.replace(/^\d{4}-\d{2}-\d{2} · /, ''))}</li>`).join('')}</ul>`
+      : empty(t('web.q.noneTeam'));
 
-    html += `<h3>Preguntas frecuentes</h3>`;
+    html += `<h3>${t('web.q.faq')}</h3>`;
     html += q.faq.length
       ? q.faq
           .map(
-            (f) => `<details class="faq"><summary>${esc(f.question)} <span class="muted">· ${f.origin === 'agente' ? 'agente' : 'equipo'}</span></summary>
-          <div class="answer">${md(f.answer)}</div><div class="sub">${openLink(f.file, 'ver fuente')}</div></details>`,
+            (f) => `<details class="faq"><summary>${esc(f.question)} <span class="muted">· ${f.origin === 'agente' ? t('origin.agent') : t('origin.team')}</span></summary>
+          <div class="answer">${md(f.answer)}</div><div class="sub">${openLink(f.file, t('web.q.source'))}</div></details>`,
           )
           .join('')
-      : empty('Aún no hay preguntas respondidas.');
+      : empty(t('web.q.noneFaq'));
     $('questions').innerHTML = html;
   }
 
@@ -460,8 +464,8 @@
     try {
       fn();
     } catch (err) {
-      $(id).innerHTML = `<div class="box warn"><b>No se pudo mostrar esta sección.</b><div class="sub">${esc(err && err.message)}</div>
-        <div class="sub">Si actualizaste la extensión, actualiza también el CLI: <code>cargo install --path crates/archeology-cli --force</code></div></div>`;
+      $(id).innerHTML = `<div class="box warn"><b>${t('web.error.section')}</b><div class="sub">${esc(err && err.message)}</div>
+        <div class="sub">${t('web.error.hint')}</div></div>`;
       console.error(err);
     }
   }
@@ -469,16 +473,16 @@
   function render() {
     if (!status) {
       for (const id of ['summary', 'project', 'tasks', 'findings', 'docs', 'questions']) {
-        $(id).innerHTML = empty('No hay un proyecto de archeology-doc activo. Abre una carpeta con <code>archeology-doc.toml</code> o ejecuta <code>adoc init</code>.');
+        $(id).innerHTML = empty(t('web.noProject'));
       }
       return;
     }
     status = normalize(status);
     $('name').textContent = status.project.name;
-    $('meta').textContent = `${status.agent.active}${status.agent.model ? ' · ' + status.agent.model : ''} · perfil ${status.profile} · ${status.progress}% · ${status.project.root}`;
+    $('meta').textContent = `${status.agent.active}${status.agent.model ? ' · ' + status.agent.model : ''} · ${t('web.profileOf', { profile: status.profile })} · ${status.progress}% · ${status.project.root}`;
     $('outdated').hidden = !status.__outdated.length;
     $('outdated').innerHTML = status.__outdated.length
-      ? `⚠ El CLI <code>adoc</code> instalado es anterior a la extensión (faltan: ${esc(status.__outdated.join(', '))}). Actualízalo: <code>cargo install --path crates/archeology-cli --force</code>`
+      ? `⚠ ${t('web.outdated', { fields: esc(status.__outdated.join(', ')) })}`
       : '';
     safe('summary', renderSummary);
     safe('project', renderProject);
@@ -538,7 +542,9 @@
 
   window.addEventListener('message', (ev) => {
     const msg = ev.data || {};
-    if (msg.type === 'status') {
+    if (msg.type === 'graph') {
+      if (graph) graph.setData(msg.graph);
+    } else if (msg.type === 'status') {
       status = msg.status;
       render();
     } else if (msg.type === 'tab') {
@@ -546,9 +552,38 @@
     }
   });
 
-  // El grafo comparte la API de VS Code con el dashboard.
-  graph = window.AdocGraph ? window.AdocGraph.start(vscode) : null;
+  // Grafo: renderizador compartido con el CLI (media/graph.js). Los clics
+  // abren el archivo en el editor; los datos llegan con el mensaje `graph`.
+  graph = window.AdocGraph
+    ? window.AdocGraph.mount($('graph'), {
+        t: {
+          search: t('web.graph.search'),
+          fit: t('web.graph.fit'),
+          refresh: t('web.graph.refresh'),
+          zoom_in: t('web.graph.zoomIn'),
+          zoom_out: t('web.graph.zoomOut'),
+          stats: t('web.graph.stats'),
+          stale: t('web.stale'),
+          legend: t('web.graph.legend'),
+          close: t('web.graph.close'),
+          path: t('web.graph.path'),
+          empty: t('web.graph.empty'),
+          edge_relation: t('web.graph.edgeRelation'),
+          edge_evidence: t('web.graph.edgeEvidence'),
+          // Etiquetas de tipo (`kind.*`): mismas claves que el resto del dashboard.
+          ...Object.fromEntries(
+            ['overview', 'module', 'feature', 'finding', 'test-report', 'spec-report', 'glossary', 'decision', 'memory', 'faq', 'moc', 'code'].map(
+              (k) => [`kind.${k}`, t(`kind.${k}`)],
+            ),
+          ),
+        },
+        onOpen: (node) => vscode.postMessage({ type: 'open', file: node.file, line: node.line }),
+        onRefresh: () => vscode.postMessage({ type: 'refresh' }),
+      })
+    : null;
   const saved = vscode.getState();
   showTab((saved && saved.tab) || 'summary');
   vscode.postMessage({ type: 'dashboard-ready' });
+  // Pide los datos del grafo (antes lo hacía media/graph.js al arrancar).
+  if (graph) vscode.postMessage({ type: 'ready' });
 })();

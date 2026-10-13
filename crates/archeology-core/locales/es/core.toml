@@ -1,0 +1,113 @@
+# Mensajes de interfaz de archeology-core (idioma de la interfaz).
+# Claves: core.<módulo>.<mensaje>. Marcadores: {nombre}.
+# Mantener las mismas claves y marcadores en locales/en/core.toml.
+
+[core.common]
+warning = "aviso: {message}"
+
+[core.i18n]
+invalid_lang = "idioma '{value}' no soportado (válidos: en, es)"
+invalid_ignored = "aviso: idioma '{value}' no soportado en {source}; se ignora (válidos: en, es)"
+
+[core.i18n.source]
+flag = "el flag --lang"
+env = "la variable de entorno {var}"
+config = "la configuración del usuario ({path})"
+locale = "el locale del sistema"
+default = "valor por defecto"
+
+[core.templates]
+unknown = "plantilla desconocida: {name}"
+
+[core.error]
+project_not_found = "no se encontró un proyecto archeology-doc (falta archeology-doc.toml). Ejecuta `adoc init` primero"
+already_initialized = "el proyecto ya está inicializado: {path}"
+task_not_found = "la tarea {id} no existe"
+unknown_adapter = "el adaptador {name} no está definido en la configuración"
+
+[core.config]
+id_empty = "project.id no puede estar vacío"
+id_invalid = "project.id inválido ('{id}'): usa un UUID (letras, números y '-')"
+language_invalid = "project.language debe ser en|es, no '{value}'"
+model_invalid = "agent.adapters.{name}.model inválido ('{model}')"
+links_style_invalid = "links.style debe ser wikilink|relative, no '{value}'"
+context_adapter_invalid = "context.adapters: '{value}' no soportado (válidos: {valid})"
+plan_size_invalid = "plan.size debe ser auto|small|medium|large, no '{value}'"
+openspec_enabled_invalid = "openspec.enabled debe ser auto|true|false, no '{value}'"
+path_control_chars = "{key} = {value} contiene caracteres de control"
+path_not_relative = "{key} = '{value}' debe ser una ruta relativa dentro del proyecto (sin '..')"
+path_not_folder = "{key} = '{value}' debe ser una carpeta dentro del proyecto"
+
+[core.paths]
+no_home = "no se pudo determinar el directorio home; define {var}"
+config_dir_renamed = "configuración movida de {from} a {to} (nuevo nombre del proyecto)"
+config_dir_rename_failed = "aviso: no se pudo mover {from} a {to}: {error}"
+workspace_invalid = "project.id genera un espacio de trabajo inválido: '{name}'"
+ambiguous_workspace = "aviso: varias carpetas de trabajo coinciden con el prefijo '{prefix}'; se usa {path}"
+workspace_shared = "aviso: el espacio de trabajo {workspace} lo usaba otro directorio ({previous}); ahora {current}. ¿Clon o worktree con el mismo project.id? Comparten estado y tareas; usa un project.id distinto para separarlos."
+
+[core.project]
+legacy_state_moved = "estado de trabajo antiguo de {from} movido a {to}"
+record_owner_failed = "aviso: no se pudo registrar el proyecto en su espacio de trabajo: {error}"
+locked = "otro proceso está modificando este proyecto ({holder}); espera a que termine"
+config_renamed = "renombrado {from} → {to} (nuevo nombre del proyecto)"
+output_outside = "{key} = '{value}' apunta fuera del proyecto (¿symlink?)"
+
+[core.trust]
+untrusted = "el adaptador '{name}' está definido en archeology-doc.toml y no es uno predefinido: no se ejecuta sin tu aprobación. Revísalo y apruébalo con `adoc agent trust {name}`, o vuelve al predefinido con `adoc agent use {name} --reset`"
+store_corrupt = "{path} está dañado ({error}); corrígelo o bórralo para volver a aprobar los adaptadores"
+
+[core.state]
+recovered_backup = "aviso: {path} estaba dañado; se recuperó la copia {backup}"
+not_regular_file = "no es un archivo regular"
+
+[core.fsutil]
+symlink_in_path = "{path} es un enlace simbólico: archeology-doc no escribe a través de symlinks del repositorio (no se modificó)"
+outside_project = "{path} queda fuera del proyecto {root} (no se modificó)"
+not_a_directory = "{path} existe y no es un directorio"
+symlink_not_modified = "{path} es un enlace simbólico (no se modificó)"
+symlink_not_read = "{path} es un enlace simbólico: archeology-doc no lo lee ni lo modifica"
+not_a_file = "{path} existe y no es un archivo regular"
+not_utf8 = "{path} no es UTF-8 válido; conviértelo a UTF-8 para que archeology-doc lo actualice (no se modificó)"
+symlink_not_overwritten = "{path} es un enlace simbólico: no se sobrescribe"
+
+[core.index]
+not_found = "{path} no existe"
+
+[core.validate]
+stale_note = "nota desactualizada (fuentes modificadas)"
+note_not_utf8 = "la nota no es UTF-8 válido"
+note_unreadable = "no se pudo leer la nota: {error}"
+broken_wikilink = "wikilink sin destino: [[{target}]]"
+duplicate_id = "id `{id}` repetido (también en {first})"
+duplicate_finding = "posible hallazgo duplicado de {first} (mismo kind y evidencias)"
+no_notes_produced = "la tarea no produjo ninguna nota en este directorio"
+expected_file_missing = "archivo esperado no encontrado"
+file_not_updated = "archivo no actualizado por la tarea"
+
+[core.note]
+no_frontmatter = "sin frontmatter YAML válido"
+missing_id = "falta campo `id`"
+missing_type = "falta campo `type`"
+unknown_type = "type '{value}' no reconocido (válidos: {valid})"
+nonstandard_status = "status '{value}' no estándar"
+nonstandard_confidence = "confidence '{value}' no estándar"
+nonstandard_memory = "memory '{value}' no estándar (stable|temporary)"
+invalid_kind = "kind '{value}' inválido"
+finding_without_kind = "finding sin `kind`"
+invalid_severity = "severity '{value}' inválida"
+finding_without_severity = "finding sin `severity`"
+invalid_state = "state '{value}' inválido"
+finding_without_state = "finding sin `state`"
+finding_without_sources = "finding sin evidencia (`sources` vacío)"
+source_outside = "evidencia fuera del proyecto: {source}"
+source_not_found = "evidencia no encontrada: {source}"
+source_out_of_range = "evidencia fuera de rango: {source} (el archivo tiene {total} líneas)"
+feature_without_sources = "feature sin evidencia (`sources` vacío)"
+
+[core.managed]
+unbalanced = "marcadores de la región '{name}' desbalanceados o duplicados ({begins} begin, {ends} end): corrige el archivo a mano; no se modificó"
+
+[core.site]
+overlap = "{key} ({path}) se solapa con {output}, que el sitio regenera"
+not_generated = "{path} ya existe y no lo generó archeology-doc; muévelo o renómbralo (el sitio lo regenera en cada `site sync`)"

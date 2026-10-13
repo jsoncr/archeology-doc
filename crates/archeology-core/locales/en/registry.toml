@@ -1,0 +1,9 @@
+# Messages of archeology-registry (UI language). Keep the same keys and
+# placeholders in locales/es/registry.toml.
+
+[registry]
+config_moved = "configuration moved from {from} to {to}"
+corrupt = "corrupt global registry: {path}"
+ambiguous = "'{query}' is ambiguous; use the full ID of one of these projects:\n{list}"
+ambiguous_item = "  - {name} ({id}) at {path}"
+locked = "global registry locked by another process ({path}); try again"

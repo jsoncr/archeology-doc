@@ -1,0 +1,286 @@
+# Textos de `--help` del CLI (idioma de la interfaz). Se aplican sobre el derive de clap.
+# Claves: cli.help[.<subcomando>...].about | long_about | arg.<id del argumento>.
+# Textos propios de clap: cli.help.clap.*.
+# Mantener las mismas claves y marcadores en locales/en/cli_help.toml.
+
+[cli.help.clap]
+usage = "Uso:"
+commands = "Comandos"
+arguments = "Argumentos"
+options = "Opciones"
+help = "Muestra la ayuda"
+help_short = "Muestra la ayuda (más detalle con '--help')"
+help_long = "Muestra la ayuda (resumen con '-h')"
+version = "Muestra la versión"
+help_subcommand = "Muestra este mensaje o la ayuda de los subcomandos indicados"
+help_subcommand_arg = "Muestra la ayuda de los subcomandos"
+
+
+[cli.help]
+about = "Inspecciona proyectos de software y genera documentación, conocimiento y contexto para agentes de IA."
+[cli.help.arg]
+project = "Opera sobre un proyecto registrado por nombre o ID (RF-173)"
+verbose = "Verbosidad (-v info, -vv debug)"
+lang = "Idioma de la interfaz (en|es). Precedencia: --lang > ADOC_LANG > `language` de ~/.archeology-doc/config.toml > locale del sistema > en. En `init`, también el idioma de la documentación generada"
+
+[cli.help.init]
+about = "Inicializa archeology-doc en el proyecto actual"
+[cli.help.init.arg]
+yes = "Valores por defecto sin preguntar (para CI)"
+agent = "Agente por defecto (claude, codex, manual, ...)"
+name = "Nombre del proyecto (por defecto: nombre del directorio)"
+adapters = "Adaptadores de contexto (claude,cursor,copilot). Por defecto, según el agente"
+dir = "Directorio del proyecto (por defecto: actual)"
+
+[cli.help.config]
+about = "Preferencias del usuario (~/.archeology-doc/config.toml), p. ej. el idioma"
+
+[cli.help.config.set]
+about = "Fija una preferencia (p. ej. `adoc config set language en`)"
+[cli.help.config.set.arg]
+value = "Valor (language: en|es)"
+
+[cli.help.config.get]
+about = "Muestra el valor efectivo y de dónde sale"
+[cli.help.config.get.arg]
+json = "Salida JSON: {\"key\", \"value\", \"source\"}"
+
+[cli.help.config.unset]
+about = "Borra una preferencia (se vuelve a usar el valor por defecto)"
+
+[cli.help.scan]
+about = "Inventario determinista del repositorio"
+[cli.help.scan.arg]
+no_git = "No analizar el historial git"
+json = "Imprimir el inventario en JSON por stdout"
+
+[cli.help.plan]
+about = "Genera o actualiza las tareas de inspección"
+[cli.help.plan.arg]
+module = "Solo este módulo"
+type = "Solo este tipo de tarea"
+path = "Solo tareas cuyo alcance incluya esta ruta"
+force = "Regenerar tareas existentes"
+
+[cli.help.inspect]
+about = "Ejecuta tareas con un agente (o las exporta para modo manual)"
+[cli.help.inspect.arg]
+agent = "Adaptador a usar (por defecto: agent.default de la config)"
+model = "Modelo del agente solo para esta corrida (p. ej. opus, sonnet)"
+task = "Ejecutar solo estas tareas"
+module = "Solo tareas de este módulo"
+resume = "Reanudar incluyendo tareas fallidas"
+dry_run = "Mostrar qué se ejecutaría sin ejecutarlo"
+
+[cli.help.task]
+about = "Gestión de tareas (modo manual)"
+
+[cli.help.task.list]
+about = "Lista las tareas"
+[cli.help.task.list.arg]
+status = "Filtrar por estado (pending|manual|question|done|failed)"
+format = "Formato de salida"
+
+[cli.help.task.show]
+about = "Muestra una tarea completa"
+[cli.help.task.show.arg]
+id = "ID de la tarea (T-001, ...)"
+
+[cli.help.task.export]
+about = "Exporta tareas pendientes como prompts listos para usar"
+[cli.help.task.export.arg]
+out = "Directorio de salida (por defecto, las tareas del espacio de trabajo)"
+
+[cli.help.task.answer]
+about = "Responde la pregunta de un agente y deja la tarea lista para reintentar"
+[cli.help.task.answer.arg]
+id = "ID de la tarea"
+text = "Respuesta (o una instrucción adicional para el agente)"
+
+[cli.help.task.run]
+about = "Ejecuta una sola tarea; con `--interactive`, abre la sesión del agente"
+[cli.help.task.run.arg]
+id = "ID de la tarea"
+interactive = "Sesión interactiva: conversas con el agente y, al salir, se valida la salida"
+agent = "Agente a usar (por defecto, el activo)"
+model = "Modelo del agente solo para esta ejecución"
+
+[cli.help.task.done]
+about = "Marca una tarea manual como completada tras validar su salida"
+[cli.help.task.done.arg]
+id = "ID de la tarea"
+force = "Marcar como done aunque la validación de salida falle"
+
+[cli.help.review]
+about = "Resumen de estado, hallazgos y progreso"
+[cli.help.review.arg]
+severity = "Filtrar hallazgos por severidad"
+format = "Formato de salida"
+
+[cli.help.check]
+about = "Validaciones para CI (frontmatter, enlaces, evidencias)"
+[cli.help.check.arg]
+strict = "Las advertencias también fallan"
+site = "Verifica además que el sitio VitePress compila (RF-134)"
+yes = "Con --site, aprueba ejecutar la configuración de VitePress del proyecto (JavaScript del repositorio) sin preguntar"
+format = "Formato de salida"
+
+[cli.help.sync]
+about = "Detecta cambios y marca notas desactualizadas"
+[cli.help.sync.arg]
+since = "Comparar contra una ref git en vez de los hashes guardados"
+dry_run = "Mostrar qué cambiaría sin modificar notas, tareas ni estado"
+
+[cli.help.site]
+about = "Sitio de documentación VitePress"
+
+[cli.help.site.setup]
+about = "Instala VitePress en el directorio de configuración, compartido por todos los proyectos"
+[cli.help.site.setup.arg]
+version = "Versión de VitePress"
+
+[cli.help.site.sync]
+about = "Regenera wiki, specs, sidebar y llms.txt sin lanzar VitePress"
+
+[cli.help.site.dev]
+about = "Servidor de desarrollo de VitePress"
+[cli.help.site.dev.arg]
+yes = "Aprueba ejecutar la configuración de VitePress del proyecto (JavaScript del repositorio)"
+
+[cli.help.site.build]
+about = "Build de producción de VitePress"
+[cli.help.site.build.arg]
+yes = "Aprueba ejecutar la configuración de VitePress del proyecto (JavaScript del repositorio)"
+
+[cli.help.agent]
+about = "Lista y prueba adaptadores de agentes"
+
+[cli.help.agent.list]
+about = "Lista los adaptadores configurados; `*` marca el agente activo"
+
+[cli.help.agent.test]
+about = "Prueba que el comando del adaptador responde"
+[cli.help.agent.test.arg]
+agent = "Nombre del adaptador (por defecto: todos)"
+
+[cli.help.agent.use]
+about = "Cambia el agente (y opcionalmente el modelo) que usa `inspect` en este proyecto"
+long_about = """
+Cambia el agente (y opcionalmente el modelo) que usa `inspect` en este proyecto.
+
+Ejemplos: `adoc agent use claude --model opus`, `adoc agent use devin`, `adoc agent use manual`."""
+[cli.help.agent.use.arg]
+name = "Adaptador predefinido (claude, codex, devin, gemini, qwen, opencode, cursor, copilot, amp, goose, aider, manual) u otro definido en la config"
+model = "Modelo del agente (p. ej. opus, sonnet, gpt-5)"
+no_model = "Quita el modelo fijado y usa el predeterminado del agente"
+reset = "Reemplaza la definición del adaptador por la predefinida actual (p. ej. tras actualizar adoc)"
+
+[cli.help.agent.trust]
+about = "Aprueba un adaptador definido en archeology-doc.toml para este proyecto"
+long_about = """
+Aprueba un adaptador definido en archeology-doc.toml para este proyecto.
+
+La config viaja con el repositorio: un adaptador que no es predefinido decide qué programa se ejecuta. Solo se ejecuta tras revisarlo y aprobarlo; si cambia en el repositorio, hay que aprobarlo de nuevo."""
+[cli.help.agent.trust.arg]
+yes = "No pedir confirmación (scripts, CI)"
+
+[cli.help.agent.untrust]
+about = "Retira la aprobación de un adaptador en este proyecto"
+
+[cli.help.spec]
+about = "Integración con OpenSpec"
+
+[cli.help.spec.status]
+about = "Estado de cumplimiento de requisitos (RF-150, RF-163)"
+[cli.help.spec.status.arg]
+capability = "Solo esta capability"
+format = "Formato de salida"
+
+[cli.help.spec.baseline]
+about = "Prepara specs base inferidas como cambio de OpenSpec (RF-157)"
+long_about = """
+Prepara specs base inferidas como cambio de OpenSpec (RF-157).
+
+Crea `openspec/changes/baseline-<fecha>/` y una tarea para que el agente escriba los deltas de requisitos inferidos."""
+[cli.help.spec.baseline.arg]
+capability = "Solo esta capability (módulo del inventario)"
+dry_run = "Mostrar qué se generaría sin escribir"
+
+[cli.help.spec.validate]
+about = "Valida un cambio de OpenSpec (CLI oficial o validación estructural, RF-159)"
+[cli.help.spec.validate.arg]
+change = "Nombre del cambio (carpeta en openspec/changes/)"
+
+[cli.help.projects]
+about = "Gestión del registro global de proyectos"
+
+[cli.help.projects.list]
+about = "Lista los proyectos registrados"
+[cli.help.projects.list.arg]
+format = "Formato de salida"
+
+[cli.help.projects.add]
+about = "Registra un proyecto existente"
+[cli.help.projects.add.arg]
+path = "Ruta del proyecto"
+
+[cli.help.projects.discover]
+about = "Descubre proyectos con archeology-doc.toml en un árbol"
+[cli.help.projects.discover.arg]
+dir = "Directorio raíz de la búsqueda"
+depth = "Profundidad máxima"
+
+[cli.help.projects.prune]
+about = "Elimina entradas cuyo directorio ya no existe"
+[cli.help.projects.prune.arg]
+yes = "Sin pedir confirmación"
+
+[cli.help.resume]
+about = "Retoma la última inspección pendiente"
+[cli.help.resume.arg]
+project = "Nombre o ID del proyecto a retomar"
+agent = "Adaptador a usar"
+model = "Modelo del agente solo para esta corrida"
+
+[cli.help.preview]
+about = "Muestra el resultado: sitio con dashboard en el navegador (o reporte HTML sin VitePress)"
+[cli.help.preview.arg]
+port = "Puerto del servidor de VitePress"
+no_open = "No abrir el navegador"
+yes = "Aprueba ejecutar la configuración de VitePress del proyecto (JavaScript del repositorio); se recuerda para este proyecto"
+
+[cli.help.report]
+about = "Genera un reporte HTML único (o Markdown) con el estado, hallazgos y preguntas"
+[cli.help.report.arg]
+format = "Formato del reporte"
+html = "Atajo de `--format html`"
+out = "Ruta de salida (por defecto, en el espacio de trabajo del proyecto)"
+no_open = "No abrir el reporte en el navegador"
+
+[cli.help.ask]
+about = "Pregunta al agente sobre el proyecto; la respuesta queda en la FAQ (knowledge/faq/)"
+[cli.help.ask.arg]
+question = "La pregunta; puede ir sin comillas. Sin argumentos, se pide por la terminal (útil en zsh, donde `?` es un comodín)"
+agent = "Agente a usar (por defecto, el activo)"
+model = "Modelo del agente solo para esta pregunta"
+
+[cli.help.graph]
+about = "Grafo del conocimiento: JSON, texto o HTML interactivo (notas, relaciones y evidencias)"
+[cli.help.graph.arg]
+format = "Formato de salida"
+
+[cli.help.status]
+about = "Estado completo del proyecto en JSON (tareas, hallazgos, notas, agente)"
+[cli.help.status.arg]
+format = "Formato de salida"
+
+[cli.help.doctor]
+about = "Verifica requisitos: git, Node, VitePress, OpenSpec, agentes y configuración"
+[cli.help.doctor.arg]
+format = "Formato de salida"
+
+[cli.help.uninstall]
+about = "Desinstala `adoc`; con --purge borra también ~/.archeology-doc (los proyectos no se tocan)"
+[cli.help.uninstall.arg]
+purge = "Borra también los datos globales: registro de proyectos, espacios de trabajo (estado, tareas, ejecuciones), aprobaciones de adaptadores y VitePress compartido (`~/.archeology-doc/`)"
+yes = "No pedir confirmación"

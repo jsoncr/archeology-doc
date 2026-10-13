@@ -62,6 +62,14 @@ has_zigbuild() {
   command -v zig >/dev/null 2>&1 || python3 -c 'import ziglang' >/dev/null 2>&1
 }
 
+# 0. Traducciones del sitio (en/es): claves completas en ambos idiomas.
+if command -v node >/dev/null 2>&1; then
+  say "comprobando traducciones del sitio"
+  node "$SITE/scripts/check-i18n.mjs"
+else
+  warn "sin node: no se comprueban las traducciones (WEBSITE/scripts/check-i18n.mjs)"
+fi
+
 VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' "$ROOT/Cargo.toml" | head -1)"
 HOST_OS="$(uname -s)"
 
@@ -87,7 +95,10 @@ for t in $TARGETS; do
   esac
 done
 
+# Ruta absoluta para --out: package() y el paso de sumas hacen `cd` antes de
+# escribir en $OUT, así que una ruta relativa apuntaría a otro lado.
 mkdir -p "$OUT"
+OUT="$(cd "$OUT" && pwd)"
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT INT TERM
 
@@ -100,7 +111,7 @@ package() { # package <target> <dir con los binarios>
   for bin in adoc archeology-doc; do
     cp "$bindir/$bin$ext" "$pkg/"
   done
-  cp "$ROOT/README.md" "$ROOT/LICENSE-MIT" "$ROOT/LICENSE-APACHE" "$pkg/"
+  cp "$ROOT/README.md" "$ROOT/LICENSE-MIT" "$pkg/"
   case "$target" in
     *windows*)
       rm -f "$OUT/adoc-$target.zip"

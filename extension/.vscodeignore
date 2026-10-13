@@ -1,5 +1,9 @@
 src/**
+scripts/**
 tsconfig.json
 node_modules/**
 **/*.map
 .gitignore
+# Traducciones de package.json: deben ir en el paquete.
+!package.nls.json
+!package.nls.*.json

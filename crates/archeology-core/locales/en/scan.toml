@@ -1,0 +1,7 @@
+# Messages of archeology-scan (UI language). Keep the same keys and
+# placeholders in locales/es/scan.toml.
+
+[scan.phase]
+git_history = "analyzing git history"
+openspec = "detecting OpenSpec"
+modules = "grouping modules"

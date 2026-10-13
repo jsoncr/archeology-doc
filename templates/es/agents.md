@@ -27,3 +27,4 @@ Este proyecto está documentado con **archeology-doc**. El conocimiento vive en
   `openspec/changes/`.
 - No edites notas con `locked: true` ni el contenido de las regiones
   `<!-- archeology-doc:begin ... -->`: solo archeology-doc las regenera.
+- Escribe las notas en español.

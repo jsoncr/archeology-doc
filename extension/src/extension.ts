@@ -8,6 +8,8 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import * as cli from './cli';
 import * as tools from './tools';
+import * as i18n from './i18n';
+import { t } from './i18n';
 import { FindingDecorations } from './decorations';
 import { DashboardPanel } from './dashboard';
 import { FindingsTree, KnowledgeTree, ProjectNode, ProjectsTree, QuestionsTree, SpecsTree, TaskNode, TasksTree } from './trees';
@@ -178,6 +180,12 @@ class Controller implements vscode.Disposable {
     }
   }
 
+  /** Cambió el idioma: se vuelven a construir las vistas con los textos nuevos. */
+  relocalize(): void {
+    this.apply(this.status);
+    DashboardPanel.relocalize();
+  }
+
   private apply(status: Status | undefined): void {
     this.status = status;
     DashboardPanel.update();
@@ -216,16 +224,75 @@ class Controller implements vscode.Disposable {
     if (this.projects.length > 1) {
       this.statusBar.text = this.statusBar.text.replace('adoc', `adoc ${status.project.name}`);
     }
-    this.statusBar.tooltip = `${status.project.name} · perfil ${status.profile} · ${status.tasks.length} tareas, ${status.findings.length} hallazgos\nClic: abrir el dashboard`;
+    this.statusBar.tooltip = t('status.tooltip', {
+      name: status.project.name,
+      profile: status.profile,
+      tasks: status.tasks.length,
+      findings: status.findings.length,
+    });
     this.statusBar.show();
   }
 
   run(args: string[]): void {
     if (!this.root) {
-      void vscode.window.showWarningMessage('Abre una carpeta con un proyecto de archeology-doc.');
+      void vscode.window.showWarningMessage(t('warn.openProjectFolder'));
       return;
     }
     cli.runInTerminal(this.root, args);
+  }
+
+  /**
+   * `adoc init`: todavía no hay proyecto (ni `this.root`), así que se ejecuta
+   * en una carpeta del workspace; con varias, se pregunta en cuál.
+   */
+  async init(): Promise<void> {
+    const folders = vscode.workspace.workspaceFolders ?? [];
+    let folder: vscode.WorkspaceFolder | undefined = folders[0];
+    if (folders.length > 1) {
+      const pick = await vscode.window.showQuickPick(
+        folders.map((f) => ({
+          label: f.name,
+          detail: f.uri.fsPath,
+          description: fs.existsSync(path.join(f.uri.fsPath, CONFIG_FILE)) ? t('init.alreadyInitialized') : undefined,
+          folder: f,
+        })),
+        { title: t('init.pickFolder') },
+      );
+      folder = pick?.folder;
+      if (!pick) {
+        return;
+      }
+    }
+    if (!folder) {
+      void vscode.window.showWarningMessage(t('init.noFolder'));
+      return;
+    }
+    // Idioma de la documentación generada (independiente del idioma de la interfaz).
+    const current = i18n.language();
+    const languages: (vscode.QuickPickItem & { lang: i18n.Lang })[] = [
+      { label: 'English', description: 'en', lang: 'en' },
+      { label: 'Español', description: 'es', lang: 'es' },
+    ];
+    const quickPick = vscode.window.createQuickPick<(typeof languages)[number]>();
+    quickPick.title = t('init.langTitle');
+    quickPick.placeholder = t('init.langPlaceholder');
+    quickPick.items = languages;
+    quickPick.activeItems = languages.filter((l) => l.lang === current);
+    const docLang = await new Promise<i18n.Lang | undefined>((resolve) => {
+      quickPick.onDidAccept(() => {
+        resolve(quickPick.selectedItems[0]?.lang ?? quickPick.activeItems[0]?.lang);
+        quickPick.hide();
+      });
+      quickPick.onDidHide(() => {
+        resolve(undefined);
+        quickPick.dispose();
+      });
+      quickPick.show();
+    });
+    if (!docLang) {
+      return;
+    }
+    cli.runInTerminal(folder.uri.fsPath, ['init', '--lang', docLang]);
   }
 
   dispose(): void {
@@ -242,11 +309,10 @@ class Controller implements vscode.Disposable {
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const ctl = new Controller(context);
-  context.subscriptions.push(ctl);
+  context.subscriptions.push(ctl, cli.trackTerminals());
   await ctl.locate();
 
   const terminalCommands: Record<string, string[]> = {
-    'adoc.init': ['init'],
     'adoc.scan': ['scan'],
     'adoc.plan': ['plan'],
     'adoc.planForce': ['plan', '--force'],
@@ -268,6 +334,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const register = (id: string, fn: (...a: any[]) => unknown) =>
     context.subscriptions.push(vscode.commands.registerCommand(id, fn));
 
+  register('adoc.init', () => ctl.init());
   register('adoc.refresh', () => ctl.refresh());
   register('adoc.dashboard', () => DashboardPanel.show(context.extensionUri, ctl, 'summary'));
   register('adoc.graph', () => DashboardPanel.show(context.extensionUri, ctl, 'graph'));
@@ -277,7 +344,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     if (!project) {
       const rows = ctl.projects.filter((p) => p.available);
       if (!rows.length) {
-        void vscode.window.showInformationMessage('No hay proyectos registrados en ~/.archeology-doc.');
+        void vscode.window.showInformationMessage(t('projects.none'));
         return;
       }
       const pick = await vscode.window.showQuickPick(
@@ -287,7 +354,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           detail: p.path,
           project: p,
         })),
-        { title: 'Proyecto de archeology-doc' },
+        { title: t('projects.pickTitle') },
       );
       project = pick?.project;
     }
@@ -309,24 +376,25 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   register('adoc.task.copyCommand', async (node: TaskNode) => {
     const line = cli.commandLine(['task', 'run', node.task.id]);
     await vscode.env.clipboard.writeText(line);
-    void vscode.window.showInformationMessage(`Copiado: ${line}`);
+    void vscode.window.showInformationMessage(t('task.copied', { line }));
   });
   register('adoc.task.openLog', async (node: TaskNode) => {
     if (!node.task.log) {
-      void vscode.window.showInformationMessage(`${node.task.id} todavía no tiene log.`);
+      void vscode.window.showInformationMessage(t('task.noLog', { id: node.task.id }));
       return;
     }
     await vscode.window.showTextDocument(vscode.Uri.file(node.task.log));
   });
   register('adoc.ask', async () => {
     const question = await vscode.window.showInputBox({
-      title: 'Preguntar al agente sobre el proyecto',
-      prompt: 'La respuesta, con evidencias, queda en knowledge/faq/ y en la FAQ del preview',
-      placeHolder: '¿Cómo se calcula el total de una reserva?',
+      title: t('ask.title'),
+      prompt: t('ask.prompt'),
+      placeHolder: t('ask.placeholder'),
       ignoreFocusOut: true,
     });
     if (question) {
-      ctl.run(['ask', question]);
+      // `--`: una pregunta que empieza con `-` no se toma como opción.
+      ctl.run(['ask', '--', question]);
     }
   });
   register('adoc.answerQuestion', (task: string, question: string) =>
@@ -337,19 +405,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   register('adoc.task.answer', async (node: { task: { id: string; question: string | null } }) => {
     const answer = await vscode.window.showInputBox({
-      title: `Responder a ${node.task.id}`,
-      prompt: node.task.question ?? 'Instrucción adicional para el agente',
-      placeHolder: 'Tu respuesta',
+      title: t('answer.title', { id: node.task.id }),
+      prompt: node.task.question ?? t('answer.prompt'),
+      placeHolder: t('answer.placeholder'),
       ignoreFocusOut: true,
     });
     if (!answer || !ctl.root) {
       return;
     }
     try {
-      await cli.exec(ctl.root, ['task', 'answer', node.task.id, answer]);
+      // `--`: una respuesta que empieza con `-` no se toma como opción.
+      await cli.exec(ctl.root, ['task', 'answer', node.task.id, '--', answer]);
       const next = await vscode.window.showInformationMessage(
-        `Respuesta guardada en ${node.task.id}.`,
-        'Ejecutar ahora',
+        t('answer.saved', { id: node.task.id }),
+        t('answer.runNow'),
       );
       if (next) {
         ctl.run(['task', 'run', node.task.id]);
@@ -368,16 +437,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const pick = await vscode.window.showQuickPick(
       status.agent.available.map((name) => ({
         label: name,
-        description: name === status.agent.active ? 'activo' : undefined,
+        description: name === status.agent.active ? t('agent.active') : undefined,
       })),
-      { title: 'Agente para las tareas', placeHolder: `Activo: ${status.agent.active}` },
+      { title: t('agent.pickTitle'), placeHolder: t('agent.pickPlaceholder', { agent: status.agent.active }) },
     );
     if (!pick) {
       return;
     }
     const model = await vscode.window.showInputBox({
-      title: `Modelo para ${pick.label}`,
-      prompt: 'Vacío = modelo por defecto del agente',
+      title: t('agent.modelTitle', { agent: pick.label }),
+      prompt: t('agent.modelPrompt'),
       value: pick.label === status.agent.active ? status.agent.model ?? '' : '',
       ignoreFocusOut: true,
     });
@@ -396,23 +465,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   register('adoc.menu', async () => {
     const items: (vscode.QuickPickItem & { command: string })[] = [
-      { label: '$(dashboard) Abrir dashboard', description: 'resumen, tareas, hallazgos, preguntas', command: 'adoc.dashboard' },
-      { label: '$(preview) Ver resultado', description: 'adoc preview', command: 'adoc.preview' },
-      { label: '$(type-hierarchy) Grafo del conocimiento', description: 'adoc graph', command: 'adoc.graph' },
-      { label: '$(comment-discussion) Preguntar al agente', description: 'adoc ask', command: 'adoc.ask' },
-      { label: '$(play) Ejecutar tareas', description: 'adoc inspect', command: 'adoc.inspect' },
-      { label: '$(debug-restart) Reintentar fallidas', description: 'adoc inspect --resume', command: 'adoc.resume' },
-      { label: '$(hubot) Cambiar agente o modelo', description: 'adoc agent use', command: 'adoc.selectAgent' },
-      { label: '$(folder-library) Cambiar de proyecto', description: '~/.archeology-doc', command: 'adoc.selectProject' },
-      { label: '$(search) Escanear', description: 'adoc scan', command: 'adoc.scan' },
-      { label: '$(list-ordered) Planificar', description: 'adoc plan', command: 'adoc.plan' },
-      { label: '$(list-ordered) Rehacer el plan', description: 'adoc plan --force', command: 'adoc.planForce' },
-      { label: '$(sync) Detectar cambios', description: 'adoc sync', command: 'adoc.sync' },
-      { label: '$(checklist) Validar', description: 'adoc check', command: 'adoc.check' },
-      { label: '$(graph) Resumen', description: 'adoc review', command: 'adoc.review' },
-      { label: '$(file-code) Reporte HTML', description: 'adoc report', command: 'adoc.report' },
-      { label: '$(globe) Sitio (dev)', description: 'adoc site dev', command: 'adoc.siteDev' },
-      { label: '$(pulse) Verificar requisitos', description: 'adoc doctor', command: 'adoc.doctor' },
+      { label: `$(dashboard) ${t('menu.dashboard')}`, description: t('menu.dashboardDescription'), command: 'adoc.dashboard' },
+      { label: `$(preview) ${t('menu.preview')}`, description: 'adoc preview', command: 'adoc.preview' },
+      { label: `$(type-hierarchy) ${t('menu.graph')}`, description: 'adoc graph', command: 'adoc.graph' },
+      { label: `$(comment-discussion) ${t('menu.ask')}`, description: 'adoc ask', command: 'adoc.ask' },
+      { label: `$(play) ${t('menu.inspect')}`, description: 'adoc inspect', command: 'adoc.inspect' },
+      { label: `$(debug-restart) ${t('menu.resume')}`, description: 'adoc inspect --resume', command: 'adoc.resume' },
+      { label: `$(hubot) ${t('menu.selectAgent')}`, description: 'adoc agent use', command: 'adoc.selectAgent' },
+      { label: `$(folder-library) ${t('menu.selectProject')}`, description: '~/.archeology-doc', command: 'adoc.selectProject' },
+      { label: `$(search) ${t('menu.scan')}`, description: 'adoc scan', command: 'adoc.scan' },
+      { label: `$(list-ordered) ${t('menu.plan')}`, description: 'adoc plan', command: 'adoc.plan' },
+      { label: `$(list-ordered) ${t('menu.planForce')}`, description: 'adoc plan --force', command: 'adoc.planForce' },
+      { label: `$(sync) ${t('menu.sync')}`, description: 'adoc sync', command: 'adoc.sync' },
+      { label: `$(checklist) ${t('menu.check')}`, description: 'adoc check', command: 'adoc.check' },
+      { label: `$(graph) ${t('menu.review')}`, description: 'adoc review', command: 'adoc.review' },
+      { label: `$(file-code) ${t('menu.report')}`, description: 'adoc report', command: 'adoc.report' },
+      { label: `$(globe) ${t('menu.siteDev')}`, description: 'adoc site dev', command: 'adoc.siteDev' },
+      { label: `$(pulse) ${t('menu.doctor')}`, description: 'adoc doctor', command: 'adoc.doctor' },
     ];
     const pick = await vscode.window.showQuickPick(items, { title: 'archeology-doc' });
     if (pick) {
@@ -422,6 +491,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(
     vscode.commands.registerCommand('adoc.installTools', () => tools.checkTools(ctl, true)),
+    // `archeologyDoc.language`: vistas, barra de estado y dashboard cambian sin recargar.
+    i18n.watchLanguage(() => ctl.relocalize()),
   );
 
   // Sin `await`: el primer estado y la comprobación de herramientas van en segundo plano.

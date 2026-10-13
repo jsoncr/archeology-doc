@@ -1,0 +1,15 @@
+# Mensajes de archeology-openspec (idioma de la interfaz): validación
+# estructural de cambios (`adoc spec validate`) y avisos de spec-report.
+# Mantener las mismas claves y marcadores en locales/en/openspec.toml.
+
+[openspec]
+invalid_requirement = "aviso: {path}: requirements[{index}] inválido, se ignora ({error})"
+
+[openspec.validate]
+missing_section = "proposal.md sin sección `{section}`"
+missing_proposal = "falta proposal.md"
+no_deltas = "el cambio no tiene deltas en specs/<capability>/spec.md"
+no_delta_section = "{file}: sin sección `## ADDED Requirements`"
+no_scenario = "{file}: `{requirement}` sin `#### Scenario:`"
+no_shall = "{file}: `{requirement}` sin SHALL/MUST"
+no_requirements = "{file}: sin requisitos"

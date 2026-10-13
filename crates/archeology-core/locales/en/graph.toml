@@ -1,0 +1,81 @@
+# Knowledge graph: `adoc graph` (UI language, `t!`), the graph section of
+# `adoc review` (UI language) and the graph in the HTML report and the site
+# (project documentation language, `tl!`).
+# Placeholders: {name}. Keep the same keys and placeholders in
+# locales/es/graph.toml.
+
+[cli.help.graph.arg]
+open = "Generate the interactive HTML graph and open it in the browser"
+out = "Path of the HTML file (default: graph.html in the project workspace)"
+
+[graph.cli]
+written = "Graph written to {path}"
+needs_html = "--open and --out generate the HTML graph: use them with --format html or without --format."
+
+# Texts of the renderer (assets/graph.js). `stats` keeps its placeholders
+# for the browser: {nodes} and {edges}.
+[graph.web]
+search = "Search note…"
+fit = "Fit"
+refresh = "Refresh"
+zoom_in = "Zoom in"
+zoom_out = "Zoom out"
+stats = "{nodes} nodes · {edges} relations"
+stale = "outdated"
+legend = "Types"
+open = "Open file"
+close = "Close"
+path = "Path"
+empty = "The knowledge base has no notes yet."
+edge_relation = "Relation"
+edge_evidence = "Evidence (code)"
+
+[graph.kind]
+overview = "Overview"
+module = "Modules"
+feature = "Features"
+finding = "Findings"
+test-report = "Tests"
+spec-report = "Specs"
+glossary = "Glossary"
+decision = "Decisions"
+memory = "Memory"
+faq = "FAQ"
+moc = "Indexes"
+code = "Code"
+unknown = "No type"
+
+# Standalone HTML page (`adoc graph --format html`).
+[graph.page]
+title = "Knowledge graph · {name}"
+counts = "{notes} notes · {code} code files · {edges} relations"
+hint = "Drag to move · scroll to zoom · click a node to see its path"
+no_script = "The graph needs JavaScript."
+
+# Graph section of `adoc review` (text and markdown).
+[graph.review]
+heading = "== Graph =="
+md_heading = "## Graph"
+counts = "Notes: {notes} · code files: {code} · relations: {edges}"
+edges = "Relations by type: {counts}"
+orphans = "Orphan notes ({count}): {names}"
+no_orphans = "Orphan notes: none"
+top = "Most connected: {items}"
+hint = "Open it with `adoc graph --open`."
+hint_site = "Open it with `adoc graph --open` or on the site: {link} (`adoc preview`)."
+
+# Graph in the HTML report, the markdown report and the site page.
+[doc.graph]
+title = "Knowledge graph"
+intro = "Notes of the knowledge base and their relations (links, related findings, modules, tests) plus the code cited as evidence. Drag to move, scroll to zoom and click a note to open it."
+report_intro = "Notes of the knowledge base and their relations plus the code cited as evidence. Click a node to see its path and open the file."
+counts = "**Notes:** {notes} · **code files:** {code} · **relations:** {edges}"
+counts_html = "{notes} notes · {code} code files · {edges} relations"
+edges = "Relations by type: {counts}"
+top_heading = "Most connected notes"
+top_item = "{title} — {count} connections"
+orphans_heading = "Orphan notes"
+orphans_hint = "Notes without any link or relation (indexes are not counted)."
+no_orphans = "None: every note is connected."
+more = "… and {count} more"
+cover_link = "[Knowledge graph](/grafo)"

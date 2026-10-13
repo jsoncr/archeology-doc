@@ -75,6 +75,23 @@ p code, li code, td code, .lead code { background: var(--bg-alt); padding: 0.1em
   border: 1px solid var(--line); background: var(--card); color: var(--ink);
   width: 34px; height: 34px; border-radius: 10px; cursor: pointer; font-size: 16px;
 }
+/* Selector de idioma EN | ES junto al botón de tema (mismo estilo). */
+.nav-tools { display: flex; align-items: center; gap: 8px; }
+.lang {
+  display: inline-flex; height: 34px; padding: 2px; gap: 2px;
+  border: 1px solid var(--line); background: var(--card); border-radius: 10px;
+}
+.lang button {
+  border: 0; background: none; color: var(--muted); cursor: pointer;
+  min-width: 32px; padding: 0 8px; border-radius: 8px; font-family: inherit; font-size: 12.5px; font-weight: 600; line-height: 1; letter-spacing: 0.04em;
+}
+.lang button:hover { color: var(--ink); }
+.lang button[aria-pressed="true"] { background: var(--bg-alt); color: var(--ink); box-shadow: inset 0 0 0 1px var(--cyan); }
+.lang button:focus-visible, .theme:focus-visible, .tab:focus-visible {
+  outline: 2px solid var(--cyan); outline-offset: 2px;
+}
+/* i18n.js marca la página mientras traduce (idioma distinto al del HTML): evita el parpadeo. */
+html[data-i18n-pending] body { visibility: hidden; }
 
 /* Hero */
 .hero { padding: 88px 0 72px; position: relative; overflow: hidden; }
@@ -215,7 +232,7 @@ h3 { font-size: 17px; margin: 0 0 6px; }
   .hero-logo { order: 0; }
   .hero-logo img { max-width: 300px; }
   .nav nav { display: none; }
-  .theme { margin-left: auto; }
+  .nav-tools { margin-left: auto; }
   .hero { padding: 64px 0 48px; }
   .section { padding: 56px 0; }
   .cmds td:first-child { white-space: normal; }

@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { language } from './i18n';
 import { ProjectRow, Status } from './types';
 
 const TERMINAL_NAME = 'adoc';
@@ -44,6 +45,20 @@ export function installedAdoc(): string | undefined {
   return dirs.map((d) => path.join(d, exe)).find((f) => fs.existsSync(f));
 }
 
+/**
+ * Variables de entorno para cada invocación del CLI: `ADOC_LANG` lleva el
+ * idioma resuelto de la extensión (los mensajes de `adoc` salen en ese idioma;
+ * las claves y valores del JSON no cambian).
+ */
+export function cliEnv(extra: Record<string, string> = {}): NodeJS.ProcessEnv {
+  return { ...process.env, ...extra, ADOC_LANG: language() };
+}
+
+/** Lo mismo para `createTerminal`: solo lo que se añade al entorno heredado. */
+export function terminalEnv(): Record<string, string> {
+  return { ADOC_LANG: language() };
+}
+
 /** Ejecuta `adoc <args>` y devuelve stdout; rechaza con stderr si falla. */
 export function exec(root: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -54,7 +69,7 @@ export function exec(root: string, args: string[]): Promise<string> {
         cwd: root,
         maxBuffer: 64 * 1024 * 1024,
         timeout: EXEC_TIMEOUT_MS,
-        env: { ...process.env, ADOC_NO_PROGRESS: '1' },
+        env: cliEnv({ ADOC_NO_PROGRESS: '1' }),
       },
       (err, stdout, stderr) => {
         if (err) {
@@ -114,29 +129,85 @@ export function commandLine(args: string[]): string {
 }
 
 /**
+ * Ruta del binario tal como se escribe en el shell del terminal, o `undefined`
+ * si no se puede escribir sin comillas (p. ej. tiene espacios).
+ *
+ * En Windows la ruta siempre lleva `\`: PowerShell y cmd la aceptan tal cual;
+ * bash (Git Bash, MSYS) interpreta `\` como escape, así que ahí va con `/`.
+ */
+function shellBinary(bin: string): string | undefined {
+  if (process.platform !== 'win32') {
+    return isPlain(bin) ? bin : undefined;
+  }
+  if (!/^[\w+=:.\\/-]+$/.test(bin)) {
+    return undefined;
+  }
+  const shell = path.basename(vscode.env.shell || '').toLowerCase();
+  return /^(bash|sh|zsh|fish)(\.exe)?$/.test(shell) ? bin.replace(/\\/g, '/') : bin;
+}
+
+/**
+ * Terminales con un proceso en marcha (`adoc inspect`, `task run -i`…): no se
+ * les envía texto, se iría a la entrada del agente. Sin integración del shell
+ * no se sabe cuándo termina un comando, así que el terminal queda ocupado.
+ */
+const busyTerminals = new Set<vscode.Terminal>();
+
+/**
+ * Sigue el inicio y fin de los comandos con la integración del shell
+ * (VS Code 1.93+; en versiones anteriores esos eventos no existen).
+ */
+export function trackTerminals(): vscode.Disposable {
+  const win = vscode.window as Partial<typeof vscode.window>;
+  const subs: vscode.Disposable[] = [];
+  if (win.onDidStartTerminalShellExecution && win.onDidEndTerminalShellExecution) {
+    subs.push(
+      win.onDidStartTerminalShellExecution((e) => busyTerminals.add(e.terminal)),
+      win.onDidEndTerminalShellExecution((e) => busyTerminals.delete(e.terminal)),
+    );
+  }
+  subs.push(vscode.window.onDidCloseTerminal((t) => busyTerminals.delete(t)));
+  return vscode.Disposable.from(...subs);
+}
+
+/**
  * Ejecuta en el terminal integrado: se ve el progreso (spinner) y funciona
  * el modo interactivo de los agentes.
  */
 export function runInTerminal(root: string, args: string[]): void {
   const bin = adocPath();
+  const shellBin = shellBinary(bin);
   // Texto libre (preguntas, respuestas) o rutas con espacios: el comando se
   // lanza sin shell, así ni PowerShell ni cmd interpretan `"`, `;` o `$()`.
-  if (![bin, ...args].every(isPlain)) {
+  if (shellBin === undefined || !args.every(isPlain)) {
     const direct = vscode.window.createTerminal({
       name: `${TERMINAL_NAME} · ${args[0] ?? ''}`,
       cwd: root,
       shellPath: bin,
       shellArgs: args,
+      env: terminalEnv(),
     });
     direct.show(true);
     return;
   }
   // Un terminal por proyecto: al cambiar de proyecto no se ejecuta en otra carpeta.
+  // Si está ocupado con otro comando, se abre uno nuevo con el mismo nombre.
+  // Si se creó con otro idioma (`ADOC_LANG`), tampoco se reutiliza: su entorno
+  // ya no se puede cambiar.
   const name = `${TERMINAL_NAME} · ${path.basename(root)}`;
-  let terminal = vscode.window.terminals.find((t) => t.name === name && t.exitStatus === undefined);
+  const env = terminalEnv();
+  let terminal = vscode.window.terminals.find(
+    (t) =>
+      t.name === name &&
+      t.exitStatus === undefined &&
+      !busyTerminals.has(t) &&
+      (t.creationOptions as vscode.TerminalOptions).env?.ADOC_LANG === env.ADOC_LANG,
+  );
   if (!terminal) {
-    terminal = vscode.window.createTerminal({ name, cwd: root });
+    terminal = vscode.window.createTerminal({ name, cwd: root, env });
   }
   terminal.show(true);
-  terminal.sendText([bin, ...args].join(' '));
+  // Ocupado desde ya: el evento de inicio llega después y puede no llegar nunca.
+  busyTerminals.add(terminal);
+  terminal.sendText([shellBin, ...args].join(' '));
 }

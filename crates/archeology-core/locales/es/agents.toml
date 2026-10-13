@@ -1,0 +1,58 @@
+# Mensajes de archeology-agents (idioma de la interfaz): orquestador,
+# adaptadores e interrupciones. Los logs de corrida (run.log, <tarea>.log)
+# también usan el idioma de la interfaz. El encabezado del prompt del agente
+# es contenido generado: doc.agent_prompt.* con el idioma del proyecto.
+# Mantener las mismas claves y marcadores en locales/en/agents.toml.
+
+[agents.orchestrator]
+adapter_undefined = "adaptador '{agent}' no definido en archeology-doc.toml"
+invalid_config = "configuración del agente inválida:\n  - {problems}\n(revisa archeology-doc.toml o ejecuta `adoc doctor`)"
+running_task = "ejecutando tarea"
+agent_finished = "agente terminó"
+out_of_scope_warning = "el agente modificó archivos fuera de su alcance"
+no_attempts = "sin intentos"
+attempt_header = "=== intento {attempt}/{attempts} ==="
+validation_prefix = "[validación]"
+agent_question = "pregunta del agente: {question}"
+agent_hint = " — el agente avisó: {hint}"
+invalid_output = "salida inválida: {errors}{hint}"
+failure_line = "[fallo] {reason}"
+missing_dependency = "inexistente"
+interrupted_note = "[interrumpida] Ctrl+C/SIGTERM: la tarea vuelve a `pending`"
+prompt_bytes = "<{bytes} bytes de prompt>"
+
+[agents.run_log]
+header = "run {run_id} · agente {agent} · inicio {start} · fin {end}"
+row = "{task} {status} {ms} ms  exit={exit} intentos={attempts}{reason}"
+blocked = "{task} bloqueada (espera {deps})"
+out_of_scope = "{task} fuera de alcance: {files}"
+interrupted = "corrida interrumpida por el usuario (Ctrl+C/SIGTERM)"
+
+[agents.interrupt]
+interrupted = "interrumpido por el usuario"
+
+[agents.adapter]
+export_mode = "modo exportación (sin comando)"
+untrusted = "definido en el repositorio, sin aprobar (revísalo y ejecuta `adoc agent trust {name}`)"
+available = "'{command}' disponible"
+not_found = "'{command}' no encontrado en PATH"
+invalid_model = "modelo inválido ({model}): usa solo letras, números y . _ : / @ + - (sin '-' inicial)"
+reason_interrupted = "interrumpida por el usuario"
+reason_timeout = "timeout tras {ms}ms"
+reason_exit_code = "exit code {code}"
+reason_signal = "terminó por la señal {signal}"
+reason_no_exit_code = "terminó sin código de salida"
+not_approved = "adaptador sin aprobar: está definido en archeology-doc.toml y no es uno predefinido (revísalo y apruébalo con `adoc agent trust <nombre>`)"
+missing_command = "adaptador headless sin `command`"
+spawn_failed = "no se pudo lanzar '{command}'"
+wait_failed = "no se pudo consultar el estado del agente"
+output_still_open = "[archeology-doc: la salida sigue abierta (un proceso hijo la conserva); se corta aqui]"
+output_truncated = "[salida truncada por archeology-doc]"
+unrestricted = "'{name}' corre sin confirmaciones ({flags}): puede ejecutar comandos de shell. Úsalo solo con repositorios de confianza; texto malicioso en el código podría darle órdenes"
+no_write_permission = "[agent.adapters.{name}] sin permiso de escritura ({flags}): el agente no podrá escribir las notas{suggested}"
+suggested_args = " (sugerido: args = {args})"
+no_task_input = "[agent.adapters.{name}] no recibe la tarea: usa stdin = true o {prompt_file} en args"
+and_stdin = " y stdin = true"
+
+[doc.agent_prompt]
+header = "Eres un agente que ejecuta una tarea de archeology-doc en este repositorio. Sigue la tarea al pie de la letra y escribe los archivos indicados en `# Produce`."

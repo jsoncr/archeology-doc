@@ -1,0 +1,32 @@
+# User-interface messages of archeology-cli (UI language).
+# Keys: cli.<command>.<message>. Placeholders: {name}. Use with `t!(...)`.
+# Keep the same keys and placeholders in locales/es/cli.toml.
+
+[cli.main]
+interrupted = "interrupted: the running task was left `pending`; resume with `adoc inspect`"
+
+[cli.config]
+language_set = "language = {lang} (saved in {path})"
+language_get = "{lang} (source: {source})"
+language_unset = "language removed from {path}"
+
+[cli.init]
+already_initialized = "the project already has archeology-doc.toml"
+initializing = "Initializing archeology-doc in {path}"
+detected_agents = "Detected agents: {agents}"
+ask_name = "Project name"
+ask_agent = "Default agent"
+ask_language = "Documentation language (en|es)"
+unknown_adapter = "warning: adapter '{agent}' is not built in; add [agent.adapters.{agent}] to archeology-doc.toml"
+confirm_overwrite = "archeology-doc.toml exists. Overwrite?"
+cancelled = "cancelled"
+created = "created {path}"
+creating = "creating {path}"
+updated = "updated {path}"
+docs_mark = "docs/ created by adoc init"
+site_not_prepared = "warning: site not prepared: {error}"
+registered = "registered in {path}"
+done = "archeology-doc initialized in {path}"
+work_state = "Work state (tasks, runs, inventory): {path}"
+doc_language = "Documentation language: {lang} ([project] language in archeology-doc.toml)"
+next_step = "Next step: `adoc scan` to generate the inventory."

@@ -1,0 +1,15 @@
+# Messages of archeology-openspec (UI language): structural validation of
+# changes (`adoc spec validate`) and spec-report warnings. Keep the same keys
+# and placeholders in locales/es/openspec.toml.
+
+[openspec]
+invalid_requirement = "warning: {path}: requirements[{index}] is invalid, ignored ({error})"
+
+[openspec.validate]
+missing_section = "proposal.md without section `{section}`"
+missing_proposal = "proposal.md is missing"
+no_deltas = "the change has no deltas in specs/<capability>/spec.md"
+no_delta_section = "{file}: no `## ADDED Requirements` section"
+no_scenario = "{file}: `{requirement}` without `#### Scenario:`"
+no_shall = "{file}: `{requirement}` without SHALL/MUST"
+no_requirements = "{file}: no requirements"

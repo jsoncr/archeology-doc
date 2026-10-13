@@ -126,19 +126,19 @@ select { font: inherit; background: var(--vscode-dropdown-background); color: va
 .faq summary { cursor: pointer; font-weight: 600; }
 .faq .answer { margin-top: 6px; }
 
-/* Grafo (comparte estilos con media/graph.js) */
+/* Grafo: estilos en media/graph.css (renderizador compartido); aquí, sus
+   colores con las variables del tema de VS Code. */
 .graph-panel.active { position: absolute; inset: 0; padding: 0; }
-#graph { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; }
-#bar { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; pointer-events: none; }
-#bar > * { pointer-events: auto; }
-#search { width: 220px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--vscode-input-border, transparent);
-  background: var(--vscode-input-background); color: var(--vscode-input-foreground); font: inherit; }
-#stats { color: var(--muted); margin-left: auto; }
-#filters { position: absolute; left: 10px; bottom: 10px; display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border-radius: 6px;
-  background: color-mix(in srgb, var(--bg) 85%, transparent); border: 1px solid var(--line); }
-#filters label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
-.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
-#tip { position: absolute; padding: 4px 8px; border-radius: 4px; pointer-events: none; max-width: 360px;
-  background: var(--vscode-editorHoverWidget-background); border: 1px solid var(--vscode-editorHoverWidget-border); }
+#graph { position: absolute; inset: 0; }
+.adoc-graph {
+  --adoc-graph-bg: var(--vscode-editor-background);
+  --adoc-graph-fg: var(--vscode-foreground);
+  --adoc-graph-muted: var(--vscode-descriptionForeground);
+  --adoc-graph-line: var(--line);
+  --adoc-graph-panel: var(--vscode-editorHoverWidget-background, var(--card));
+  --adoc-graph-input: var(--vscode-input-background);
+  --adoc-graph-accent: var(--vscode-focusBorder, var(--accent));
+  font-family: var(--vscode-font-family);
+}
 
 @media (max-width: 760px) { .cols { grid-template-columns: 1fr; } }

@@ -1,0 +1,7 @@
+# Mensajes de archeology-scan (idioma de la interfaz). Mantener las mismas
+# claves y marcadores en locales/en/scan.toml.
+
+[scan.phase]
+git_history = "analizando historial git"
+openspec = "detectando OpenSpec"
+modules = "agrupando módulos"

@@ -1,0 +1,23 @@
+# Cabeceras de Cloudflare Pages (https://developers.cloudflare.com/pages/configuration/headers/).
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+
+# Instaladores como texto: `irm … | iex` necesita texto, no application/octet-stream.
+# Caché corta: tras un release, los usuarios deben bajar la versión nueva.
+/download/install.sh
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=300
+
+/download/install.ps1
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=300
+
+/download/latest.json
+  Cache-Control: public, max-age=300
+
+/download/SHA256SUMS
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=300

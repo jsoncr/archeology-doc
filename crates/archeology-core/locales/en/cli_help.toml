@@ -1,0 +1,261 @@
+# `--help` texts of the CLI (UI language). Applied over the clap derive.
+# Keys: cli.help[.<subcommand>...].about | long_about | arg.<arg id>.
+# Built-in clap texts: cli.help.clap.*.
+# Keep the same keys and placeholders in locales/es/cli_help.toml.
+
+[cli.help]
+about = "Inspects software projects and generates documentation, knowledge and context for AI agents."
+
+[cli.help.arg]
+project = "Operate on a registered project by name or ID (RF-173)"
+verbose = "Verbosity (-v info, -vv debug)"
+lang = "Interface language (en|es). Precedence: --lang > ADOC_LANG > `language` in ~/.archeology-doc/config.toml > system locale > en. In `init`, also the language of the generated documentation"
+
+[cli.help.clap]
+usage = "Usage:"
+commands = "Commands"
+arguments = "Arguments"
+options = "Options"
+help = "Print help"
+help_short = "Print help (see more with '--help')"
+help_long = "Print help (see a summary with '-h')"
+version = "Print version"
+help_subcommand = "Print this message or the help of the given subcommand(s)"
+help_subcommand_arg = "Print help for the subcommand(s)"
+
+[cli.help.init]
+about = "Initialize archeology-doc in the current project"
+[cli.help.init.arg]
+yes = "Use defaults without asking (for CI)"
+agent = "Default agent (claude, codex, manual, ...)"
+name = "Project name (default: directory name)"
+adapters = "Context adapters (claude,cursor,copilot). Default: based on the agent"
+dir = "Project directory (default: current)"
+
+[cli.help.config]
+about = "User preferences (~/.archeology-doc/config.toml), e.g. the language"
+[cli.help.config.set]
+about = "Set a preference (e.g. `adoc config set language en`)"
+[cli.help.config.set.arg]
+value = "Value (language: en|es)"
+[cli.help.config.get]
+about = "Show the effective value and where it comes from"
+[cli.help.config.get.arg]
+json = "JSON output: {\"key\", \"value\", \"source\"}"
+[cli.help.config.unset]
+about = "Remove a preference (the default value is used again)"
+
+[cli.help.scan]
+about = "Deterministic inventory of the repository"
+[cli.help.scan.arg]
+no_git = "Do not analyze the git history"
+json = "Print the inventory as JSON on stdout"
+
+[cli.help.plan]
+about = "Generate or update the inspection tasks"
+[cli.help.plan.arg]
+module = "Only this module"
+type = "Only this task type"
+path = "Only tasks whose scope includes this path"
+force = "Regenerate existing tasks"
+
+[cli.help.inspect]
+about = "Run tasks with an agent (or export them for manual mode)"
+[cli.help.inspect.arg]
+agent = "Adapter to use (default: agent.default in the config)"
+model = "Agent model for this run only (e.g. opus, sonnet)"
+task = "Run only these tasks"
+module = "Only tasks of this module"
+resume = "Resume, including failed tasks"
+dry_run = "Show what would run without running it"
+
+[cli.help.task]
+about = "Task management (manual mode)"
+[cli.help.task.list]
+about = "List the tasks"
+[cli.help.task.list.arg]
+status = "Filter by status (pending|manual|question|done|failed)"
+format = "Output format"
+[cli.help.task.show]
+about = "Show a full task"
+[cli.help.task.show.arg]
+id = "Task ID (T-001, ...)"
+[cli.help.task.export]
+about = "Export pending tasks as ready-to-use prompts"
+[cli.help.task.export.arg]
+out = "Output directory (default: the workspace tasks)"
+[cli.help.task.answer]
+about = "Answer an agent's question and leave the task ready to retry"
+[cli.help.task.answer.arg]
+id = "Task ID"
+text = "Answer (or an additional instruction for the agent)"
+[cli.help.task.run]
+about = "Run a single task; with `--interactive`, open the agent session"
+[cli.help.task.run.arg]
+id = "Task ID"
+interactive = "Interactive session: you talk with the agent and, on exit, the output is validated"
+agent = "Agent to use (default: the active one)"
+model = "Agent model for this run only"
+[cli.help.task.done]
+about = "Mark a manual task as completed after validating its output"
+[cli.help.task.done.arg]
+id = "Task ID"
+force = "Mark as done even if the output validation fails"
+
+[cli.help.review]
+about = "Summary of status, findings and progress"
+[cli.help.review.arg]
+severity = "Filter findings by severity"
+format = "Output format"
+
+[cli.help.check]
+about = "Validations for CI (frontmatter, links, evidence)"
+[cli.help.check.arg]
+strict = "Warnings also fail"
+site = "Also verify that the VitePress site builds (RF-134)"
+yes = "With --site, approve running the project's VitePress configuration (repository JavaScript) without asking"
+format = "Output format"
+
+[cli.help.sync]
+about = "Detect changes and mark outdated notes"
+[cli.help.sync.arg]
+since = "Compare against a git ref instead of the stored hashes"
+dry_run = "Show what would change without modifying notes, tasks or state"
+
+[cli.help.site]
+about = "VitePress documentation site"
+[cli.help.site.setup]
+about = "Install VitePress in the configuration directory, shared by all projects"
+[cli.help.site.setup.arg]
+version = "VitePress version"
+[cli.help.site.sync]
+about = "Regenerate wiki, specs, sidebar and llms.txt without launching VitePress"
+[cli.help.site.dev]
+about = "VitePress development server"
+[cli.help.site.dev.arg]
+yes = "Approve running the project's VitePress configuration (repository JavaScript)"
+[cli.help.site.build]
+about = "VitePress production build"
+[cli.help.site.build.arg]
+yes = "Approve running the project's VitePress configuration (repository JavaScript)"
+
+[cli.help.agent]
+about = "List and test agent adapters"
+[cli.help.agent.list]
+about = "List the configured adapters; `*` marks the active agent"
+[cli.help.agent.test]
+about = "Test that the adapter command responds"
+[cli.help.agent.test.arg]
+agent = "Adapter name (default: all)"
+[cli.help.agent.use]
+about = "Change the agent (and optionally the model) used by `inspect` in this project"
+long_about = """
+Change the agent (and optionally the model) used by `inspect` in this project.
+
+Examples: `adoc agent use claude --model opus`, `adoc agent use devin`, `adoc agent use manual`."""
+[cli.help.agent.use.arg]
+name = "Built-in adapter (claude, codex, devin, gemini, qwen, opencode, cursor, copilot, amp, goose, aider, manual) or another one defined in the config"
+model = "Agent model (e.g. opus, sonnet, gpt-5)"
+no_model = "Remove the pinned model and use the agent's default"
+reset = "Replace the adapter definition with the current built-in one (e.g. after updating adoc)"
+[cli.help.agent.trust]
+about = "Approve an adapter defined in archeology-doc.toml for this project"
+long_about = """
+Approve an adapter defined in archeology-doc.toml for this project.
+
+The config travels with the repository: an adapter that is not built in decides which program runs. It only runs after you review and approve it; if it changes in the repository, it must be approved again."""
+[cli.help.agent.trust.arg]
+yes = "Do not ask for confirmation (scripts, CI)"
+[cli.help.agent.untrust]
+about = "Withdraw the approval of an adapter in this project"
+
+[cli.help.spec]
+about = "OpenSpec integration"
+[cli.help.spec.status]
+about = "Requirement compliance status (RF-150, RF-163)"
+[cli.help.spec.status.arg]
+capability = "Only this capability"
+format = "Output format"
+[cli.help.spec.baseline]
+about = "Prepare inferred baseline specs as an OpenSpec change (RF-157)"
+long_about = """
+Prepare inferred baseline specs as an OpenSpec change (RF-157).
+
+Creates `openspec/changes/baseline-<date>/` and a task for the agent to write the inferred requirement deltas."""
+[cli.help.spec.baseline.arg]
+capability = "Only this capability (inventory module)"
+dry_run = "Show what would be generated without writing"
+[cli.help.spec.validate]
+about = "Validate an OpenSpec change (official CLI or structural validation, RF-159)"
+[cli.help.spec.validate.arg]
+change = "Change name (folder in openspec/changes/)"
+
+[cli.help.projects]
+about = "Management of the global project registry"
+[cli.help.projects.list]
+about = "List the registered projects"
+[cli.help.projects.list.arg]
+format = "Output format"
+[cli.help.projects.add]
+about = "Register an existing project"
+[cli.help.projects.add.arg]
+path = "Project path"
+[cli.help.projects.discover]
+about = "Discover projects with archeology-doc.toml in a tree"
+[cli.help.projects.discover.arg]
+dir = "Root directory of the search"
+depth = "Maximum depth"
+[cli.help.projects.prune]
+about = "Remove entries whose directory no longer exists"
+[cli.help.projects.prune.arg]
+yes = "Without asking for confirmation"
+
+[cli.help.resume]
+about = "Resume the last pending inspection"
+[cli.help.resume.arg]
+project = "Name or ID of the project to resume"
+agent = "Adapter to use"
+model = "Agent model for this run only"
+
+[cli.help.preview]
+about = "Show the result: site with dashboard in the browser (or HTML report without VitePress)"
+[cli.help.preview.arg]
+port = "VitePress server port"
+no_open = "Do not open the browser"
+yes = "Approve running the project's VitePress configuration (repository JavaScript); remembered for this project"
+
+[cli.help.report]
+about = "Generate a single HTML (or Markdown) report with the status, findings and questions"
+[cli.help.report.arg]
+format = "Report format"
+html = "Shortcut for `--format html`"
+out = "Output path (default: in the project workspace)"
+no_open = "Do not open the report in the browser"
+
+[cli.help.ask]
+about = "Ask the agent about the project; the answer is saved in the FAQ (knowledge/faq/)"
+[cli.help.ask.arg]
+question = "The question; quotes are optional. Without arguments, it is asked in the terminal (useful in zsh, where `?` is a wildcard)"
+agent = "Agent to use (default: the active one)"
+model = "Agent model for this question only"
+
+[cli.help.graph]
+about = "Knowledge graph: JSON, text or interactive HTML (notes, relations and evidence)"
+[cli.help.graph.arg]
+format = "Output format"
+
+[cli.help.status]
+about = "Full project status as JSON (tasks, findings, notes, agent)"
+[cli.help.status.arg]
+format = "Output format"
+
+[cli.help.doctor]
+about = "Check requirements: git, Node, VitePress, OpenSpec, agents and configuration"
+[cli.help.doctor.arg]
+format = "Output format"
+
+[cli.help.uninstall]
+about = "Uninstall `adoc`; with --purge also delete ~/.archeology-doc (projects are not touched)"
+[cli.help.uninstall.arg]
+purge = "Also delete the global data: project registry, workspaces (state, tasks, runs), adapter approvals and shared VitePress (`~/.archeology-doc/`)"
+yes = "Do not ask for confirmation"

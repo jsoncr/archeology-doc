@@ -19,4 +19,5 @@ depends_on: [{{ depends_on }}]
 - Marca confidence: low si no puedes verificarlo en el código.
 - No modifiques archivos fuera de las rutas de salida (nunca openspec/specs/).
 - Respeta las regiones gestionadas `<!-- archeology-doc:begin ... -->`.
+- Escribe las notas en español.
 - Al terminar, agrega una entrada en knowledge/memory/sessions/.

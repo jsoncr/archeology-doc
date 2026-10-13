@@ -30,6 +30,71 @@ export interface Status {
     team: string[];
     faq: { question: string; answer: string; origin: string; file: string }[];
   };
+  timing: Timing;
+  /** Datos del último `adoc scan`; `null` si todavía no se escaneó. */
+  inventory: InventorySummary | null;
+  /** Primeros párrafos del overview escritos por el agente. */
+  overview_excerpt: string | null;
+}
+
+/** Tiempos de las ejecuciones con agente (milisegundos). */
+export interface Timing {
+  runs: number;
+  total_agent_ms: number;
+  avg_done_ms: number | null;
+  estimated_remaining_ms: number | null;
+  last_run_at: string | null;
+}
+
+/** Última ejecución con agente de una tarea. */
+export interface TaskRunInfo {
+  agent: string;
+  status: string;
+  duration_ms: number;
+  attempts: number;
+  exit_code: number | null;
+  reason: string | null;
+  /** Fin de la corrida (RFC 3339). */
+  finished_at: string | null;
+}
+
+/** Resumen del inventario para el dashboard. */
+export interface InventorySummary {
+  generated_at: string;
+  total_files: number;
+  total_bytes: number;
+  total_lines: number;
+  code_files: number;
+  languages: { name: string; files: number; bytes: number; lines: number }[];
+  frameworks: string[];
+  test_frameworks: string[];
+  manifests: string[];
+  entrypoints: string[];
+  test_files: string[];
+  disabled_tests: string[];
+  ci_files: string[];
+  doc_files: string[];
+  markers_by_kind: Record<string, number>;
+  markers: { kind: string; path: string; line: number; text: string }[];
+  git: {
+    commits_analyzed: number;
+    authors: string[];
+    last_commit_hash: string | null;
+    last_commit_date: string | null;
+    last_commit_subject: string | null;
+    /** Archivos más modificados: [ruta, commits]. */
+    hotspots: [string, number][];
+  } | null;
+  modules: {
+    name: string;
+    path: string;
+    files: number;
+    bytes: number;
+    languages: string[];
+    has_tests: boolean;
+    recursive: boolean;
+    code_files: number;
+  }[];
 }
 
 export interface TaskInfo {
@@ -42,6 +107,7 @@ export interface TaskInfo {
   question: string | null;
   file: string;
   log: string | null;
+  last_run: TaskRunInfo | null;
 }
 
 export interface FindingInfo {

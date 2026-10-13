@@ -20,8 +20,8 @@ La investigación la realizan los agentes que ya usas (Claude Code, Codex, OpenC
 Binario precompilado (sin Rust), desde el sitio publicado:
 
 ```bash
-curl -fsSL https://<sitio>/download/install.sh | sh          # macOS / Linux
-irm https://<sitio>/download/install.ps1 | iex                # Windows (PowerShell)
+curl -fsSL https://archeology-doc.com/download/install.sh | sh          # macOS / Linux
+irm https://archeology-doc.com/download/install.ps1 | iex                # Windows (PowerShell)
 ```
 
 Desde el código (instaladores y build de descargas en [WEBSITE/](WEBSITE/README.md)):
@@ -36,6 +36,10 @@ cargo build --release
 adoc doctor                    # verifica git, Node, VitePress, OpenSpec y agentes
 adoc site setup                # opcional: VitePress compartido para todos los proyectos
 ```
+
+Actualizar: vuelve a ejecutar el instalador con el que lo instalaste (`curl … | sh`, `irm … | iex`
+o `WEBSITE/installers/install.sh` desde un clon actualizado con `git pull`); reemplaza los binarios.
+`cargo install --path crates/archeology-cli --force` solo sirve desde un clon del repositorio.
 
 Desinstalar:
 
@@ -93,8 +97,10 @@ mi-proyecto/                          # solo configuración y resultados
     └── runs/<fecha>-<id>/            # run.log y un log por tarea
 ```
 
-Los proyectos con el estado antiguo en `<proyecto>/.archeology-doc/` se migran solos al primer comando,
-y el registro de `~/Library/Application Support/archeology-doc` (o `~/.config/…`) también.
+Los proyectos con el estado antiguo dentro del repositorio (`<proyecto>/.archeology-doc/` o, con el
+nombre anterior, `<proyecto>/.arqueology-doc/`) se migran solos al primer comando, y el registro de
+`~/Library/Application Support/archeology-doc` o `~/Library/Application Support/arqueology-doc`
+(o sus equivalentes en `~/.config/…`) también.
 
 ## Agentes
 
@@ -138,9 +144,11 @@ adoc agent untrust mi-agente   # retira la aprobación
 
 La aprobación se guarda en `~/.archeology-doc/trusted-adapters.toml`, ligada al proyecto y a la
 definición exacta: si el adaptador cambia en el repositorio, hay que volver a aprobarlo. Los
-adaptadores `copilot`, `amp`, `aider` y `cursor` corren sin confirmaciones (pueden ejecutar comandos
-de shell): `inspect` lo avisa. Úsalos solo con repositorios de confianza. `adoc preview` y
-`adoc site` ejecutan la configuración de VitePress del proyecto (JavaScript).
+adaptadores `copilot`, `amp`, `aider`, `cursor` y `devin` (`--respect-workspace-trust false`) corren
+sin confirmaciones (pueden ejecutar comandos de shell): `inspect` lo avisa. Úsalos solo con repositorios de confianza. `adoc preview` y
+`adoc site` ejecutan la configuración de VitePress del proyecto (JavaScript): la primera vez en cada
+proyecto piden confirmación (se recuerda en `trusted-adapters.toml`). Sin terminal interactiva, como en CI,
+hay que aprobarlo con `--yes` (`adoc preview --yes`, `adoc site build --yes`, `adoc check --site --yes`).
 
 `agent use` edita `archeology-doc.toml` conservando su formato. Con `manual`, `inspect` marca
 las tareas como manuales; se ejecutan en esa herramienta y se cierran con `adoc task done <id>`.
@@ -158,7 +166,7 @@ las tareas `done` nunca se tocan.
 | `task list/show/export/done` | Gestión de tareas en modo manual (`done` valida la salida; `--force` la omite) |
 | `task answer <id> "<texto>"` | Responde la pregunta de un agente y deja la tarea lista para reintentar |
 | `task run <id>` | Ejecuta una sola tarea (`--interactive` abre la sesión del agente; `--agent`, `--model`) |
-| `review` | Progreso, hallazgos, funcionalidades sin tests y cumplimiento de specs (`--severity`, `--format text\|json\|markdown`) |
+| `review` | Progreso, hallazgos, funcionalidades sin tests, cumplimiento de specs y resumen del grafo (`--severity`, `--format text\|json\|markdown`) |
 | `check` | Validaciones para CI: frontmatter, evidencias (archivo y líneas), wikilinks, IDs, duplicados, notas stale (`--strict`, `--format`, `--site`) |
 | `sync` | Marca `stale` las notas cuyas fuentes cambiaron y reabre sus tareas (`--since <ref>`, `--dry-run`) |
 | `site setup` | Instala VitePress en el directorio de configuración, compartido por todos los proyectos (`--version`) |
@@ -166,7 +174,7 @@ las tareas `done` nunca se tocan.
 | `status` | Estado completo del proyecto en JSON (usado por la extensión) |
 | `preview` | Sitio con dashboard en el navegador; sin VitePress, el reporte HTML (`--port`, `--no-open`) |
 | `report` | Reporte HTML único o Markdown (`--format`, `--out`, `--no-open`) |
-| `graph` | Grafo del conocimiento en JSON: notas, wikilinks, relaciones y evidencias (vista de grafo de la extensión) |
+| `graph` | Grafo del conocimiento: JSON (vista de la extensión), resumen en texto o HTML interactivo (`--format json\|text\|html`, `--out`, `--open`) |
 | `ask "<pregunta>"` | Pregunta al agente; la respuesta queda en la FAQ (`--agent`, `--model`) |
 | `doctor` | Verifica requisitos del CLI y del proyecto; código 1 si falta algo obligatorio (`--format`) |
 | `agent list/test` | Lista y prueba adaptadores; `*` marca el activo |
@@ -184,7 +192,9 @@ Opción global: `--project <nombre|id>` en todos los comandos.
 1. `plan` escribe las tareas `T-*.md` en el espacio de trabajo con objetivo, archivos a leer, salidas (`# Produce`) y reglas.
 2. `inspect` ejecuta cada tarea cuando sus dependencias están `done`. Una tarea solo queda `done` si el agente
    termina con código 0 **y** produjo lo declarado con frontmatter y evidencias válidas; si no, queda `failed`
-   y sus dependientes, bloqueadas. Los reintentos se configuran en `agent.retries`.
+   y sus dependientes, bloqueadas. Los reintentos se configuran en `agent.retries` (máximo 10).
+   Con Ctrl+C, `inspect` detiene al agente y a sus subprocesos, deja la tarea en curso en `pending`
+   y sale con código 130; `adoc resume` la retoma.
 3. Cada corrida deja `runs/<fecha>-<id>/run.log` y un log por tarea; en repos git avisa si el agente
    modificó archivos fuera de las rutas permitidas.
 4. `sync` vuelve `stale` las notas cuyas fuentes cambiaron (salvo `locked: true`) y reabre sus tareas.
@@ -215,12 +225,42 @@ adoc ask "¿Cómo se calcula el total de una reserva?"   # pregunta al agente �
 
 - **`preview`** prepara el sitio (`site sync`) y lo abre con `vitepress dev --open`. La portada incluye un
   resumen (región gestionada `dashboard` en `docs/index.md`) y el sidebar añade **Estado**, **Hallazgos** y
-  **Preguntas y FAQ**. Sin VitePress, muestra el reporte HTML.
-- **`report`** genera un HTML autocontenido (sin CDN ni JS) en el espacio de trabajo, con progreso, hallazgos
-  por severidad y evidencias, funcionalidades sin tests, specs, tareas y preguntas.
+  **Preguntas y FAQ** y **Grafo del conocimiento**. Sin VitePress, muestra el reporte HTML.
+- **`report`** genera un HTML autocontenido (sin CDN ni recursos externos) en el espacio de trabajo, con
+  progreso, hallazgos por severidad y evidencias, funcionalidades sin tests, specs, el grafo del
+  conocimiento, tareas y preguntas. `--format markdown` incluye el resumen del grafo.
 - **Preguntas**: las del agente que bloquean tareas (`task answer`), las dudas para el equipo técnico que los
   agentes registran en `knowledge/memory/open-questions.md`, y la **FAQ**: respuestas de `adoc ask`
   (notas `type: faq` en `knowledge/faq/`) y las dadas con `task answer`.
+
+## Grafo del conocimiento
+
+Las notas del vault y sus relaciones, como el grafo de Obsidian: wikilinks, `related` (hallazgos),
+`modules`, tests de cada funcionalidad y el código citado como evidencia (`sources`).
+
+```bash
+adoc graph --open                 # HTML interactivo en el espacio de trabajo, abierto en el navegador
+adoc graph --format html --out grafo.html
+adoc graph --format text          # conteos
+adoc graph                        # JSON (lo usa la extensión)
+```
+
+- **Dónde se ve**: la página HTML de `graph --open` (`~/.archeology-doc/projects/<proyecto>/graph.html`),
+  la sección **Grafo** de `adoc report`, la página **Grafo del conocimiento** del sitio (`docs/grafo.md`,
+  enlazada desde la portada y el sidebar; `site sync` la regenera) y la pestaña **Grafo** de la extensión.
+  Los cuatro usan el mismo renderizador (`crates/archeology-core/assets/graph.js`, sin dependencias).
+- **Interacción**: búsqueda (Enter centra la primera coincidencia), filtro por tipo en la leyenda (índices
+  y código ocultos al empezar), zoom con la rueda o `+`/`−`, arrastrar para mover nodos o la vista. Un clic
+  abre la nota: en el sitio navega a su página del vault; en el HTML y el reporte muestra título, tipo y
+  ruta con enlace `file://`; en la extensión abre el archivo en el editor (el código, en la línea citada).
+- **Resumen** (`adoc review`, en texto, markdown y la clave `graph` del JSON): notas, archivos de código,
+  relaciones por tipo, las 5 notas más conectadas y las **notas huérfanas** (sin ninguna relación; no
+  cuentan los índices/MOCs).
+- **Seguridad**: el HTML no carga nada externo y lleva una CSP con nonce; los datos van como JSON escapado
+  (un título con `</script>` no rompe la página). El sitio no publica rutas absolutas locales; sus recursos
+  van en `docs/public/adoc-graph/` (marcada como generada: si existe sin la marca, `site sync` no la toca).
+- Textos: la página de `graph --open` y el resumen de `review` usan el idioma de la interfaz; el reporte y
+  el sitio, el de la documentación del proyecto.
 
 ## Cuando el agente pregunta
 
@@ -249,13 +289,48 @@ VitePress (Node 18+) se busca en este orden:
 
 Con 2 y 3, `site dev|build` enlaza `docs/node_modules` a esa instalación (ignorado en `docs/.gitignore`),
 sin tocar el `package.json` del proyecto. En Windows el enlace requiere el modo desarrollador; si no,
-usa la opción 1. `adoc doctor` muestra cuál se usará. Para verificar en CI: `adoc check --site`.
+usa la opción 1. `adoc doctor` muestra cuál se usará. Para verificar en CI: `adoc check --site --yes`.
+
+## Idioma / Language
+
+`adoc` habla inglés (`en`) y español (`es`). Hay dos idiomas independientes:
+
+**Idioma de la interfaz** (mensajes, errores, avisos). Se elige, de mayor a menor prioridad:
+
+1. el flag global `--lang <en|es>`;
+2. la variable de entorno `ADOC_LANG`;
+3. `language` en `~/.archeology-doc/config.toml` (o `$ARCHEOLOGY_DOC_CONFIG_DIR/config.toml`);
+4. el locale del sistema (`LC_ALL`, `LC_MESSAGES`, `LANG` o el del sistema operativo: `es*` → `es`, `en*` → `en`);
+5. `en`.
+
+Un valor inválido se avisa y se pasa a la siguiente fuente.
+
+```bash
+adoc config set language es   # guarda la preferencia
+adoc config get language      # valor efectivo y su origen (--json para scripts)
+adoc config unset language    # vuelve a la detección automática
+```
+
+**Idioma de la documentación del proyecto**: el del contenido generado (plantillas, regiones de
+`AGENTS.md`/`CLAUDE.md`, notas índice, `llms.txt`, sitio y prompts de las tareas; se le indica al agente
+en qué idioma escribir las notas). Se guarda en `archeology-doc.toml`:
+
+```toml
+[project]
+language = "en"   # en | es
+```
+
+`adoc init --lang <en|es>` lo fija; sin `--lang`, se usa el idioma de la interfaz resuelto. Las
+configuraciones sin el campo (anteriores a esta versión) se tratan como `es`. La salida para máquinas
+(claves JSON, estados como `pending`/`done`/`question`, claves de frontmatter y nombres de archivo) no
+cambia con el idioma.
 
 ## Variables de entorno
 
 | Variable | Uso |
 |----------|-----|
 | `ARCHEOLOGY_DOC_CONFIG_DIR` | Directorio de configuración (por defecto `~/.archeology-doc`). Útil en tests y CI. |
+| `ADOC_LANG` | Idioma de la interfaz (`en`, `es`); ver [Idioma / Language](#idioma--language). |
 | `RUST_LOG` | Filtro de logs (`-v`/`-vv` equivalen a `info`/`debug`). |
 
 ## Extensión de VS Code
@@ -270,7 +345,7 @@ descarga. Nada se instala sin un clic. Comando: *adoc: Instalar herramientas*; s
 `archeologyDoc.checkToolsOnStartup`.
 
 ```bash
-cd extension && npm install && npm run package
+cd extension && npm ci && npm run package
 code --install-extension archeology-doc-0.1.0.vsix
 ```
 
@@ -284,7 +359,9 @@ crates/
   archeology-openspec/  # spec bridge
   archeology-registry/  # registro global
   archeology-cli/       # binario
-templates/              # plantillas de notas, tareas y sitio
+templates/{en,es}/      # plantillas de notas, tareas y sitio, por idioma
+crates/archeology-core/assets/           # renderizador del grafo (graph.js/.css), copia única
+crates/archeology-core/locales/{en,es}/  # catálogos de mensajes (i18n)
 fixtures/               # repos de prueba: small-node, medium-ts, legacy-py, with-openspec
 ```
 
@@ -300,4 +377,4 @@ cargo test -- --ignored
 
 ## Licencia
 
-MIT OR Apache-2.0
+MIT — ver [LICENSE-MIT](LICENSE-MIT).

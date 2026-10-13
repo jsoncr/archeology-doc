@@ -1,17 +1,23 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>archeology-doc · documenta cualquier proyecto con tus agentes de IA</title>
-  <meta name="description" content="CLI en Rust que inspecciona proyectos nuevos o legacy y genera base de conocimiento, documentación VitePress y contexto para agentes de IA, con evidencias verificables.">
+  <!-- Contenido por defecto en inglés (sin JS / buscadores); i18n.js aplica el idioma elegido. -->
+  <title data-i18n="meta.title">archeology-doc · document any project with your AI agents</title>
+  <meta name="description" data-i18n-attr="content:meta.description" content="Rust CLI that inspects new or legacy projects and generates a knowledge base, VitePress documentation and context for AI agents, backed by verifiable evidence.">
+  <meta property="og:title" data-i18n-attr="content:meta.title" content="archeology-doc · document any project with your AI agents">
+  <meta property="og:description" data-i18n-attr="content:meta.description" content="Rust CLI that inspects new or legacy projects and generates a knowledge base, VitePress documentation and context for AI agents, backed by verifiable evidence.">
+  <meta property="og:locale" data-i18n-attr="content:meta.ogLocale" content="en_US">
   <link rel="icon" href="assets/favicon.png" type="image/png">
   <link rel="apple-touch-icon" href="assets/icon.png">
   <meta property="og:image" content="assets/logo.png">
   <link rel="stylesheet" href="styles.css">
   <!-- Aplica el tema guardado antes de pintar (evita el parpadeo). -->
   <script src="theme-init.js"></script>
+  <!-- Idioma (en/es): se resuelve antes de pintar y se aplica al cargar el DOM. -->
+  <script src="i18n.js"></script>
 </head>
 <body>
   <header class="nav">
@@ -21,14 +27,20 @@
         <span>archeology-doc</span>
       </a>
       <nav>
-        <a href="#como-funciona">Cómo funciona</a>
-        <a href="#instalar">Instalar</a>
-        <a href="#descargas">Descargas</a>
-        <a href="#comandos">Comandos</a>
-        <a href="#agentes">Agentes</a>
+        <a href="#como-funciona" data-i18n="nav.how">How it works</a>
+        <a href="#instalar" data-i18n="nav.install">Install</a>
+        <a href="#descargas" data-i18n="nav.downloads">Downloads</a>
+        <a href="#comandos" data-i18n="nav.commands">Commands</a>
+        <a href="#agentes" data-i18n="nav.agents">Agents</a>
         <a href="#vscode">VS Code</a>
       </nav>
-      <button class="theme" id="theme" aria-label="Cambiar tema" title="Cambiar tema">◐</button>
+      <div class="nav-tools">
+        <div class="lang" role="group" aria-label="Language" data-i18n-attr="aria-label:lang.group">
+          <button type="button" data-lang="en" aria-pressed="true" lang="en" title="English">EN</button>
+          <button type="button" data-lang="es" aria-pressed="false" lang="es" title="Español">ES</button>
+        </div>
+        <button class="theme" id="theme" type="button" aria-label="Toggle theme" title="Toggle theme" data-i18n-attr="aria-label:theme.toggle;title:theme.toggle">◐</button>
+      </div>
     </div>
   </header>
 
@@ -41,22 +53,18 @@
           <img class="logo-dark" src="assets/logo-dark.png" alt="archeology-doc" width="540" height="363">
         </div>
         <div class="hero-text">
-        <p class="eyebrow">CLI open source · Rust · local-first</p>
-        <h1>Excava cualquier proyecto.<br><span class="accent">Documéntalo con evidencia.</span></h1>
-        <p class="lead">
-          <strong>archeology-doc</strong> (<code>adoc</code>) inspecciona proyectos nuevos o legacy y, con el
-          agente de IA que ya usas, genera una base de conocimiento navegable, documentación, hallazgos y
-          contexto para agentes. Cada afirmación cita su fuente <code>ruta:línea</code>.
-        </p>
+        <p class="eyebrow" data-i18n="hero.eyebrow">Open-source CLI · Rust · local-first</p>
+        <h1><span data-i18n="hero.title1">Dig into any project.</span><br><span class="accent" data-i18n="hero.title2">Document it with evidence.</span></h1>
+        <p class="lead" data-i18n-html="hero.lead"><strong>archeology-doc</strong> (<code>adoc</code>) inspects new or legacy projects and, with the AI agent you already use, generates a browsable knowledge base, documentation, findings and context for agents. Every claim cites its source as <code>path:line</code>.</p>
         <div class="install-hero">
           <p class="os-hint" id="hero-os" hidden></p>
           <div class="code" data-copy>
-            <pre><code data-oneliner><span class="prompt">$</span> curl -fsSL <span data-base>https://tu-sitio/download/</span>install.sh | sh</code></pre>
+            <pre><code data-oneliner><span class="prompt">$</span> curl -fsSL <span data-base>https://your-site/download/</span>install.sh | sh</code></pre>
           </div>
         </div>
         <div class="cta">
-          <a class="btn primary" href="#instalar">Instalar</a>
-          <a class="btn" href="#como-funciona">Ver cómo funciona</a>
+          <a class="btn primary" href="#instalar" data-i18n="cta.install">Install</a>
+          <a class="btn" href="#como-funciona" data-i18n="cta.how">See how it works</a>
         </div>
         </div>
       </div>
@@ -68,33 +76,33 @@
         <div class="grid cards">
           <article class="card">
             <div class="icon">🧭</div>
-            <h3>Mapa del sistema</h3>
-            <p>Módulos, funcionalidades, glosario y decisiones en Markdown plano, navegable en Obsidian, VitePress o GitHub.</p>
+            <h3 data-i18n="card.map.title">System map</h3>
+            <p data-i18n="card.map.text">Modules, features, glossary and decisions in plain Markdown, browsable in Obsidian, VitePress or GitHub.</p>
           </article>
           <article class="card">
             <div class="icon">🔎</div>
-            <h3>Contradicciones y riesgos</h3>
-            <p>Hallazgos por severidad: documentación desactualizada, reglas duplicadas, configuración en conflicto, código muerto.</p>
+            <h3 data-i18n="card.risks.title">Contradictions and risks</h3>
+            <p data-i18n="card.risks.text">Findings by severity: outdated documentation, duplicated rules, conflicting configuration, dead code.</p>
           </article>
           <article class="card">
             <div class="icon">🧪</div>
-            <h3>Huecos de testing</h3>
-            <p>Funcionalidades ↔ tests, escenarios cubiertos y faltantes, tests desactivados o vacíos.</p>
+            <h3 data-i18n="card.tests.title">Testing gaps</h3>
+            <p data-i18n="card.tests.text">Features ↔ tests, covered and missing scenarios, disabled or empty tests.</p>
           </article>
           <article class="card">
             <div class="icon">🤖</div>
-            <h3>Contexto para agentes</h3>
-            <p><code>AGENTS.md</code>, memoria persistente y skills: cada sesión de IA empieza sabiendo qué hay y dónde.</p>
+            <h3 data-i18n="card.agents.title">Context for agents</h3>
+            <p data-i18n-html="card.agents.text"><code>AGENTS.md</code>, persistent memory and skills: every AI session starts knowing what exists and where.</p>
           </article>
           <article class="card">
             <div class="icon">📐</div>
-            <h3>Specs con OpenSpec</h3>
-            <p>Cumplimiento de requisitos contra el código y specs base inferidas para proyectos que no las tienen.</p>
+            <h3 data-i18n="card.specs.title">Specs with OpenSpec</h3>
+            <p data-i18n="card.specs.text">Requirement compliance checked against the code, and inferred baseline specs for projects that have none.</p>
           </article>
           <article class="card">
             <div class="icon">✅</div>
-            <h3>Verificable</h3>
-            <p><code>adoc check</code> valida evidencias, enlaces y notas desactualizadas; ideal para CI.</p>
+            <h3 data-i18n="card.verify.title">Verifiable</h3>
+            <p data-i18n-html="card.verify.text"><code>adoc check</code> validates evidence, links and outdated notes; ideal for CI.</p>
           </article>
         </div>
       </div>
@@ -103,28 +111,28 @@
     <!-- Cómo funciona -->
     <section class="section alt" id="como-funciona">
       <div class="wrap">
-        <h2>Cómo funciona</h2>
-        <p class="sub">Lo determinista lo calcula Rust; la interpretación la hace tu agente; <code>adoc</code> orquesta y valida.</p>
+        <h2 data-i18n="how.title">How it works</h2>
+        <p class="sub" data-i18n-html="how.sub">Rust computes the deterministic parts; your agent does the interpretation; <code>adoc</code> orchestrates and validates.</p>
         <ol class="steps">
           <li>
             <span class="n">1</span>
-            <div><h3><code>adoc scan</code></h3><p>Inventario sin IA: lenguajes, módulos, tests, CI, historial git y OpenSpec. Respeta <code>.gitignore</code> y excluye secretos.</p></div>
+            <div><h3><code>adoc scan</code></h3><p data-i18n-html="how.scan">AI-free inventory: languages, modules, tests, CI, git history and OpenSpec. Honors <code>.gitignore</code> and excludes secrets.</p></div>
           </li>
           <li>
             <span class="n">2</span>
-            <div><h3><code>adoc plan</code></h3><p>Divide el trabajo en tareas acotadas según el tamaño del proyecto: pocas tareas en uno pequeño, más en uno grande.</p></div>
+            <div><h3><code>adoc plan</code></h3><p data-i18n="how.plan">Splits the work into bounded tasks based on project size: a few tasks for a small one, more for a large one.</p></div>
           </li>
           <li>
             <span class="n">3</span>
-            <div><h3><code>adoc inspect</code></h3><p>Tu agente ejecuta cada tarea. Solo se marca hecha si produjo lo pedido con evidencias válidas.</p></div>
+            <div><h3><code>adoc inspect</code></h3><p data-i18n="how.inspect">Your agent runs each task. It is only marked done if it produced what was asked, with valid evidence.</p></div>
           </li>
           <li>
             <span class="n">4</span>
-            <div><h3><code>adoc preview</code></h3><p>Sitio con dashboard: estado, hallazgos, preguntas para el equipo y FAQ. O un reporte HTML único.</p></div>
+            <div><h3><code>adoc preview</code></h3><p data-i18n="how.preview">A site with a dashboard: status, findings, questions for the team and FAQ. Or a single HTML report.</p></div>
           </li>
           <li>
             <span class="n">5</span>
-            <div><h3><code>adoc sync</code></h3><p>Cuando el código cambia, marca las notas afectadas como desactualizadas y reabre solo esas tareas.</p></div>
+            <div><h3><code>adoc sync</code></h3><p data-i18n="how.sync">When the code changes, it marks the affected notes as outdated and reopens only those tasks.</p></div>
           </li>
         </ol>
       </div>
@@ -133,84 +141,83 @@
     <!-- Instalar -->
     <section class="section" id="instalar">
       <div class="wrap">
-        <h2>Instalar</h2>
-        <p class="sub">Un comando según tu sistema: descarga el binario de tu plataforma, verifica su SHA-256 y
-          lo deja en el PATH. No necesitas Rust. Node 18+ solo para el sitio VitePress y la extensión.</p>
+        <h2 data-i18n="install.title">Install</h2>
+        <p class="sub" data-i18n="install.sub">One command for your system: it downloads the binary for your platform, verifies its SHA-256 and puts it on your PATH. No Rust needed. Node 18+ only for the VitePress site and the extension.</p>
 
-        <div class="tabs" role="tablist" aria-label="Sistema operativo">
+        <div class="tabs" role="tablist" aria-label="Operating system" data-i18n-attr="aria-label:install.osLabel">
           <button class="tab active" data-tab="macos" role="tab" id="tab-macos" aria-controls="panel-macos" aria-selected="true">macOS</button>
           <button class="tab" data-tab="linux" role="tab" id="tab-linux" aria-controls="panel-linux" aria-selected="false" tabindex="-1">Linux</button>
           <button class="tab" data-tab="windows" role="tab" id="tab-windows" aria-controls="panel-windows" aria-selected="false" tabindex="-1">Windows</button>
-          <button class="tab" data-tab="source" role="tab" id="tab-source" aria-controls="panel-source" aria-selected="false" tabindex="-1">Desde el código</button>
+          <button class="tab" data-tab="source" role="tab" id="tab-source" aria-controls="panel-source" aria-selected="false" tabindex="-1" data-i18n="install.tabSource">From source</button>
           <span class="os-detected" id="os-detected" hidden></span>
         </div>
 
         <div class="panel active" data-panel="macos" role="tabpanel" id="panel-macos" aria-labelledby="tab-macos">
           <p class="step-label">Terminal</p>
-          <div class="code" data-copy><pre><code><span class="prompt">$</span> curl -fsSL <span data-base>https://tu-sitio/download/</span>install.sh | sh</code></pre></div>
-          <p class="step-label">o descarga el binario</p>
+          <div class="code" data-copy><pre><code><span class="prompt">$</span> curl -fsSL <span data-base>https://your-site/download/</span>install.sh | sh</code></pre></div>
+          <p class="step-label" data-i18n="install.orDownload">or download the binary</p>
           <div class="downloads-row">
             <a class="btn dl" data-file="adoc-aarch64-apple-darwin.tar.gz" href="download/adoc-aarch64-apple-darwin.tar.gz" download>Apple Silicon (M1–M4) <small></small></a>
             <a class="btn dl" data-file="adoc-x86_64-apple-darwin.tar.gz" href="download/adoc-x86_64-apple-darwin.tar.gz" download>Intel <small></small></a>
           </div>
-          <p class="note">Descargado desde el navegador, macOS lo marca en cuarentena:
-            <code>xattr -d com.apple.quarantine adoc archeology-doc</code> y muévelos a <code>~/.local/bin</code>.
-            Con el comando de terminal no hace falta.</p>
+          <p class="note" data-i18n-html="install.macNote">When downloaded from the browser, macOS quarantines it:
+            <code>xattr -d com.apple.quarantine adoc archeology-doc</code>, then move both to <code>~/.local/bin</code>.
+            Not needed with the terminal command.</p>
         </div>
 
         <div class="panel" data-panel="linux" role="tabpanel" id="panel-linux" aria-labelledby="tab-linux">
           <p class="step-label">Terminal</p>
-          <div class="code" data-copy><pre><code><span class="prompt">$</span> curl -fsSL <span data-base>https://tu-sitio/download/</span>install.sh | sh</code></pre></div>
-          <p class="step-label">o descarga el binario</p>
+          <div class="code" data-copy><pre><code><span class="prompt">$</span> curl -fsSL <span data-base>https://your-site/download/</span>install.sh | sh</code></pre></div>
+          <p class="step-label" data-i18n="install.orDownload">or download the binary</p>
           <div class="downloads-row">
             <a class="btn dl" data-file="adoc-x86_64-unknown-linux-gnu.tar.gz" href="download/adoc-x86_64-unknown-linux-gnu.tar.gz" download>x86_64 <small></small></a>
             <a class="btn dl" data-file="adoc-aarch64-unknown-linux-gnu.tar.gz" href="download/adoc-aarch64-unknown-linux-gnu.tar.gz" download>ARM64 <small></small></a>
           </div>
-          <p class="note">Binarios para glibc 2.28 o superior (Debian 10, Ubuntu 18.10, RHEL 8 y posteriores).</p>
+          <p class="note" data-i18n="install.linuxNote">Binaries for glibc 2.28 or later (Debian 10, Ubuntu 18.10, RHEL 8 and newer).</p>
         </div>
 
         <div class="panel" data-panel="windows" role="tabpanel" id="panel-windows" aria-labelledby="tab-windows">
           <p class="step-label">PowerShell</p>
-          <div class="code" data-copy><pre><code><span class="prompt">&gt;</span> irm <span data-base>https://tu-sitio/download/</span>install.ps1 | iex</code></pre></div>
-          <p class="step-label">o descarga el binario</p>
+          <div class="code" data-copy><pre><code><span class="prompt">&gt;</span> irm <span data-base>https://your-site/download/</span>install.ps1 | iex</code></pre></div>
+          <p class="step-label" data-i18n="install.orDownload">or download the binary</p>
           <div class="downloads-row">
             <a class="btn dl" data-file="adoc-x86_64-pc-windows-gnu.zip" href="download/adoc-x86_64-pc-windows-gnu.zip" download>Windows x64 (.zip) <small></small></a>
           </div>
-          <p class="note">El instalador lo deja en <code>%LOCALAPPDATA%\Programs\archeology-doc\bin</code> y lo añade a tu
-            PATH, sin permisos de administrador. En Windows ARM64 funciona con la emulación x64.</p>
+          <p class="note" data-i18n-html="install.windowsNote">The installer puts it in <code>%LOCALAPPDATA%\Programs\archeology-doc\bin</code> and adds it to your
+            PATH, without administrator rights. On Windows ARM64 it runs under x64 emulation.</p>
         </div>
 
         <div class="panel" data-panel="source" role="tabpanel" id="panel-source" aria-labelledby="tab-source">
-          <div class="code" data-copy><pre><code><span class="c"># Necesita Rust (rustup.rs). Instala `adoc` en ~/.cargo/bin</span>
+          <div class="code" data-copy><pre><code><span class="c" data-i18n="code.sourceNeedsRust"># Requires Rust (rustup.rs). Installs `adoc` into ~/.cargo/bin</span>
 git clone https://github.com/jsoncr/archeology-doc.git
 cd archeology-doc
 WEBSITE/installers/install.sh
 
-<span class="c"># o directamente con cargo</span>
+<span class="c" data-i18n="code.orCargo"># or directly with cargo</span>
 cargo install --path crates/archeology-cli --locked</code></pre></div>
         </div>
 
-        <p class="step-label">Extras</p>
-        <div class="code" data-copy><pre><code><span class="c"># Con VitePress compartido y la extensión de VS Code</span>
-curl -fsSL <span data-base>https://tu-sitio/download/</span>install.sh | sh -s -- --with-vitepress --with-vscode
+        <p class="step-label" data-i18n="install.extras">Extras</p>
+        <div class="code" data-copy><pre><code><span class="c" data-i18n="code.extrasWith"># With shared VitePress and the VS Code extension</span>
+curl -fsSL <span data-base>https://your-site/download/</span>install.sh | sh -s -- --with-vitepress --with-vscode
 
-<span class="c"># Verifica requisitos: git, Node, VitePress, OpenSpec y agentes</span>
+<span class="c" data-i18n="code.doctor"># Checks requirements: git, Node, VitePress, OpenSpec and agents</span>
 adoc doctor</code></pre></div>
-        <p class="note">Se instalan dos binarios equivalentes: <code>adoc</code> (corto) y <code>archeology-doc</code>.
-          Para desinstalar: <code>adoc uninstall</code> (con <code>--purge</code> borra también
-          <code>~/.archeology-doc</code>; los archivos de tus proyectos no se tocan).</p>
+        <p class="note" data-i18n-html="install.binariesNote">Two equivalent binaries are installed: <code>adoc</code> (short) and <code>archeology-doc</code>.
+          To uninstall: <code>adoc uninstall</code> (with <code>--purge</code> it also deletes
+          <code>~/.archeology-doc</code>; your project files are never touched).</p>
 
-        <h3 class="downloads-title" id="descargas">Todas las descargas <span class="muted" id="dl-version"></span></h3>
+        <h3 class="downloads-title" id="descargas"><span data-i18n="downloads.title">All downloads</span> <span class="muted" id="dl-version"></span></h3>
         <div class="table-wrap">
           <table class="downloads">
-            <thead><tr><th>Archivo</th><th>Plataforma</th><th>Tamaño</th><th>SHA-256</th></tr></thead>
+            <thead><tr><th data-i18n="downloads.file">File</th><th data-i18n="downloads.platform">Platform</th><th data-i18n="downloads.size">Size</th><th>SHA-256</th></tr></thead>
             <tbody id="dl-table">
-              <tr><td colspan="4" class="muted">Lista disponible al publicar el sitio (<code>WEBSITE/dist.sh</code>).</td></tr>
+              <tr><td colspan="4" class="muted" data-i18n-html="downloads.placeholder">List available once the site is published (<code>WEBSITE/dist.sh</code>).</td></tr>
             </tbody>
           </table>
         </div>
-        <p class="note">Verifica una descarga con <code>shasum -a 256 &lt;archivo&gt;</code> (macOS/Linux) o
-          <code>Get-FileHash &lt;archivo&gt;</code> (PowerShell) y compárala con <a href="download/SHA256SUMS">SHA256SUMS</a>.</p>
+        <p class="note" data-i18n-html="downloads.verifyNote">Verify a download with <code>shasum -a 256 &lt;file&gt;</code> (macOS/Linux) or
+          <code>Get-FileHash &lt;file&gt;</code> (PowerShell) and compare it with <a href="download/SHA256SUMS">SHA256SUMS</a>.</p>
       </div>
     </section>
 
@@ -218,29 +225,29 @@ adoc doctor</code></pre></div>
     <section class="section alt" id="comandos">
       <div class="wrap two">
         <div>
-          <h2>Primeros pasos</h2>
-          <p class="sub">En la carpeta de tu proyecto:</p>
-          <div class="code" data-copy><pre><code>cd mi-proyecto
+          <h2 data-i18n="start.title">Getting started</h2>
+          <p class="sub" data-i18n="start.sub">In your project folder:</p>
+          <div class="code" data-copy><pre><code>cd <span data-i18n="code.projectName">my-project</span>
 
-adoc init                 <span class="c"># config + estructura</span>
-adoc agent use claude     <span class="c"># o devin, codex, gemini…</span>
-adoc scan                 <span class="c"># inventario determinista</span>
-adoc plan                 <span class="c"># tareas según el tamaño</span>
-adoc inspect              <span class="c"># el agente documenta</span>
-adoc preview              <span class="c"># ver el resultado</span></code></pre></div>
+adoc init                 <span class="c" data-i18n="code.init"># config + structure</span>
+adoc agent use claude     <span class="c" data-i18n="code.agentUse"># or devin, codex, gemini…</span>
+adoc scan                 <span class="c" data-i18n="code.scan"># deterministic inventory</span>
+adoc plan                 <span class="c" data-i18n="code.plan"># tasks sized to the project</span>
+adoc inspect              <span class="c" data-i18n="code.inspect"># the agent documents</span>
+adoc preview              <span class="c" data-i18n="code.preview"># see the result</span></code></pre></div>
         </div>
         <div>
-          <h2>Día a día</h2>
+          <h2 data-i18n="daily.title">Day to day</h2>
           <table class="cmds">
-            <tr><td><code>adoc review</code></td><td>Progreso, hallazgos, funcionalidades sin tests</td></tr>
-            <tr><td><code>adoc inspect --resume</code></td><td>Reintenta tareas fallidas o interrumpidas</td></tr>
-            <tr><td><code>adoc task answer T-014 "…"</code></td><td>Responde a un agente que preguntó</td></tr>
-            <tr><td><code>adoc task run T-014 -i</code></td><td>Sesión interactiva con el agente</td></tr>
-            <tr><td><code>adoc ask "¿…?"</code></td><td>Pregunta sobre el proyecto → FAQ</td></tr>
-            <tr><td><code>adoc sync</code></td><td>Detecta cambios y marca notas desactualizadas</td></tr>
-            <tr><td><code>adoc check</code></td><td>Validaciones para CI</td></tr>
-            <tr><td><code>adoc report</code></td><td>Reporte HTML único para compartir</td></tr>
-            <tr><td><code>adoc projects list</code></td><td>Todos tus proyectos y su progreso</td></tr>
+            <tr><td><code>adoc review</code></td><td data-i18n="daily.review">Progress, findings, features without tests</td></tr>
+            <tr><td><code>adoc inspect --resume</code></td><td data-i18n="daily.resume">Retries failed or interrupted tasks</td></tr>
+            <tr><td><code>adoc task answer T-014 "…"</code></td><td data-i18n="daily.answer">Answers an agent that asked a question</td></tr>
+            <tr><td><code>adoc task run T-014 -i</code></td><td data-i18n="daily.run">Interactive session with the agent</td></tr>
+            <tr><td><code data-i18n="daily.askExample">adoc ask "…?"</code></td><td data-i18n="daily.ask">Ask about the project → FAQ</td></tr>
+            <tr><td><code>adoc sync</code></td><td data-i18n="daily.sync">Detects changes and marks outdated notes</td></tr>
+            <tr><td><code>adoc check</code></td><td data-i18n="daily.check">Validations for CI</td></tr>
+            <tr><td><code>adoc report</code></td><td data-i18n="daily.report">Single HTML report to share</td></tr>
+            <tr><td><code>adoc projects list</code></td><td data-i18n="daily.projects">All your projects and their progress</td></tr>
           </table>
         </div>
       </div>
@@ -249,15 +256,15 @@ adoc preview              <span class="c"># ver el resultado</span></code></pre>
     <!-- Agentes -->
     <section class="section" id="agentes">
       <div class="wrap">
-        <h2>Trabaja con tu agente</h2>
-        <p class="sub">Agnóstico: cambia de agente o de modelo cuando quieras. Sin CLI, exporta las tareas para hacerlas a mano.</p>
+        <h2 data-i18n="agents.title">Work with your agent</h2>
+        <p class="sub" data-i18n="agents.sub">Agent-agnostic: switch agent or model whenever you like. No CLI? Export the tasks and do them by hand.</p>
         <div class="agents">
           <span>Claude Code</span><span>Devin</span><span>Codex</span><span>Gemini CLI</span><span>Qwen Code</span>
           <span>OpenCode</span><span>Cursor</span><span>GitHub Copilot</span><span>Amp</span><span>goose</span><span>Aider</span>
         </div>
-        <div class="code" data-copy><pre><code>adoc agent list                       <span class="c"># disponibles; * = activo</span>
-adoc agent use devin --model opus     <span class="c"># agente y modelo del proyecto</span>
-adoc inspect --agent codex            <span class="c"># solo para esta corrida</span></code></pre></div>
+        <div class="code" data-copy><pre><code>adoc agent list                       <span class="c" data-i18n="code.agentList"># available; * = active</span>
+adoc agent use devin --model opus     <span class="c" data-i18n="code.agentModel"># project agent and model</span>
+adoc inspect --agent codex            <span class="c" data-i18n="code.agentOnce"># just for this run</span></code></pre></div>
       </div>
     </section>
 
@@ -265,20 +272,20 @@ adoc inspect --agent codex            <span class="c"># solo para esta corrida</
     <section class="section alt" id="vscode">
       <div class="wrap two">
         <div>
-          <h2>Extensión para VS Code</h2>
-          <p class="sub">Todo lo generado, a la vista mientras programas. Funciona también en Cursor, Windsurf y Devin Desktop.</p>
+          <h2 data-i18n="vscode.title">VS Code extension</h2>
+          <p class="sub" data-i18n="vscode.sub">Everything generated, in view while you code. Also works in Cursor, Windsurf and Devin Desktop.</p>
           <ul class="checks">
-            <li>Tareas por estado con botón ▶ para ejecutarlas</li>
-            <li>Hallazgos con salto a la línea de evidencia</li>
-            <li>Grafo del conocimiento, como en Obsidian</li>
-            <li>Preguntas del agente y del equipo, y FAQ</li>
-            <li>Marcas en el editor en el código citado</li>
-            <li>Progreso y agente activo en la barra de estado</li>
+            <li data-i18n="vscode.tasks">Tasks by status with a ▶ button to run them</li>
+            <li data-i18n="vscode.findings">Findings that jump to the evidence line</li>
+            <li data-i18n="vscode.graph">Knowledge graph, like in Obsidian</li>
+            <li data-i18n="vscode.questions">Questions from the agent and the team, plus FAQ</li>
+            <li data-i18n="vscode.marks">Editor marks on the cited code</li>
+            <li data-i18n="vscode.status">Progress and active agent in the status bar</li>
           </ul>
         </div>
         <div>
           <div class="code" data-copy><pre><code>cd archeology-doc/extension
-npm install
+npm ci
 npm run package
 code --install-extension archeology-doc-0.1.0.vsix</code></pre></div>
           <div class="mock" aria-hidden="true">
@@ -286,12 +293,12 @@ code --install-extension archeology-doc-0.1.0.vsix</code></pre></div>
             <div class="mock-body">
               <div class="mock-side">
                 <b>ARCHEOLOGY</b>
-                <i>▾ Tareas</i>
-                <i class="q">❓ T-004 · pregunta</i>
+                <i data-i18n="mock.tasks">▾ Tasks</i>
+                <i class="q" data-i18n="mock.question">❓ T-004 · question</i>
                 <i>⏳ T-005 · module</i>
                 <i class="ok">✓ T-001 · overview</i>
-                <i>▾ Hallazgos</i>
-                <i class="hi">⚠ Tope de descuento 10 % vs 20 %</i>
+                <i data-i18n="mock.findings">▾ Findings</i>
+                <i class="hi" data-i18n="mock.finding">⚠ Discount cap 10 % vs 20 %</i>
               </div>
               <div class="mock-graph">
                 <svg viewBox="0 0 200 120">
@@ -316,27 +323,27 @@ code --install-extension archeology-doc-0.1.0.vsix</code></pre></div>
     <section class="section">
       <div class="wrap two">
         <div>
-          <h2>Qué queda en tu proyecto</h2>
-          <p class="sub">Solo resultados, en Markdown. El estado de trabajo vive fuera del repositorio.</p>
-          <div class="code"><pre><code>mi-proyecto/
-├── archeology-doc.toml     <span class="c"># config + ID</span>
-├── AGENTS.md               <span class="c"># contexto para agentes</span>
-├── knowledge/              <span class="c"># vault Obsidian</span>
+          <h2 data-i18n="output.title">What stays in your project</h2>
+          <p class="sub" data-i18n="output.sub">Only results, in Markdown. Working state lives outside the repository.</p>
+          <div class="code"><pre><code><span data-i18n="code.projectName">my-project</span>/
+├── archeology-doc.toml     <span class="c" data-i18n="code.treeConfig"># config + ID</span>
+├── AGENTS.md               <span class="c" data-i18n="code.treeAgents"># context for agents</span>
+├── knowledge/              <span class="c" data-i18n="code.treeVault"># Obsidian vault</span>
 │   ├── 00-overview.md
 │   ├── modules/  features/  findings/
 │   ├── tests/  glossary/  faq/
 │   └── memory/
-├── docs/                   <span class="c"># sitio VitePress</span>
+├── docs/                   <span class="c" data-i18n="code.treeDocs"># VitePress site</span>
 └── llms.txt</code></pre></div>
         </div>
         <div>
-          <h2>Principios</h2>
+          <h2 data-i18n="principles.title">Principles</h2>
           <ul class="checks">
-            <li><b>Evidencia ante todo:</b> cada afirmación cita <code>ruta:línea</code></li>
-            <li><b>No destructivo:</b> nunca modifica tu código; respeta tus ediciones</li>
-            <li><b>Local-first:</b> nada sale de tu máquina salvo lo que envíe tu agente</li>
-            <li><b>Incremental:</b> tareas pequeñas, reanudables, por módulos</li>
-            <li><b>Estándares:</b> Markdown, OpenSpec, AGENTS.md, Obsidian y VitePress</li>
+            <li data-i18n-html="principles.evidence"><b>Evidence first:</b> every claim cites <code>path:line</code></li>
+            <li data-i18n-html="principles.safe"><b>Non-destructive:</b> never modifies your code; respects your edits</li>
+            <li data-i18n-html="principles.local"><b>Local-first:</b> nothing leaves your machine except what your agent sends</li>
+            <li data-i18n-html="principles.incremental"><b>Incremental:</b> small, resumable tasks, module by module</li>
+            <li data-i18n-html="principles.standards"><b>Standards:</b> Markdown, OpenSpec, AGENTS.md, Obsidian and VitePress</li>
           </ul>
         </div>
       </div>
@@ -345,8 +352,8 @@ code --install-extension archeology-doc-0.1.0.vsix</code></pre></div>
 
   <footer class="footer">
     <div class="wrap">
-      <span>archeology-doc · MIT OR Apache-2.0</span>
-      <span class="muted">Hecho en Rust 🦀</span>
+      <span>archeology-doc · MIT</span>
+      <span class="muted" data-i18n="footer.made">Made with Rust 🦀</span>
     </div>
   </footer>
 

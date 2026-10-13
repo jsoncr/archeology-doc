@@ -1,14 +1,45 @@
 // Copiar bloques de código, pestañas de instalación y tema claro/oscuro.
+// Los textos salen de i18n.js (AdocI18n); se vuelven a pintar al cambiar de idioma.
 
 (function () {
   'use strict';
+
+  // Traducción con respaldo: si i18n.js no cargó, se usan los textos en inglés.
+  const FALLBACK = {
+    'js.copy': 'Copy',
+    'js.copied': 'Copied ✓',
+    'js.copyFallback': 'Select and copy',
+    'js.detected': 'Detected: {os}',
+    'js.heroOs': 'Installing for {os} · other options under “Install”',
+    'js.placeholderBase': 'https://your-site/download/',
+    'js.unavailable': 'not available',
+    'js.platformVsix': 'VS Code extension',
+    'js.platformInstallSh': 'macOS / Linux installer',
+    'js.platformInstallPs1': 'Windows installer',
+  };
+  const t = (key, vars) => {
+    if (window.AdocI18n) return window.AdocI18n.t(key, vars);
+    return (FALLBACK[key] || key).replace(/\{(\w+)\}/g, (m, name) => (vars && name in vars ? String(vars[name]) : m));
+  };
+  // Funciones que repintan textos dinámicos al cambiar de idioma.
+  const renderers = [];
+  const onLang = (fn) => {
+    renderers.push(fn);
+    fn();
+  };
+  document.addEventListener('adoc:langchange', () => renderers.forEach((fn) => fn()));
 
   // Botón "Copiar" en cada bloque marcado con data-copy (sin prompts ni comentarios).
   document.querySelectorAll('[data-copy]').forEach((block) => {
     const button = document.createElement('button');
     button.className = 'copy';
     button.type = 'button';
-    button.textContent = 'Copiar';
+    // Estado del botón: 'copy' | 'copied' | 'fallback'; se traduce al pintar.
+    let state = 'copy';
+    const paint = () => {
+      button.textContent = t(state === 'copied' ? 'js.copied' : state === 'fallback' ? 'js.copyFallback' : 'js.copy');
+    };
+    onLang(paint);
     button.addEventListener('click', async () => {
       const code = block.querySelector('code').cloneNode(true);
       code.querySelectorAll('.prompt').forEach((p) => p.remove());
@@ -20,11 +51,15 @@
         .trim();
       try {
         await navigator.clipboard.writeText(text);
-        button.textContent = 'Copiado ✓';
+        state = 'copied';
       } catch {
-        button.textContent = 'Selecciona y copia';
+        state = 'fallback';
       }
-      setTimeout(() => (button.textContent = 'Copiar'), 1600);
+      paint();
+      setTimeout(() => {
+        state = 'copy';
+        paint();
+      }, 1600);
     });
     block.appendChild(button);
   });
@@ -66,7 +101,7 @@
     const tab = tabs.find((t) => t.dataset.tab === os);
     if (tab) select(tab);
     const detected = document.getElementById('os-detected');
-    detected.textContent = `Detectado: ${OS_LABEL[os]}`;
+    onLang(() => (detected.textContent = t('js.detected', { os: OS_LABEL[os] })));
     detected.hidden = false;
     // El comando del inicio también se adapta.
     if (os === 'windows') {
@@ -75,17 +110,18 @@
       });
     }
     const hint = document.getElementById('hero-os');
-    hint.textContent = `Instalación para ${OS_LABEL[os]} · otras opciones en «Instalar»`;
+    onLang(() => (hint.textContent = t('js.heroOs', { os: OS_LABEL[os] })));
     hint.hidden = false;
   }
 
-  // URL pública de /download: la del sitio donde se abre la página.
-  if (location.protocol === 'http:' || location.protocol === 'https:') {
-    const base = new URL('download/', location.href).href;
+  // URL pública de /download: la del sitio donde se abre la página (o un ejemplo traducido).
+  onLang(() => {
+    const base =
+      location.protocol === 'http:' || location.protocol === 'https:'
+        ? new URL('download/', location.href).href
+        : t('js.placeholderBase');
     document.querySelectorAll('[data-base]').forEach((el) => (el.textContent = base));
-  } else {
-    document.querySelectorAll('[data-base]').forEach((el) => (el.textContent = 'https://tu-sitio/download/'));
-  }
+  });
 
   // Tabla de descargas y tamaños desde download/latest.json (lo genera WEBSITE/dist.sh).
   const PLATFORM = {
@@ -98,9 +134,9 @@
   const platformOf = (file) => {
     const target = Object.keys(PLATFORM).find((t) => file.includes(t));
     if (target) return PLATFORM[target];
-    if (file.endsWith('.vsix')) return 'Extensión de VS Code';
-    if (file === 'install.sh') return 'Instalador macOS / Linux';
-    if (file === 'install.ps1') return 'Instalador Windows';
+    if (file.endsWith('.vsix')) return t('js.platformVsix');
+    if (file === 'install.sh') return t('js.platformInstallSh');
+    if (file === 'install.ps1') return t('js.platformInstallPs1');
     return '';
   };
   const human = (n) => (n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
@@ -128,7 +164,10 @@
         name.appendChild(link);
         const hash = cell(f.sha256, 'hash');
         hash.title = f.sha256;
-        tr.append(name, cell(platformOf(f.file)), cell(human(f.size)), hash);
+        const platform = cell(platformOf(f.file));
+        // La plataforma de instaladores y extensión depende del idioma.
+        onLang(() => (platform.textContent = platformOf(f.file)));
+        tr.append(name, platform, cell(human(f.size)), hash);
         body.appendChild(tr);
       });
       // Tamaño en los botones; los que no tienen binario publicado se desactivan.
@@ -140,7 +179,8 @@
           a.classList.add('disabled');
           a.removeAttribute('href');
           a.setAttribute('aria-disabled', 'true');
-          a.querySelector('small').textContent = 'no disponible';
+          const small = a.querySelector('small');
+          onLang(() => (small.textContent = t('js.unavailable')));
         }
       });
     })

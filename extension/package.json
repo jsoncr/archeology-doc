@@ -1,10 +1,11 @@
 {
   "name": "archeology-doc",
   "displayName": "Archeology Doc",
-  "description": "Tareas, hallazgos, conocimiento y specs de archeology-doc dentro del editor.",
-  "version": "0.1.0",
-  "publisher": "archeology-doc",
-  "license": "MIT OR Apache-2.0",
+  "description": "%extension.description%",
+  "version": "0.1.1",
+  "publisher": "jcruz",
+  "author": "jcruz",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/jsoncr/archeology-doc"
@@ -22,7 +23,7 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": false,
-      "description": "La extensión ejecuta el CLI `adoc` sobre el proyecto abierto; solo se activa en carpetas de confianza."
+      "description": "%capabilities.untrustedWorkspaces%"
     },
     "virtualWorkspaces": false
   },
@@ -32,7 +33,7 @@
       "activitybar": [
         {
           "id": "archeology",
-          "title": "Archeology",
+          "title": "%viewsContainer.archeology.title%",
           "icon": "media/activity.svg"
         }
       ]
@@ -41,27 +42,27 @@
       "archeology": [
         {
           "id": "adoc.projects",
-          "name": "Proyectos"
+          "name": "%view.projects.name%"
         },
         {
           "id": "adoc.tasks",
-          "name": "Tareas"
+          "name": "%view.tasks.name%"
         },
         {
           "id": "adoc.findings",
-          "name": "Hallazgos"
+          "name": "%view.findings.name%"
         },
         {
           "id": "adoc.questions",
-          "name": "Preguntas"
+          "name": "%view.questions.name%"
         },
         {
           "id": "adoc.knowledge",
-          "name": "Conocimiento"
+          "name": "%view.knowledge.name%"
         },
         {
           "id": "adoc.specs",
-          "name": "Specs",
+          "name": "%view.specs.name%",
           "when": "adoc.hasSpecs"
         }
       ]
@@ -69,185 +70,185 @@
     "viewsWelcome": [
       {
         "view": "adoc.tasks",
-        "contents": "No hay un proyecto de archeology-doc para esta carpeta.\n[Elegir un proyecto registrado](command:adoc.selectProject)\n[Inicializar aquí](command:adoc.init)",
+        "contents": "%viewsWelcome.tasks.noProject%",
         "when": "!adoc.hasProject"
       },
       {
         "view": "adoc.tasks",
-        "contents": "No hay tareas todavía.\n[1. Escanear](command:adoc.scan)\n[2. Planificar](command:adoc.plan)",
+        "contents": "%viewsWelcome.tasks.noTasks%",
         "when": "adoc.hasProject && !adoc.hasTasks"
       },
       {
         "view": "adoc.projects",
-        "contents": "No hay proyectos en ~/.archeology-doc.\n[Inicializar este proyecto](command:adoc.init)"
+        "contents": "%viewsWelcome.projects.empty%"
       }
     ],
     "commands": [
       {
         "command": "adoc.dashboard",
-        "title": "Abrir dashboard",
+        "title": "%command.dashboard.title%",
         "category": "adoc",
         "icon": "$(dashboard)"
       },
       {
         "command": "adoc.refresh",
-        "title": "Actualizar",
+        "title": "%command.refresh.title%",
         "category": "adoc",
         "icon": "$(refresh)"
       },
       {
         "command": "adoc.menu",
-        "title": "Acciones…",
+        "title": "%command.menu.title%",
         "category": "adoc"
       },
       {
         "command": "adoc.init",
-        "title": "Inicializar proyecto",
+        "title": "%command.init.title%",
         "category": "adoc"
       },
       {
         "command": "adoc.scan",
-        "title": "Escanear (scan)",
+        "title": "%command.scan.title%",
         "category": "adoc"
       },
       {
         "command": "adoc.plan",
-        "title": "Planificar tareas (plan)",
+        "title": "%command.plan.title%",
         "category": "adoc"
       },
       {
         "command": "adoc.planForce",
-        "title": "Rehacer el plan (plan --force)",
+        "title": "%command.planForce.title%",
         "category": "adoc"
       },
       {
         "command": "adoc.inspect",
-        "title": "Ejecutar tareas (inspect)",
+        "title": "%command.inspect.title%",
         "category": "adoc",
         "icon": "$(play)"
       },
       {
         "command": "adoc.resume",
-        "title": "Reintentar fallidas (inspect --resume)",
+        "title": "%command.resume.title%",
         "category": "adoc",
         "icon": "$(debug-restart)"
       },
       {
         "command": "adoc.review",
-        "title": "Resumen (review)",
+        "title": "%command.review.title%",
         "category": "adoc"
       },
       {
         "command": "adoc.check",
-        "title": "Validar (check)",
+        "title": "%command.check.title%",
         "category": "adoc"
       },
       {
         "command": "adoc.sync",
-        "title": "Detectar cambios (sync)",
+        "title": "%command.sync.title%",
         "category": "adoc"
       },
       {
         "command": "adoc.doctor",
-        "title": "Verificar requisitos (doctor)",
+        "title": "%command.doctor.title%",
         "category": "adoc"
       },
       {
         "command": "adoc.siteDev",
-        "title": "Sitio: servidor de desarrollo",
+        "title": "%command.siteDev.title%",
         "category": "adoc"
       },
       {
         "command": "adoc.siteBuild",
-        "title": "Sitio: build",
+        "title": "%command.siteBuild.title%",
         "category": "adoc"
       },
       {
         "command": "adoc.selectAgent",
-        "title": "Cambiar agente o modelo",
+        "title": "%command.selectAgent.title%",
         "category": "adoc",
         "icon": "$(hubot)"
       },
       {
         "command": "adoc.task.run",
-        "title": "Ejecutar tarea",
+        "title": "%command.task.run.title%",
         "category": "adoc",
         "icon": "$(play)"
       },
       {
         "command": "adoc.task.runInteractive",
-        "title": "Ejecutar en modo interactivo",
+        "title": "%command.task.runInteractive.title%",
         "category": "adoc",
         "icon": "$(comment-discussion)"
       },
       {
         "command": "adoc.task.answer",
-        "title": "Responder pregunta",
+        "title": "%command.task.answer.title%",
         "category": "adoc",
         "icon": "$(reply)"
       },
       {
         "command": "adoc.task.done",
-        "title": "Marcar como hecha (valida la salida)",
+        "title": "%command.task.done.title%",
         "category": "adoc",
         "icon": "$(check)"
       },
       {
         "command": "adoc.task.openLog",
-        "title": "Ver log",
+        "title": "%command.task.openLog.title%",
         "category": "adoc",
         "icon": "$(output)"
       },
       {
         "command": "adoc.task.copyCommand",
-        "title": "Copiar comando",
+        "title": "%command.task.copyCommand.title%",
         "category": "adoc",
         "icon": "$(copy)"
       },
       {
         "command": "adoc.selectProject",
-        "title": "Cambiar de proyecto",
+        "title": "%command.selectProject.title%",
         "category": "adoc",
         "icon": "$(folder-library)"
       },
       {
         "command": "adoc.openProjectFolder",
-        "title": "Abrir carpeta en ventana nueva",
+        "title": "%command.openProjectFolder.title%",
         "category": "adoc",
         "icon": "$(link-external)"
       },
       {
         "command": "adoc.preview",
-        "title": "Ver resultado (preview)",
+        "title": "%command.preview.title%",
         "category": "adoc",
         "icon": "$(preview)"
       },
       {
         "command": "adoc.report",
-        "title": "Reporte HTML",
+        "title": "%command.report.title%",
         "category": "adoc",
         "icon": "$(file-code)"
       },
       {
         "command": "adoc.ask",
-        "title": "Preguntar al agente",
+        "title": "%command.ask.title%",
         "category": "adoc",
         "icon": "$(comment-discussion)"
       },
       {
         "command": "adoc.answerQuestion",
-        "title": "Responder pregunta del agente",
+        "title": "%command.answerQuestion.title%",
         "category": "adoc"
       },
       {
         "command": "adoc.graph",
-        "title": "Grafo del conocimiento",
+        "title": "%command.graph.title%",
         "category": "adoc",
         "icon": "$(type-hierarchy)"
       },
       {
         "command": "adoc.installTools",
-        "title": "Instalar herramientas (adoc, VitePress)",
+        "title": "%command.installTools.title%",
         "category": "adoc",
         "icon": "$(desktop-download)"
       }
@@ -398,37 +399,55 @@
       ]
     },
     "configuration": {
-      "title": "Archeology Doc",
+      "title": "%configuration.title%",
       "properties": {
+        "archeologyDoc.language": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "en",
+            "es"
+          ],
+          "default": "auto",
+          "enumDescriptions": [
+            "%config.language.auto%",
+            "%config.language.en%",
+            "%config.language.es%"
+          ],
+          "markdownDescription": "%config.language.description%"
+        },
         "archeologyDoc.path": {
           "type": "string",
           "default": "",
-          "description": "Ruta al binario `adoc`. Vacío: se busca en el PATH y en ~/.cargo/bin. Solo se lee de la configuración de usuario, nunca de la del workspace.",
+          "description": "%config.path.description%",
           "scope": "machine"
         },
         "archeologyDoc.decorations": {
           "type": "boolean",
           "default": true,
-          "description": "Marcar en el editor las líneas citadas como evidencia de hallazgos."
+          "description": "%config.decorations.description%"
         },
         "archeologyDoc.checkToolsOnStartup": {
           "type": "boolean",
           "default": true,
-          "description": "Al iniciar, comprobar que adoc, git, Node y VitePress estén instalados y ofrecer instalar lo que falte."
+          "description": "%config.checkToolsOnStartup.description%"
         },
         "archeologyDoc.downloadUrl": {
           "type": "string",
           "default": "",
           "scope": "machine",
-          "description": "URL https de la carpeta /download desde la que se instala adoc. Vacío: https://jsoncr.github.io/archeology-doc/download."
+          "description": "%config.downloadUrl.description%"
         }
       }
     }
   },
   "scripts": {
-    "compile": "node -e \"require('fs').rmSync('out',{recursive:true,force:true})\" && tsc -p .",
+    "vscode:prepublish": "npm run compile",
+    "compile": "node -e \"require('fs').rmSync('out',{recursive:true,force:true})\" && node scripts/copy-graph.js && tsc -p . && node scripts/check-i18n.js",
+    "copy-graph": "node scripts/copy-graph.js",
     "watch": "tsc -watch -p .",
-    "package": "vsce package --no-dependencies"
+    "package": "vsce package --no-dependencies",
+    "check-i18n": "node scripts/check-i18n.js"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

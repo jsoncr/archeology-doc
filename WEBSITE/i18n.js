@@ -1,0 +1,413 @@
+// Idiomas del sitio (inglés y español). Se carga en <head>, antes del primer pintado:
+// resuelve el idioma, ajusta <html lang> y, si no es el del HTML (inglés), oculta
+// el cuerpo hasta traducirlo al cargar el DOM, para no mostrar el idioma equivocado.
+//
+// Marcado en index.html:
+//   data-i18n="clave"                     → textContent
+//   data-i18n-html="clave"                → innerHTML (solo cadenas fijas de este archivo)
+//   data-i18n-attr="attr:clave;attr2:clave2" → atributos (title, aria-label, alt, content…)
+//
+// Orden para elegir el idioma: ?lang=en|es > localStorage (adoc-lang) > navigator.languages > en.
+// WEBSITE/scripts/check-i18n.mjs comprueba que ambos diccionarios tengan las mismas claves.
+
+(function () {
+  'use strict';
+
+  const SUPPORTED = ['en', 'es'];
+  const DEFAULT_LANG = 'en';
+  const STORAGE_KEY = 'adoc-lang';
+
+  const MESSAGES = {
+    en: {
+      'meta.title': 'archeology-doc · document any project with your AI agents',
+      'meta.description': 'Rust CLI that inspects new or legacy projects and generates a knowledge base, VitePress documentation and context for AI agents, backed by verifiable evidence.',
+      'meta.ogLocale': 'en_US',
+      'lang.group': 'Language',
+      'theme.toggle': 'Toggle theme',
+
+      'nav.how': 'How it works',
+      'nav.install': 'Install',
+      'nav.downloads': 'Downloads',
+      'nav.commands': 'Commands',
+      'nav.agents': 'Agents',
+
+      'hero.eyebrow': 'Open-source CLI · Rust · local-first',
+      'hero.title1': 'Dig into any project.',
+      'hero.title2': 'Document it with evidence.',
+      'hero.lead': '<strong>archeology-doc</strong> (<code>adoc</code>) inspects new or legacy projects and, with the AI agent you already use, generates a browsable knowledge base, documentation, findings and context for agents. Every claim cites its source as <code>path:line</code>.',
+      'cta.install': 'Install',
+      'cta.how': 'See how it works',
+
+      'card.map.title': 'System map',
+      'card.map.text': 'Modules, features, glossary and decisions in plain Markdown, browsable in Obsidian, VitePress or GitHub.',
+      'card.risks.title': 'Contradictions and risks',
+      'card.risks.text': 'Findings by severity: outdated documentation, duplicated rules, conflicting configuration, dead code.',
+      'card.tests.title': 'Testing gaps',
+      'card.tests.text': 'Features ↔ tests, covered and missing scenarios, disabled or empty tests.',
+      'card.agents.title': 'Context for agents',
+      'card.agents.text': '<code>AGENTS.md</code>, persistent memory and skills: every AI session starts knowing what exists and where.',
+      'card.specs.title': 'Specs with OpenSpec',
+      'card.specs.text': 'Requirement compliance checked against the code, and inferred baseline specs for projects that have none.',
+      'card.verify.title': 'Verifiable',
+      'card.verify.text': '<code>adoc check</code> validates evidence, links and outdated notes; ideal for CI.',
+
+      'how.title': 'How it works',
+      'how.sub': 'Rust computes the deterministic parts; your agent does the interpretation; <code>adoc</code> orchestrates and validates.',
+      'how.scan': 'AI-free inventory: languages, modules, tests, CI, git history and OpenSpec. Honors <code>.gitignore</code> and excludes secrets.',
+      'how.plan': 'Splits the work into bounded tasks based on project size: a few tasks for a small one, more for a large one.',
+      'how.inspect': 'Your agent runs each task. It is only marked done if it produced what was asked, with valid evidence.',
+      'how.preview': 'A site with a dashboard: status, findings, questions for the team and FAQ. Or a single HTML report.',
+      'how.sync': 'When the code changes, it marks the affected notes as outdated and reopens only those tasks.',
+
+      'install.title': 'Install',
+      'install.sub': 'One command for your system: it downloads the binary for your platform, verifies its SHA-256 and puts it on your PATH. No Rust needed. Node 18+ only for the VitePress site and the extension.',
+      'install.osLabel': 'Operating system',
+      'install.tabSource': 'From source',
+      'install.orDownload': 'or download the binary',
+      'install.macNote': 'When downloaded from the browser, macOS quarantines it: <code>xattr -d com.apple.quarantine adoc archeology-doc</code>, then move both to <code>~/.local/bin</code>. Not needed with the terminal command.',
+      'install.linuxNote': 'Binaries for glibc 2.28 or later (Debian 10, Ubuntu 18.10, RHEL 8 and newer).',
+      'install.windowsNote': 'The installer puts it in <code>%LOCALAPPDATA%\\Programs\\archeology-doc\\bin</code> and adds it to your PATH, without administrator rights. On Windows ARM64 it runs under x64 emulation.',
+      'install.extras': 'Extras',
+      'install.binariesNote': 'Two equivalent binaries are installed: <code>adoc</code> (short) and <code>archeology-doc</code>. To uninstall: <code>adoc uninstall</code> (with <code>--purge</code> it also deletes <code>~/.archeology-doc</code>; your project files are never touched).',
+
+      'downloads.title': 'All downloads',
+      'downloads.file': 'File',
+      'downloads.platform': 'Platform',
+      'downloads.size': 'Size',
+      'downloads.placeholder': 'List available once the site is published (<code>WEBSITE/dist.sh</code>).',
+      'downloads.verifyNote': 'Verify a download with <code>shasum -a 256 &lt;file&gt;</code> (macOS/Linux) or <code>Get-FileHash &lt;file&gt;</code> (PowerShell) and compare it with <a href="download/SHA256SUMS">SHA256SUMS</a>.',
+
+      'start.title': 'Getting started',
+      'start.sub': 'In your project folder:',
+      'daily.title': 'Day to day',
+      'daily.review': 'Progress, findings, features without tests',
+      'daily.resume': 'Retries failed or interrupted tasks',
+      'daily.answer': 'Answers an agent that asked a question',
+      'daily.run': 'Interactive session with the agent',
+      'daily.askExample': 'adoc ask "…?"',
+      'daily.ask': 'Ask about the project → FAQ',
+      'daily.sync': 'Detects changes and marks outdated notes',
+      'daily.check': 'Validations for CI',
+      'daily.report': 'Single HTML report to share',
+      'daily.projects': 'All your projects and their progress',
+
+      'agents.title': 'Work with your agent',
+      'agents.sub': 'Agent-agnostic: switch agent or model whenever you like. No CLI? Export the tasks and do them by hand.',
+
+      'vscode.title': 'VS Code extension',
+      'vscode.sub': 'Everything generated, in view while you code. Also works in Cursor, Windsurf and Devin Desktop.',
+      'vscode.tasks': 'Tasks by status with a ▶ button to run them',
+      'vscode.findings': 'Findings that jump to the evidence line',
+      'vscode.graph': 'Knowledge graph, like in Obsidian',
+      'vscode.questions': 'Questions from the agent and the team, plus FAQ',
+      'vscode.marks': 'Editor marks on the cited code',
+      'vscode.status': 'Progress and active agent in the status bar',
+      'mock.tasks': '▾ Tasks',
+      'mock.question': '❓ T-004 · question',
+      'mock.findings': '▾ Findings',
+      'mock.finding': '⚠ Discount cap 10 % vs 20 %',
+
+      'output.title': 'What stays in your project',
+      'output.sub': 'Only results, in Markdown. Working state lives outside the repository.',
+      'principles.title': 'Principles',
+      'principles.evidence': '<b>Evidence first:</b> every claim cites <code>path:line</code>',
+      'principles.safe': '<b>Non-destructive:</b> never modifies your code; respects your edits',
+      'principles.local': '<b>Local-first:</b> nothing leaves your machine except what your agent sends',
+      'principles.incremental': '<b>Incremental:</b> small, resumable tasks, module by module',
+      'principles.standards': '<b>Standards:</b> Markdown, OpenSpec, AGENTS.md, Obsidian and VitePress',
+      'footer.made': 'Made with Rust 🦀',
+
+      // Comentarios de los bloques de código (los comandos no se traducen).
+      'code.sourceNeedsRust': '# Requires Rust (rustup.rs). Installs `adoc` into ~/.cargo/bin',
+      'code.orCargo': '# or directly with cargo',
+      'code.extrasWith': '# With shared VitePress and the VS Code extension',
+      'code.doctor': '# Checks requirements: git, Node, VitePress, OpenSpec and agents',
+      'code.projectName': 'my-project',
+      'code.init': '# config + structure',
+      'code.agentUse': '# or devin, codex, gemini…',
+      'code.scan': '# deterministic inventory',
+      'code.plan': '# tasks sized to the project',
+      'code.inspect': '# the agent documents',
+      'code.preview': '# see the result',
+      'code.agentList': '# available; * = active',
+      'code.agentModel': '# project agent and model',
+      'code.agentOnce': '# just for this run',
+      'code.treeConfig': '# config + ID',
+      'code.treeAgents': '# context for agents',
+      'code.treeVault': '# Obsidian vault',
+      'code.treeDocs': '# VitePress site',
+
+      // Textos que genera main.js.
+      'js.copy': 'Copy',
+      'js.copied': 'Copied ✓',
+      'js.copyFallback': 'Select and copy',
+      'js.detected': 'Detected: {os}',
+      'js.heroOs': 'Installing for {os} · other options under “Install”',
+      'js.placeholderBase': 'https://your-site/download/',
+      'js.unavailable': 'not available',
+      'js.platformVsix': 'VS Code extension',
+      'js.platformInstallSh': 'macOS / Linux installer',
+      'js.platformInstallPs1': 'Windows installer',
+    },
+
+    es: {
+      'meta.title': 'archeology-doc · documenta cualquier proyecto con tus agentes de IA',
+      'meta.description': 'CLI en Rust que inspecciona proyectos nuevos o legacy y genera base de conocimiento, documentación VitePress y contexto para agentes de IA, con evidencias verificables.',
+      'meta.ogLocale': 'es_ES',
+      'lang.group': 'Idioma',
+      'theme.toggle': 'Cambiar tema',
+
+      'nav.how': 'Cómo funciona',
+      'nav.install': 'Instalar',
+      'nav.downloads': 'Descargas',
+      'nav.commands': 'Comandos',
+      'nav.agents': 'Agentes',
+
+      'hero.eyebrow': 'CLI open source · Rust · local-first',
+      'hero.title1': 'Excava cualquier proyecto.',
+      'hero.title2': 'Documéntalo con evidencia.',
+      'hero.lead': '<strong>archeology-doc</strong> (<code>adoc</code>) inspecciona proyectos nuevos o legacy y, con el agente de IA que ya usas, genera una base de conocimiento navegable, documentación, hallazgos y contexto para agentes. Cada afirmación cita su fuente <code>ruta:línea</code>.',
+      'cta.install': 'Instalar',
+      'cta.how': 'Ver cómo funciona',
+
+      'card.map.title': 'Mapa del sistema',
+      'card.map.text': 'Módulos, funcionalidades, glosario y decisiones en Markdown plano, navegable en Obsidian, VitePress o GitHub.',
+      'card.risks.title': 'Contradicciones y riesgos',
+      'card.risks.text': 'Hallazgos por severidad: documentación desactualizada, reglas duplicadas, configuración en conflicto, código muerto.',
+      'card.tests.title': 'Huecos de testing',
+      'card.tests.text': 'Funcionalidades ↔ tests, escenarios cubiertos y faltantes, tests desactivados o vacíos.',
+      'card.agents.title': 'Contexto para agentes',
+      'card.agents.text': '<code>AGENTS.md</code>, memoria persistente y skills: cada sesión de IA empieza sabiendo qué hay y dónde.',
+      'card.specs.title': 'Specs con OpenSpec',
+      'card.specs.text': 'Cumplimiento de requisitos contra el código y specs base inferidas para proyectos que no las tienen.',
+      'card.verify.title': 'Verificable',
+      'card.verify.text': '<code>adoc check</code> valida evidencias, enlaces y notas desactualizadas; ideal para CI.',
+
+      'how.title': 'Cómo funciona',
+      'how.sub': 'Lo determinista lo calcula Rust; la interpretación la hace tu agente; <code>adoc</code> orquesta y valida.',
+      'how.scan': 'Inventario sin IA: lenguajes, módulos, tests, CI, historial git y OpenSpec. Respeta <code>.gitignore</code> y excluye secretos.',
+      'how.plan': 'Divide el trabajo en tareas acotadas según el tamaño del proyecto: pocas tareas en uno pequeño, más en uno grande.',
+      'how.inspect': 'Tu agente ejecuta cada tarea. Solo se marca hecha si produjo lo pedido con evidencias válidas.',
+      'how.preview': 'Sitio con dashboard: estado, hallazgos, preguntas para el equipo y FAQ. O un reporte HTML único.',
+      'how.sync': 'Cuando el código cambia, marca las notas afectadas como desactualizadas y reabre solo esas tareas.',
+
+      'install.title': 'Instalar',
+      'install.sub': 'Un comando según tu sistema: descarga el binario de tu plataforma, verifica su SHA-256 y lo deja en el PATH. No necesitas Rust. Node 18+ solo para el sitio VitePress y la extensión.',
+      'install.osLabel': 'Sistema operativo',
+      'install.tabSource': 'Desde el código',
+      'install.orDownload': 'o descarga el binario',
+      'install.macNote': 'Descargado desde el navegador, macOS lo marca en cuarentena: <code>xattr -d com.apple.quarantine adoc archeology-doc</code> y muévelos a <code>~/.local/bin</code>. Con el comando de terminal no hace falta.',
+      'install.linuxNote': 'Binarios para glibc 2.28 o superior (Debian 10, Ubuntu 18.10, RHEL 8 y posteriores).',
+      'install.windowsNote': 'El instalador lo deja en <code>%LOCALAPPDATA%\\Programs\\archeology-doc\\bin</code> y lo añade a tu PATH, sin permisos de administrador. En Windows ARM64 funciona con la emulación x64.',
+      'install.extras': 'Extras',
+      'install.binariesNote': 'Se instalan dos binarios equivalentes: <code>adoc</code> (corto) y <code>archeology-doc</code>. Para desinstalar: <code>adoc uninstall</code> (con <code>--purge</code> borra también <code>~/.archeology-doc</code>; los archivos de tus proyectos no se tocan).',
+
+      'downloads.title': 'Todas las descargas',
+      'downloads.file': 'Archivo',
+      'downloads.platform': 'Plataforma',
+      'downloads.size': 'Tamaño',
+      'downloads.placeholder': 'Lista disponible al publicar el sitio (<code>WEBSITE/dist.sh</code>).',
+      'downloads.verifyNote': 'Verifica una descarga con <code>shasum -a 256 &lt;archivo&gt;</code> (macOS/Linux) o <code>Get-FileHash &lt;archivo&gt;</code> (PowerShell) y compárala con <a href="download/SHA256SUMS">SHA256SUMS</a>.',
+
+      'start.title': 'Primeros pasos',
+      'start.sub': 'En la carpeta de tu proyecto:',
+      'daily.title': 'Día a día',
+      'daily.review': 'Progreso, hallazgos, funcionalidades sin tests',
+      'daily.resume': 'Reintenta tareas fallidas o interrumpidas',
+      'daily.answer': 'Responde a un agente que preguntó',
+      'daily.run': 'Sesión interactiva con el agente',
+      'daily.askExample': 'adoc ask "¿…?"',
+      'daily.ask': 'Pregunta sobre el proyecto → FAQ',
+      'daily.sync': 'Detecta cambios y marca notas desactualizadas',
+      'daily.check': 'Validaciones para CI',
+      'daily.report': 'Reporte HTML único para compartir',
+      'daily.projects': 'Todos tus proyectos y su progreso',
+
+      'agents.title': 'Trabaja con tu agente',
+      'agents.sub': 'Agnóstico: cambia de agente o de modelo cuando quieras. Sin CLI, exporta las tareas para hacerlas a mano.',
+
+      'vscode.title': 'Extensión para VS Code',
+      'vscode.sub': 'Todo lo generado, a la vista mientras programas. Funciona también en Cursor, Windsurf y Devin Desktop.',
+      'vscode.tasks': 'Tareas por estado con botón ▶ para ejecutarlas',
+      'vscode.findings': 'Hallazgos con salto a la línea de evidencia',
+      'vscode.graph': 'Grafo del conocimiento, como en Obsidian',
+      'vscode.questions': 'Preguntas del agente y del equipo, y FAQ',
+      'vscode.marks': 'Marcas en el editor en el código citado',
+      'vscode.status': 'Progreso y agente activo en la barra de estado',
+      'mock.tasks': '▾ Tareas',
+      'mock.question': '❓ T-004 · pregunta',
+      'mock.findings': '▾ Hallazgos',
+      'mock.finding': '⚠ Tope de descuento 10 % vs 20 %',
+
+      'output.title': 'Qué queda en tu proyecto',
+      'output.sub': 'Solo resultados, en Markdown. El estado de trabajo vive fuera del repositorio.',
+      'principles.title': 'Principios',
+      'principles.evidence': '<b>Evidencia ante todo:</b> cada afirmación cita <code>ruta:línea</code>',
+      'principles.safe': '<b>No destructivo:</b> nunca modifica tu código; respeta tus ediciones',
+      'principles.local': '<b>Local-first:</b> nada sale de tu máquina salvo lo que envíe tu agente',
+      'principles.incremental': '<b>Incremental:</b> tareas pequeñas, reanudables, por módulos',
+      'principles.standards': '<b>Estándares:</b> Markdown, OpenSpec, AGENTS.md, Obsidian y VitePress',
+      'footer.made': 'Hecho en Rust 🦀',
+
+      'code.sourceNeedsRust': '# Necesita Rust (rustup.rs). Instala `adoc` en ~/.cargo/bin',
+      'code.orCargo': '# o directamente con cargo',
+      'code.extrasWith': '# Con VitePress compartido y la extensión de VS Code',
+      'code.doctor': '# Verifica requisitos: git, Node, VitePress, OpenSpec y agentes',
+      'code.projectName': 'mi-proyecto',
+      'code.init': '# config + estructura',
+      'code.agentUse': '# o devin, codex, gemini…',
+      'code.scan': '# inventario determinista',
+      'code.plan': '# tareas según el tamaño',
+      'code.inspect': '# el agente documenta',
+      'code.preview': '# ver el resultado',
+      'code.agentList': '# disponibles; * = activo',
+      'code.agentModel': '# agente y modelo del proyecto',
+      'code.agentOnce': '# solo para esta corrida',
+      'code.treeConfig': '# config + ID',
+      'code.treeAgents': '# contexto para agentes',
+      'code.treeVault': '# vault Obsidian',
+      'code.treeDocs': '# sitio VitePress',
+
+      'js.copy': 'Copiar',
+      'js.copied': 'Copiado ✓',
+      'js.copyFallback': 'Selecciona y copia',
+      'js.detected': 'Detectado: {os}',
+      'js.heroOs': 'Instalación para {os} · otras opciones en «Instalar»',
+      'js.placeholderBase': 'https://tu-sitio/download/',
+      'js.unavailable': 'no disponible',
+      'js.platformVsix': 'Extensión de VS Code',
+      'js.platformInstallSh': 'Instalador macOS / Linux',
+      'js.platformInstallPs1': 'Instalador Windows',
+    },
+  };
+
+  // Normaliza una etiqueta de idioma ("es-CR", "EN_us") a un idioma soportado o null.
+  const normalize = (tag) => {
+    const base = String(tag || '').toLowerCase().split(/[-_]/)[0];
+    return SUPPORTED.includes(base) ? base : null;
+  };
+
+  const readStored = () => {
+    try {
+      return normalize(localStorage.getItem(STORAGE_KEY));
+    } catch {
+      return null; // almacenamiento no disponible
+    }
+  };
+
+  const readQuery = () => {
+    try {
+      return normalize(new URLSearchParams(location.search).get('lang'));
+    } catch {
+      return null;
+    }
+  };
+
+  // Primer idioma del navegador que sea en* o es*.
+  const readNavigator = () => {
+    const list = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language]) || [];
+    for (const tag of list) {
+      const lang = normalize(tag);
+      if (lang) return lang;
+    }
+    return null;
+  };
+
+  const resolveInitial = () => readQuery() || readStored() || readNavigator() || DEFAULT_LANG;
+
+  let current = DEFAULT_LANG;
+
+  // Traduce una clave; {nombre} se reemplaza con vars. Si falta, cae al inglés y luego a la clave.
+  const t = (key, vars) => {
+    const dict = MESSAGES[current] || MESSAGES[DEFAULT_LANG];
+    let text = key in dict ? dict[key] : key in MESSAGES[DEFAULT_LANG] ? MESSAGES[DEFAULT_LANG][key] : key;
+    if (vars) text = text.replace(/\{(\w+)\}/g, (m, name) => (name in vars ? String(vars[name]) : m));
+    return text;
+  };
+
+  // Aplica el idioma a todo el documento y avisa a main.js (evento adoc:langchange).
+  const apply = (lang) => {
+    current = normalize(lang) || DEFAULT_LANG;
+    const root = document.documentElement;
+    root.lang = current;
+    document.querySelectorAll('[data-i18n]').forEach((el) => {
+      el.textContent = t(el.dataset.i18n);
+    });
+    document.querySelectorAll('[data-i18n-html]').forEach((el) => {
+      // Solo cadenas fijas de MESSAGES: nunca datos del usuario ni de la URL.
+      el.innerHTML = t(el.dataset.i18nHtml);
+    });
+    document.querySelectorAll('[data-i18n-attr]').forEach((el) => {
+      el.dataset.i18nAttr.split(';').forEach((pair) => {
+        const idx = pair.indexOf(':');
+        if (idx < 1) return;
+        el.setAttribute(pair.slice(0, idx).trim(), t(pair.slice(idx + 1).trim()));
+      });
+    });
+    document.querySelectorAll('[data-lang]').forEach((btn) => {
+      btn.setAttribute('aria-pressed', String(btn.dataset.lang === current));
+    });
+    document.dispatchEvent(new CustomEvent('adoc:langchange', { detail: { lang: current } }));
+  };
+
+  // Cambio por el usuario: se recuerda y, si la URL trae ?lang, se actualiza para que no lo pise al recargar.
+  const setLang = (lang) => {
+    const next = normalize(lang);
+    if (!next) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, next);
+    } catch {
+      /* sin persistencia */
+    }
+    try {
+      const url = new URL(location.href);
+      if (url.searchParams.has('lang')) {
+        url.searchParams.set('lang', next);
+        history.replaceState(null, '', url);
+      }
+    } catch {
+      /* URL no editable (p. ej. file://): se ignora */
+    }
+    apply(next);
+  };
+
+  // API mínima para main.js y para el script de comprobación.
+  const api = {
+    SUPPORTED,
+    DEFAULT_LANG,
+    STORAGE_KEY,
+    MESSAGES,
+    t,
+    setLang,
+    get lang() {
+      return current;
+    },
+  };
+  globalThis.AdocI18n = api;
+
+  // Fuera del navegador (comprobación con node) no hay DOM: solo se exponen los diccionarios.
+  if (typeof document === 'undefined') return;
+
+  const initial = resolveInitial();
+  current = initial;
+  const root = document.documentElement;
+  root.lang = initial;
+  // El HTML ya está en inglés; en otro idioma se oculta hasta traducir (ver styles.css).
+  if (initial !== DEFAULT_LANG) root.setAttribute('data-i18n-pending', '');
+
+  const init = () => {
+    try {
+      apply(initial);
+    } finally {
+      root.removeAttribute('data-i18n-pending');
+    }
+    document.querySelectorAll('[data-lang]').forEach((btn) => {
+      btn.addEventListener('click', () => setLang(btn.dataset.lang));
+    });
+  };
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init, { once: true });
+  } else {
+    init();
+  }
+})();

@@ -3,6 +3,7 @@
 
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { t } from './i18n';
 import { FindingInfo, parseEvidence, Status } from './types';
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -87,7 +88,7 @@ function hover(f: FindingInfo): vscode.MarkdownString {
   // Título, tipo y estado los escribe un agente: se escapan para que no puedan
   // inyectar enlaces `command:` en un markdown que permite comandos.
   md.appendMarkdown(`$(warning) **${escapeMd(f.severity)}** · ${escapeMd(f.kind)} · ${escapeMd(f.state)}\n\n`);
-  md.appendMarkdown(`**${escapeMd(f.title)}**\n\n[Abrir hallazgo](${open})`);
+  md.appendMarkdown(`**${escapeMd(f.title)}**\n\n[${escapeMd(t('decorations.openFinding'))}](${open})`);
   return md;
 }
 

@@ -1,3 +1,7 @@
 node_modules/
 out/
 *.vsix
+# Copias generadas del renderizador compartido (crates/archeology-core/assets/);
+# `npm run compile` las regenera y `npm run package` las incluye.
+media/graph.js
+media/graph.css

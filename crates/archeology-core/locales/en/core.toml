@@ -1,0 +1,113 @@
+# User-interface messages of archeology-core (UI language).
+# Keys: core.<module>.<message>. Placeholders: {name}.
+# Keep the same keys and placeholders in locales/es/core.toml.
+
+[core.common]
+warning = "warning: {message}"
+
+[core.i18n]
+invalid_lang = "unsupported language '{value}' (valid: en, es)"
+invalid_ignored = "warning: unsupported language '{value}' in {source}; ignored (valid: en, es)"
+
+[core.i18n.source]
+flag = "the --lang flag"
+env = "the {var} environment variable"
+config = "the user configuration ({path})"
+locale = "the system locale"
+default = "default value"
+
+[core.templates]
+unknown = "unknown template: {name}"
+
+[core.error]
+project_not_found = "no archeology-doc project found (archeology-doc.toml is missing). Run `adoc init` first"
+already_initialized = "the project is already initialized: {path}"
+task_not_found = "task {id} does not exist"
+unknown_adapter = "adapter {name} is not defined in the configuration"
+
+[core.config]
+id_empty = "project.id cannot be empty"
+id_invalid = "invalid project.id ('{id}'): use a UUID (letters, digits and '-')"
+language_invalid = "project.language must be en|es, not '{value}'"
+model_invalid = "invalid agent.adapters.{name}.model ('{model}')"
+links_style_invalid = "links.style must be wikilink|relative, not '{value}'"
+context_adapter_invalid = "context.adapters: '{value}' is not supported (valid: {valid})"
+plan_size_invalid = "plan.size must be auto|small|medium|large, not '{value}'"
+openspec_enabled_invalid = "openspec.enabled must be auto|true|false, not '{value}'"
+path_control_chars = "{key} = {value} contains control characters"
+path_not_relative = "{key} = '{value}' must be a relative path inside the project (no '..')"
+path_not_folder = "{key} = '{value}' must be a folder inside the project"
+
+[core.paths]
+no_home = "could not determine the home directory; set {var}"
+config_dir_renamed = "configuration moved from {from} to {to} (new project name)"
+config_dir_rename_failed = "warning: could not move {from} to {to}: {error}"
+workspace_invalid = "project.id produces an invalid workspace: '{name}'"
+ambiguous_workspace = "warning: several workspace folders match the prefix '{prefix}'; using {path}"
+workspace_shared = "warning: the workspace {workspace} was used by another directory ({previous}); now {current}. A clone or worktree with the same project.id? They share state and tasks; use a different project.id to separate them."
+
+[core.project]
+legacy_state_moved = "old work state of {from} moved to {to}"
+record_owner_failed = "warning: could not register the project in its workspace: {error}"
+locked = "another process is modifying this project ({holder}); wait for it to finish"
+config_renamed = "renamed {from} → {to} (new project name)"
+output_outside = "{key} = '{value}' points outside the project (symlink?)"
+
+[core.trust]
+untrusted = "adapter '{name}' is defined in archeology-doc.toml and is not a built-in one: it does not run without your approval. Review it and approve it with `adoc agent trust {name}`, or go back to the built-in one with `adoc agent use {name} --reset`"
+store_corrupt = "{path} is corrupt ({error}); fix it or delete it to approve the adapters again"
+
+[core.state]
+recovered_backup = "warning: {path} was corrupt; the backup {backup} was recovered"
+not_regular_file = "not a regular file"
+
+[core.fsutil]
+symlink_in_path = "{path} is a symbolic link: archeology-doc does not write through repository symlinks (not modified)"
+outside_project = "{path} is outside the project {root} (not modified)"
+not_a_directory = "{path} exists and is not a directory"
+symlink_not_modified = "{path} is a symbolic link (not modified)"
+symlink_not_read = "{path} is a symbolic link: archeology-doc neither reads nor modifies it"
+not_a_file = "{path} exists and is not a regular file"
+not_utf8 = "{path} is not valid UTF-8; convert it to UTF-8 so archeology-doc can update it (not modified)"
+symlink_not_overwritten = "{path} is a symbolic link: not overwritten"
+
+[core.index]
+not_found = "{path} does not exist"
+
+[core.validate]
+stale_note = "stale note (sources changed)"
+note_not_utf8 = "the note is not valid UTF-8"
+note_unreadable = "could not read the note: {error}"
+broken_wikilink = "wikilink without target: [[{target}]]"
+duplicate_id = "duplicate id `{id}` (also in {first})"
+duplicate_finding = "possible duplicate of finding {first} (same kind and evidence)"
+no_notes_produced = "the task produced no note in this directory"
+expected_file_missing = "expected file not found"
+file_not_updated = "file not updated by the task"
+
+[core.note]
+no_frontmatter = "no valid YAML frontmatter"
+missing_id = "missing `id` field"
+missing_type = "missing `type` field"
+unknown_type = "unknown type '{value}' (valid: {valid})"
+nonstandard_status = "non-standard status '{value}'"
+nonstandard_confidence = "non-standard confidence '{value}'"
+nonstandard_memory = "non-standard memory '{value}' (stable|temporary)"
+invalid_kind = "invalid kind '{value}'"
+finding_without_kind = "finding without `kind`"
+invalid_severity = "invalid severity '{value}'"
+finding_without_severity = "finding without `severity`"
+invalid_state = "invalid state '{value}'"
+finding_without_state = "finding without `state`"
+finding_without_sources = "finding without evidence (empty `sources`)"
+source_outside = "evidence outside the project: {source}"
+source_not_found = "evidence not found: {source}"
+source_out_of_range = "evidence out of range: {source} (the file has {total} lines)"
+feature_without_sources = "feature without evidence (empty `sources`)"
+
+[core.managed]
+unbalanced = "markers of region '{name}' are unbalanced or duplicated ({begins} begin, {ends} end): fix the file by hand; not modified"
+
+[core.site]
+overlap = "{key} ({path}) overlaps with {output}, which the site regenerates"
+not_generated = "{path} already exists and was not generated by archeology-doc; move or rename it (the site regenerates it on every `site sync`)"

@@ -8,6 +8,7 @@ import * as crypto from 'crypto';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import * as cli from './cli';
+import { Key, language, t, webviewStrings } from './i18n';
 import { Status } from './types';
 
 export type DashboardTab = 'summary' | 'project' | 'tasks' | 'findings' | 'docs' | 'questions' | 'graph';
@@ -56,6 +57,10 @@ function allowedRun(args: unknown): args is string[] {
   if (cmd === 'plan') {
     return rest.length === 0 || (rest.length === 1 && rest[0] === '--force');
   }
+  if (cmd === 'inspect') {
+    // inspect [--resume] (botón "Reintentar")
+    return rest.length === 0 || (rest.length === 1 && rest[0] === '--resume');
+  }
   return ALLOWED_RUN.has(cmd) && rest.length === 0;
 }
 
@@ -92,6 +97,14 @@ export class DashboardPanel {
     if (d) {
       d.pushStatus();
       void d.pushGraph();
+    }
+  }
+
+  /** Cambió el idioma: se vuelve a generar el HTML (el webview pide el estado al cargar). */
+  static relocalize(): void {
+    const d = DashboardPanel.current;
+    if (d && !d.disposed) {
+      d.panel.webview.html = d.html();
     }
   }
 
@@ -141,7 +154,7 @@ export class DashboardPanel {
         try {
           await vscode.window.showTextDocument(vscode.Uri.file(msg.file), options);
         } catch {
-          void vscode.window.showWarningMessage(`No se pudo abrir ${msg.file}`);
+          void vscode.window.showWarningMessage(t('dash.openFailed', { file: msg.file }));
         }
         break;
       }
@@ -158,8 +171,9 @@ export class DashboardPanel {
       case 'answer':
         if (this.host.root && TASK_ID.test(String(msg.task)) && typeof msg.text === 'string' && msg.text.trim()) {
           try {
-            await cli.exec(this.host.root, ['task', 'answer', msg.task, msg.text.trim()]);
-            void vscode.window.showInformationMessage(`Respuesta guardada en ${msg.task}; se ejecutará en el próximo inspect.`);
+            // `--`: un texto que empieza con `-` no se toma como opción.
+            await cli.exec(this.host.root, ['task', 'answer', msg.task, '--', msg.text.trim()]);
+            void vscode.window.showInformationMessage(t('dash.answerSaved', { task: msg.task }));
           } catch (err) {
             void vscode.window.showErrorMessage((err as Error).message);
           }
@@ -168,7 +182,7 @@ export class DashboardPanel {
         break;
       case 'ask':
         if (typeof msg.question === 'string' && msg.question.trim()) {
-          this.host.run(['ask', msg.question.trim()]);
+          this.host.run(['ask', '--', msg.question.trim()]);
         }
         break;
     }
@@ -196,38 +210,43 @@ export class DashboardPanel {
     const webview = this.panel.webview;
     const media = (f: string) => webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'media', f));
     const nonce = crypto.randomBytes(16).toString('base64');
+    // Textos del webview: van en un atributo `data-` (no en un script inline),
+    // así la CSP sigue exigiendo el nonce para cualquier script.
+    const strings = escapeHtml(JSON.stringify({ lang: language(), strings: webviewStrings() }));
+    const tx = (key: Key) => escapeHtml(t(key));
     return `<!doctype html>
-<html lang="es">
+<html lang="${language()}">
 <head>
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="${media('graph.css')}">
 <link rel="stylesheet" href="${media('dashboard.css')}">
 </head>
-<body>
+<body data-i18n="${strings}">
   <header class="top">
     <div class="title">
       <h1 id="name">archeology-doc</h1>
       <div class="meta" id="meta"></div>
     </div>
     <div class="actions">
-      <button class="primary" data-run="inspect" title="adoc inspect">▶ Ejecutar tareas</button>
-      <button data-run="inspect --resume" title="adoc inspect --resume">↻ Reintentar</button>
-      <button data-command="adoc.selectAgent" title="adoc agent use">Agente</button>
-      <button data-run="preview" title="adoc preview">Ver sitio</button>
-      <button data-run="report" title="adoc report">Reporte</button>
-      <button id="reload" title="Actualizar">⟳</button>
+      <button class="primary" data-run="inspect" title="adoc inspect">▶ ${tx('dash.runTasks')}</button>
+      <button data-run="inspect --resume" title="adoc inspect --resume">↻ ${tx('dash.retry')}</button>
+      <button data-command="adoc.selectAgent" title="adoc agent use">${tx('dash.agent')}</button>
+      <button data-run="preview" title="adoc preview">${tx('dash.viewSite')}</button>
+      <button data-run="report" title="adoc report">${tx('dash.report')}</button>
+      <button id="reload" title="${tx('dash.refresh')}">⟳</button>
     </div>
   </header>
   <div id="outdated" class="outdated" hidden></div>
   <nav class="tabs" id="tabs">
-    <button data-tab="summary" class="active">Resumen</button>
-    <button data-tab="project">Proyecto</button>
-    <button data-tab="tasks">Tareas</button>
-    <button data-tab="findings">Hallazgos</button>
-    <button data-tab="docs">Documentación</button>
-    <button data-tab="questions">Preguntas</button>
-    <button data-tab="graph">Grafo</button>
+    <button data-tab="summary" class="active">${tx('dash.tab.summary')}</button>
+    <button data-tab="project">${tx('dash.tab.project')}</button>
+    <button data-tab="tasks">${tx('dash.tab.tasks')}</button>
+    <button data-tab="findings">${tx('dash.tab.findings')}</button>
+    <button data-tab="docs">${tx('dash.tab.docs')}</button>
+    <button data-tab="questions">${tx('dash.tab.questions')}</button>
+    <button data-tab="graph">${tx('dash.tab.graph')}</button>
   </nav>
   <main>
     <section data-panel="summary" class="panel active" id="summary"></section>
@@ -237,20 +256,19 @@ export class DashboardPanel {
     <section data-panel="docs" class="panel" id="docs"></section>
     <section data-panel="questions" class="panel" id="questions"></section>
     <section data-panel="graph" class="panel graph-panel">
-      <canvas id="graph"></canvas>
-      <div id="bar">
-        <input id="search" type="search" placeholder="Buscar nota…">
-        <button id="fit">Ajustar</button>
-        <button id="refresh">Actualizar</button>
-        <span id="stats"></span>
-      </div>
-      <div id="filters"></div>
-      <div id="tip" hidden></div>
+      <!-- Lo rellena el renderizador compartido (media/graph.js, copiado de crates/archeology-core/assets/). -->
+      <div id="graph"></div>
     </section>
   </main>
+  <script nonce="${nonce}" src="${media('i18n.js')}"></script>
   <script nonce="${nonce}" src="${media('graph.js')}"></script>
   <script nonce="${nonce}" src="${media('dashboard.js')}"></script>
 </body>
 </html>`;
   }
+}
+
+/** Escapa texto para HTML (contenido y atributos). */
+function escapeHtml(text: string): string {
+  return text.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
 }
