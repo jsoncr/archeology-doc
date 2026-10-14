@@ -19,6 +19,7 @@
 //! - [`site`]: preparación del sitio VitePress y de `llms.txt`.
 //! - [`planner`]: división del proyecto en tareas acotadas.
 //! - [`validate`]: validaciones del comando `check`.
+//! - [`task_context`]: re-verificación y retroalimentación en los archivos de tarea.
 //! - [`trust`]: aprobación de los adaptadores definidos en el repositorio.
 
 pub mod config;
@@ -38,6 +39,7 @@ pub mod planner;
 pub mod project;
 pub mod site;
 pub mod state;
+pub mod task_context;
 pub mod templates;
 pub mod trust;
 pub mod validate;

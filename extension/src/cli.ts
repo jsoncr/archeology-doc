@@ -96,6 +96,23 @@ export async function status(root: string): Promise<Status> {
   return JSON.parse(await exec(root, ['status', '--format', 'json'])) as Status;
 }
 
+/**
+ * Grafo del conocimiento en JSON (`adoc graph --json`). Un CLI anterior no
+ * conoce `--json` (clap: "unexpected argument"): se reintenta con
+ * `--format json`, que las versiones nuevas siguen aceptando (oculto).
+ */
+export async function graph(root: string): Promise<unknown> {
+  try {
+    return JSON.parse(await exec(root, ['graph', '--json']));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (!/unexpected argument|unrecognized|unknown argument|wasn't expected/i.test(message)) {
+      throw err;
+    }
+    return JSON.parse(await exec(root, ['graph', '--format', 'json']));
+  }
+}
+
 /** Directorio global de archeology-doc (registro, espacios de trabajo). */
 export function configDir(): string {
   const env = process.env.ARCHEOLOGY_DOC_CONFIG_DIR;

@@ -7,3 +7,6 @@ node_modules/**
 # Traducciones de package.json: deben ir en el paquete.
 !package.nls.json
 !package.nls.*.json
+# Capturas del README: se sirven desde GitHub, no van en el paquete.
+screens/**
+*.vsix

@@ -83,7 +83,6 @@ duplicate_id = "id `{id}` repetido (también en {first})"
 duplicate_finding = "posible hallazgo duplicado de {first} (mismo kind y evidencias)"
 no_notes_produced = "la tarea no produjo ninguna nota en este directorio"
 expected_file_missing = "archivo esperado no encontrado"
-file_not_updated = "archivo no actualizado por la tarea"
 
 [core.note]
 no_frontmatter = "sin frontmatter YAML válido"

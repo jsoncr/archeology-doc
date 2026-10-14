@@ -9,3 +9,6 @@ extension/*.vsix
 # Descargas del sitio: las genera WEBSITE/dist.sh o el workflow de release.
 WEBSITE/download/*
 !WEBSITE/download/README.md
+
+# Carpeta de subida que arma scripts/build.sh (copia de WEBSITE/ lista para Cloudflare Pages).
+/dist/

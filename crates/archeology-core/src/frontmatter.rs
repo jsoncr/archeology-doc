@@ -169,6 +169,29 @@ pub struct NoteIssue {
     pub path: String,
     pub severity: IssueSeverity,
     pub message: String,
+    /// Qué validación lo produjo (agrupa la salida de `check`).
+    pub kind: IssueKind,
+    /// Línea del problema dentro del archivo, si se conoce (1-based).
+    pub line: Option<usize>,
+}
+
+/// Validación que produjo un [`NoteIssue`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IssueKind {
+    /// Frontmatter: campos obligatorios, tipos, valores no estándar.
+    Frontmatter,
+    /// Evidencias `sources:` (archivo existente, dentro del proyecto, rango).
+    Evidence,
+    /// Wikilinks `[[...]]` sin nota destino.
+    Wikilink,
+    /// IDs repetidos y hallazgos equivalentes.
+    Duplicate,
+    /// Notas marcadas `status: stale` por `sync`.
+    Stale,
+    /// Nota ilegible (no UTF-8, permisos).
+    Unreadable,
+    /// Artefactos que una tarea declara en `# Produce`.
+    Output,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -185,11 +208,20 @@ pub fn validate_note(path: &Path, text: &str, project_root: &Path) -> Vec<NoteIs
         path: display.clone(),
         severity: IssueSeverity::Error,
         message: msg,
+        kind: IssueKind::Frontmatter,
+        line: None,
     };
     let warn = |display: &String, msg: String| NoteIssue {
         path: display.clone(),
         severity: IssueSeverity::Warning,
         message: msg,
+        kind: IssueKind::Frontmatter,
+        line: None,
+    };
+    // Las evidencias se agrupan aparte en la salida de `check`.
+    let evidence = |display: &String, msg: String| NoteIssue {
+        kind: IssueKind::Evidence,
+        ..err(display, msg)
     };
 
     let fm = match NoteFrontmatter::parse(text) {
@@ -262,48 +294,33 @@ pub fn validate_note(path: &Path, text: &str, project_root: &Path) -> Vec<NoteIs
             None => issues.push(err(&display, t!("core.note.finding_without_state"))),
         }
         if fm.sources.is_empty() {
-            issues.push(err(&display, t!("core.note.finding_without_sources")));
+            issues.push(evidence(&display, t!("core.note.finding_without_sources")));
         }
     }
 
     // Verificar que las evidencias existen: archivo y rango de líneas (RF-082).
     for src in &fm.sources {
-        let file = crate::index::source_file(src);
-        let full = project_root.join(file);
-        // Rutas escritas por agentes: absolutas, con `..` o a través de un
-        // symlink podrían apuntar fuera del proyecto (y leerse para contar
-        // líneas). Se rechazan sin tocarlas.
-        let lexically_inside = !Path::new(file).is_absolute()
-            && Path::new(file).components().all(|c| {
-                matches!(
-                    c,
-                    std::path::Component::Normal(_) | std::path::Component::CurDir
-                )
-            });
-        if !lexically_inside || !crate::project::is_inside(project_root, &full) {
-            issues.push(err(&display, t!("core.note.source_outside", source = src)));
-            continue;
-        }
-        if !full.is_file() {
-            issues.push(err(
-                &display,
-                t!("core.note.source_not_found", source = src),
-            ));
-            continue;
-        }
+        let full = match resolve_source(project_root, src) {
+            SourceTarget::Outside => {
+                issues.push(evidence(
+                    &display,
+                    t!("core.note.source_outside", source = src),
+                ));
+                continue;
+            }
+            SourceTarget::NotFound => {
+                issues.push(evidence(
+                    &display,
+                    t!("core.note.source_not_found", source = src),
+                ));
+                continue;
+            }
+            SourceTarget::File(full) => full,
+        };
         if let Some((a, b)) = crate::index::source_lines(src) {
-            let total = std::fs::read(&full)
-                .map(|bytes| {
-                    let n = bytes.iter().filter(|&&c| c == b'\n').count();
-                    if bytes.last().map(|&c| c != b'\n').unwrap_or(false) {
-                        n + 1
-                    } else {
-                        n
-                    }
-                })
-                .unwrap_or(0);
+            let total = file_line_count(&full);
             if a == 0 || a > b || b > total {
-                issues.push(err(
+                issues.push(evidence(
                     &display,
                     t!("core.note.source_out_of_range", source = src, total = total),
                 ));
@@ -313,10 +330,164 @@ pub fn validate_note(path: &Path, text: &str, project_root: &Path) -> Vec<NoteIs
 
     // Features y findings requieren al menos una evidencia (§17).
     if fm.note_type.as_deref() == Some("feature") && fm.sources.is_empty() {
-        issues.push(err(&display, t!("core.note.feature_without_sources")));
+        issues.push(evidence(&display, t!("core.note.feature_without_sources")));
     }
 
     issues
+}
+
+/// Destino de una evidencia `sources:` respecto de la raíz del proyecto.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SourceTarget {
+    /// Ruta absoluta, con `..` o que sale del proyecto a través de un symlink.
+    Outside,
+    /// Dentro del proyecto, pero no existe (o no es un archivo).
+    NotFound,
+    /// Archivo existente dentro del proyecto (ruta completa).
+    File(std::path::PathBuf),
+}
+
+/// Resuelve el archivo de una evidencia (`ruta`, `ruta:10`, `ruta:10-20`).
+///
+/// Rutas escritas por agentes: absolutas, con `..` o a través de un symlink
+/// podrían apuntar fuera del proyecto (y leerse para contar líneas). Se
+/// rechazan sin tocarlas.
+pub fn resolve_source(project_root: &Path, src: &str) -> SourceTarget {
+    let file = crate::index::source_file(src);
+    let full = project_root.join(file);
+    let lexically_inside = !Path::new(file).is_absolute()
+        && Path::new(file).components().all(|c| {
+            matches!(
+                c,
+                std::path::Component::Normal(_) | std::path::Component::CurDir
+            )
+        });
+    if !lexically_inside || !crate::project::is_inside(project_root, &full) {
+        return SourceTarget::Outside;
+    }
+    if !full.is_file() {
+        return SourceTarget::NotFound;
+    }
+    SourceTarget::File(full)
+}
+
+/// Líneas de un contenido, como las cuenta el validador de evidencias:
+/// cada `\n` cierra una línea y un último fragmento sin `\n` también cuenta.
+/// `""` → 0, `"a\nb\n"` → 2, `"a\nb"` → 2, `"a\r\nb\r\n"` → 2.
+pub fn count_lines(bytes: &[u8]) -> usize {
+    let n = bytes.iter().filter(|&&c| c == b'\n').count();
+    if bytes.last().is_some_and(|&c| c != b'\n') {
+        n + 1
+    } else {
+        n
+    }
+}
+
+/// Líneas de un archivo según [`count_lines`] (0 si no se puede leer).
+pub fn file_line_count(path: &Path) -> usize {
+    std::fs::read(path).map(|b| count_lines(&b)).unwrap_or(0)
+}
+
+/// Evidencia con el final del rango recortado a `total` líneas, si el rango
+/// empieza dentro del archivo y solo se pasa por el final:
+/// `a.ejs:1-400` con 339 líneas → `a.ejs:1-339`; `a.ejs:339-400` → `a.ejs:339`.
+/// `None` si el rango ya es válido o no se puede reparar (inicio 0, inicio
+/// mayor que el final, inicio más allá del final del archivo, sin rango).
+pub fn clamp_source(src: &str, total: usize) -> Option<String> {
+    let (a, b) = crate::index::source_lines(src)?;
+    if a == 0 || a > b || a > total || b <= total {
+        return None;
+    }
+    let file = crate::index::source_file(src);
+    Some(if a == total {
+        format!("{file}:{a}")
+    } else {
+        format!("{file}:{a}-{total}")
+    })
+}
+
+/// Sustituye evidencias de `sources:` en el frontmatter con una edición
+/// mínima: solo cambia el texto de cada evidencia dentro del bloque
+/// `sources:` (lista en bloque o en línea); conserva orden, comillas,
+/// comentarios, saltos de línea y el resto del documento.
+///
+/// Devuelve `None` si no hay frontmatter, no hay bloque `sources:` o el
+/// resultado no se parsea con exactamente las evidencias esperadas (p. ej.
+/// cadenas YAML con escapes): ante la duda no se toca la nota.
+pub fn replace_sources(text: &str, changes: &[(String, String)]) -> Option<String> {
+    let (yaml, _) = frontmatter_range(text)?;
+    let before = NoteFrontmatter::parse(text)?;
+    // Bloque `sources:`: su línea y las siguientes con sangría, `-`,
+    // comentarios o vacías (hasta la siguiente clave de primer nivel).
+    let mut start = None;
+    let mut end = yaml.end;
+    let mut offset = yaml.start;
+    for line in text[yaml.clone()].split_inclusive('\n') {
+        if start.is_none() {
+            if line.starts_with("sources:") {
+                start = Some(offset);
+            }
+        } else if !line.starts_with([' ', '\t', '-', '#', '\r', '\n']) {
+            end = offset;
+            break;
+        }
+        offset += line.len();
+    }
+    let start = start?;
+    let mut region = text[start..end].to_string();
+    for (from, to) in changes {
+        region = replace_bounded(&region, from, to);
+    }
+    let out = format!("{}{region}{}", &text[..start], &text[end..]);
+    // Verificación: mismas evidencias con las sustituciones y el resto igual.
+    let expected: Vec<String> = before
+        .sources
+        .iter()
+        .map(|s| {
+            changes
+                .iter()
+                .find(|(f, _)| f == s)
+                .map(|(_, t)| t.clone())
+                .unwrap_or_else(|| s.clone())
+        })
+        .collect();
+    let after = NoteFrontmatter::parse(&out)?;
+    let mut rest_before = before.fields.clone();
+    let mut rest_after = after.fields.clone();
+    rest_before.remove(serde_yaml::Value::String("sources".into()));
+    rest_after.remove(serde_yaml::Value::String("sources".into()));
+    (after.sources == expected && rest_before == rest_after).then_some(out)
+}
+
+/// Reemplaza en `text` cada aparición de `from` delimitada como un valor
+/// YAML completo (precedida por espacio, comilla, `[` o `,`; seguida por
+/// espacio, comilla, `,`, `]` o el final).
+fn replace_bounded(text: &str, from: &str, to: &str) -> String {
+    if from.is_empty() {
+        return text.to_string();
+    }
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(pos) = rest.find(from) {
+        let prev = out
+            .chars()
+            .last()
+            .filter(|_| pos == 0)
+            .or_else(|| rest[..pos].chars().last());
+        let next = rest[pos + from.len()..].chars().next();
+        let prev_ok =
+            prev.is_some_and(|c| c.is_whitespace() || matches!(c, '"' | '\'' | '[' | ','));
+        let next_ok = next.is_none_or(|c| c.is_whitespace() || matches!(c, '"' | '\'' | ',' | ']'));
+        out.push_str(&rest[..pos]);
+        if prev_ok && next_ok {
+            out.push_str(to);
+        } else {
+            out.push_str(from);
+        }
+        rest = &rest[pos + from.len()..];
+    }
+    out.push_str(rest);
+    out
 }
 
 /// Fila de `review`: hallazgo abierto con su severidad.
@@ -399,6 +570,61 @@ mod tests {
             set_field("# sin frontmatter\n", "status", "x"),
             "# sin frontmatter\n"
         );
+    }
+
+    #[test]
+    fn counts_lines_like_the_validator() {
+        assert_eq!(count_lines(b""), 0);
+        assert_eq!(count_lines(b"a"), 1);
+        assert_eq!(count_lines(b"a\nb\n"), 2);
+        assert_eq!(count_lines(b"a\nb"), 2);
+        assert_eq!(count_lines(b"a\r\nb\r\n"), 2);
+        assert_eq!(count_lines(b"a\r\nb"), 2);
+        assert_eq!(count_lines(b"\n"), 1);
+        assert_eq!(count_lines(b"\n\n"), 2);
+    }
+
+    #[test]
+    fn clamps_only_ranges_that_run_past_the_end() {
+        // Rango de archivo completo redondeado hacia arriba.
+        assert_eq!(
+            clamp_source("src/views/form.ejs:1-400", 339).as_deref(),
+            Some("src/views/form.ejs:1-339")
+        );
+        // Inicio igual a la última línea: queda una sola línea.
+        assert_eq!(clamp_source("a.ejs:14-50", 14).as_deref(), Some("a.ejs:14"));
+        // Válidos, irreparables o sin rango: no se tocan.
+        assert_eq!(clamp_source("a.ejs:1-14", 14), None);
+        assert_eq!(clamp_source("a.ejs:20-50", 14), None);
+        assert_eq!(clamp_source("a.ejs:20", 14), None);
+        assert_eq!(clamp_source("a.ejs:0-50", 14), None);
+        assert_eq!(clamp_source("a.ejs:9-5", 14), None);
+        assert_eq!(clamp_source("a.ejs", 14), None);
+        // Archivo vacío: cualquier rango sigue siendo un error.
+        assert_eq!(clamp_source("vacio.txt:1-5", 0), None);
+    }
+
+    #[test]
+    fn replace_sources_is_a_minimal_edit() {
+        let text = "---\r\nid: m\r\ntype: module\r\n# comentario\r\nsources:\r\n  - src/a.ejs:1-400 # todo el archivo\r\n  - \"src/b.ejs:1-40\"\r\n  - src/a.ejs:1-4000\r\ntitle: Vistas\r\n---\r\n# Cuerpo src/a.ejs:1-400\r\n";
+        let changes = vec![
+            ("src/a.ejs:1-400".to_string(), "src/a.ejs:1-339".to_string()),
+            ("src/b.ejs:1-40".to_string(), "src/b.ejs:1-14".to_string()),
+        ];
+        let out = replace_sources(text, &changes).unwrap();
+        assert_eq!(
+            out,
+            "---\r\nid: m\r\ntype: module\r\n# comentario\r\nsources:\r\n  - src/a.ejs:1-339 # todo el archivo\r\n  - \"src/b.ejs:1-14\"\r\n  - src/a.ejs:1-4000\r\ntitle: Vistas\r\n---\r\n# Cuerpo src/a.ejs:1-400\r\n"
+        );
+        // Lista en línea.
+        let flow = "---\nid: m\nsources: [a.rs:1-9, 'b.rs:3-8']\ntype: module\n---\n";
+        let out = replace_sources(flow, &[("b.rs:3-8".into(), "b.rs:3".into())]).unwrap();
+        assert_eq!(
+            out,
+            "---\nid: m\nsources: [a.rs:1-9, 'b.rs:3']\ntype: module\n---\n"
+        );
+        // Sin `sources:` no hay nada que editar.
+        assert!(replace_sources("---\nid: m\n---\n", &changes).is_none());
     }
 
     #[test]

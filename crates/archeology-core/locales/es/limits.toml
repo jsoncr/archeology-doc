@@ -1,0 +1,77 @@
+# Límites del agente (cuota, rate limit, sesión, contexto) y elección del
+# modelo por CLI. Claves: agents.limit.*, agents.model.*, cli.limit.*,
+# cli.agent_models.*. Mismas claves y marcadores que locales/en/limits.toml.
+
+[agents.limit]
+reason = "{kind} del agente: {message}"
+log_line = "[límite] {kind} · {message}{reset}"
+reset_suffix = " · se restablece {when}"
+run_log = "corrida detenida ({kind}) con el agente {agent} en {task}: {message}{reset}; {count} tarea(s) sin empezar; código de salida {code}"
+context_hint = "La tarea no cabe en el contexto del agente: divídela. Baja [plan] max_files_per_task (ahora {files}) o max_bytes_per_task (ahora {bytes}) en archeology-doc.toml y ejecuta `adoc plan --force`; o usa un modelo con más contexto (`--model`)."
+relative_in = "en {duration}"
+relative_past = "ya debería estar disponible"
+reset_when = "{relative} ({local}, hora local)"
+
+[agents.limit.kind]
+rate_limit = "límite de peticiones"
+usage_limit = "límite de uso"
+auth = "autenticación"
+context = "límite de contexto"
+
+[agents.limit.login]
+claude = "ejecuta `claude` y escribe /login (o `claude auth login`); con API key, exporta ANTHROPIC_API_KEY"
+codex = "ejecuta `codex login` (o exporta OPENAI_API_KEY)"
+gemini = "ejecuta `gemini` y elige un método de autenticación (o exporta GEMINI_API_KEY)"
+qwen = "ejecuta `qwen` y autentícate con /auth"
+devin = "ejecuta `devin auth login` (compruébalo con `devin auth status`)"
+opencode = "ejecuta `opencode auth login` y elige el proveedor"
+agent = "ejecuta `agent login` (Cursor CLI)"
+copilot = "ejecuta `copilot` y escribe /login"
+amp = "ejecuta `amp login`"
+goose = "ejecuta `goose configure` y configura el proveedor"
+aider = "exporta la API key del proveedor (p. ej. ANTHROPIC_API_KEY u OPENAI_API_KEY)"
+generic = "inicia sesión en el CLI del agente (o configura su API key) y vuelve a intentarlo"
+
+[agents.model]
+has_spaces = "modelo inválido ({model}): los ids de modelo no llevan espacios, usa el id y no el nombre visible"
+examples_suffix = " (p. ej. {examples})"
+list_suffix = ". Lista los disponibles con `{command}`"
+needs_provider = "{agent} espera el modelo como proveedor/modelo, no {model}: p. ej. {examples}{list}"
+unsupported = "{agent} no permite elegir el modelo por línea de comandos: quítalo con `adoc agent use <agent> --no-model` (o `--model` en esa corrida) y elígelo en la configuración del propio agente"
+no_placeholder = "el comando del adaptador `{program}` no es un CLI de agente conocido: para pasarle el modelo, añade \"{model}\" a sus args (p. ej. args = [\"--model\", \"{model}\", …])"
+export_mode = "el modo manual (exportación) no ejecuta un agente: el modelo no aplica"
+
+[cli.limit]
+title_quota = "El agente alcanzó un límite · {agent} ({kind})"
+title_auth = "El agente no tiene sesión iniciada · {agent}"
+agent_label = "Agente"
+reset_label = "Reinicio"
+reset_unknown = "no lo indica (mira el mensaje del agente)"
+stopped_label = "Detenida"
+stopped = "{task} vuelve a pending · {count} tarea(s) sin empezar · código de salida {code}"
+next_after_reset = "Tras el reinicio: adoc inspect --resume"
+next_switch = "O cambia de agente: adoc agent use {other}  (solo esta corrida: adoc inspect --agent {other})"
+next_login = "Inicia sesión: {hint}"
+next_after_login = "Luego: adoc inspect --resume"
+task_stopped = "detenida: {kind}"
+count_stopped_one = "1 detenida por el límite del agente"
+count_stopped = "{count} detenidas por el límite del agente"
+next_quota = "cuando se restablezca el límite de {agent} ({when})"
+next_quota_unknown = "cuando se restablezca el límite de {agent}"
+next_auth = "tras iniciar sesión en {agent}"
+next_context = "{id} no cabe en el contexto del agente: divídela"
+
+[cli.agent_models]
+header = "{agent}: {how} · formato {format} · p. ej. {examples}"
+running = "Modelos disponibles ({command}):"
+no_list = "{agent} no tiene un comando para listar sus modelos: consulta su documentación. Pásalo con `adoc agent use {name} --model <modelo>`."
+unsupported = "{agent} no permite elegir el modelo por línea de comandos."
+unknown = "`{program}` no es un CLI de agente conocido: si acepta un modelo, añade \"{model}\" a los args del adaptador."
+how_flag = "modelo con `{flag} <modelo>` antes del prompt"
+how_env = "modelo con GOOSE_PROVIDER/GOOSE_MODEL"
+format_name = "nombre o alias"
+format_provider = "proveedor/modelo"
+format_optional = "nombre o proveedor/modelo"
+preview = "Comando: {command}"
+not_trusted = "el adaptador {name} no está aprobado: revísalo y ejecuta `adoc agent trust {name}`"
+failed = "`{command}` falló: {error}"

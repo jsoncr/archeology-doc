@@ -1,0 +1,41 @@
+# Messages of `adoc init` (duplicate checks) and `adoc projects delete`
+# (UI language). Keep the same keys and placeholders in
+# locales/es/projects.toml.
+
+[projects.init]
+already_initialized = "{path} is already initialized: {name} ({id})\n  → `adoc status` to see its state; `adoc init --force` to re-initialize it (keeps the ID)"
+already_initialized_unreadable = "{path} already has archeology-doc.toml, but it cannot be read: {error}\n  → fix it, or `adoc init --force` to overwrite it"
+registered_at_path = "{path} is already registered as {name} ({id}), but has no archeology-doc.toml\n  → `adoc init --force` to re-initialize it with the same ID, or `adoc projects delete {id}` to forget it"
+name_conflict = "another project is already registered as '{name}' at {path} ({id})\n  → choose another name: `adoc init --name <other>`"
+name_conflict_gone = "another project is already registered as '{name}' at {path} ({id}), and that folder no longer exists\n  → `adoc projects delete {id}` to forget it, or `adoc init --name <other>`"
+same_id_elsewhere = "! this project's ID ({id}) is also registered for {path} (copied folder or clone?). Both would share state, tasks and runs.\n  → `adoc init --new-id` to give this folder its own ID"
+registered_now = "registered in the global registry"
+new_id = "✓ {name}: new ID {new} (previous: {old}). The previous workspace stays with the original project."
+
+[projects.delete]
+not_found = "no registered project matches '{query}' (`adoc projects list`)"
+title = "Delete project"
+path_missing = "(folder not found)"
+will_remove = "Will be removed:"
+registry_entry = "registry entry"
+workspace = "workspace (state, tasks, runs)"
+no_workspace = "(no workspace)"
+approvals = "{count} approval(s) (adapters, site)"
+project_files = "Files in the project (-d):"
+nothing_generated = "(no generated files found)"
+strip_regions = "only the managed regions; your text stays"
+files_count = "{count} file(s)"
+knowledge_warning = "knowledge/ may contain notes you edited by hand"
+docs_from_init = "created by `adoc init`, with no pages of yours"
+docs_user_pages = "{path} has {count} file(s) of yours: only the generated parts are removed"
+docs_not_ours = "{path} was not created by adoc: only its generated folders are removed"
+kept = "Kept:"
+kept_unbalanced = "{path}: damaged managed markers; not touched"
+files_skipped_missing = "the project folder no longer exists: no files to delete"
+files_skipped_other_id = "the folder now holds another project ({id}): its files are not touched"
+files_skipped_unreadable = "archeology-doc.toml cannot be read ({error}): the project files are not touched"
+files_kept_hint = "The project files (archeology-doc.toml, knowledge/, AGENTS.md, docs/…) are kept; add -d to delete what adoc generated."
+confirm = "Delete?"
+cancelled = "cancelled"
+unsafe = "{path} changed (symlink or outside the project); stopping"
+done = "project {name} ({id}) deleted"

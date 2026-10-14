@@ -1,0 +1,85 @@
+# Validación de salidas de tareas, re-verificación de notas desactualizadas
+# y salida de `adoc inspect`. Mantener las mismas claves y marcadores en
+# locales/en/inspect.toml.
+
+[core.validate]
+stale_not_reverified = "nota desactualizada sin re-verificar: corrígela o confirma que sigue vigente (pon `updated: <fecha>` y quita `status: stale`)"
+still_stale = "la nota se editó pero sigue con `status: stale`: cámbialo a `status: draft` cuando esté verificada"
+still_template = "la nota sigue siendo la plantilla: complétala con contenido y `sources`"
+
+[core.task_output]
+more = "+{count} más"
+stale = "el agente no re-verificó {count} notas desactualizadas: {files}"
+stale_one = "el agente no re-verificó 1 nota desactualizada: {files}"
+still_stale = "{count} notas editadas siguen con `status: stale`: {files}"
+still_stale_one = "1 nota editada sigue con `status: stale`: {files}"
+missing = "no se crearon {count} archivos: {files}"
+missing_one = "no se creó 1 archivo: {files}"
+template = "{count} notas siguen siendo la plantilla: {files}"
+template_one = "1 nota sigue siendo la plantilla: {files}"
+no_notes = "ninguna nota nueva ni actualizada en {count} carpetas: {files}"
+no_notes_one = "ninguna nota nueva ni actualizada en {files}"
+invalid = "{count} notas no pasan la validación: {files}"
+invalid_one = "1 nota no pasa la validación: {files}"
+stale_in_dirs = " ({count} desactualizadas sin re-verificar: {files})"
+fix_stale = "re-verifica las notas (`updated: <fecha>` y quita `status: stale`) y reintenta con `adoc inspect --resume`, o edítalas y ejecuta `adoc task done {id}`"
+fix_output = "revisa la tarea con `adoc task show {id}` y reintenta con `adoc inspect --resume`"
+fix_agent = "revisa el log ({log}) y reintenta con `adoc inspect --resume`"
+same_failure = "mismo problema que en el intento anterior: no se reintentó más"
+
+[doc.task.section]
+reverify = "Re-verificación"
+feedback = "Validación del intento anterior"
+
+[doc.task.reverify]
+stale_intro = "Esta tarea se reabrió porque cambió el código que documentan estas notas (están marcadas `status: stale`):"
+stale_item = "`{note}` — cambió: {sources}"
+rule = "Revisa cada una contra el código actual. Si sigue siendo correcta, conserva el contenido, pon `updated: {date}` y cambia `status: stale` por `status: draft`. Si no, corrígela y deja `status: draft`. Una nota que siga con `status: stale` hace fallar la tarea."
+existing_intro = "Ya documentadas y vigentes: solo actualízalas si cambió el código que describen."
+
+[doc.task.feedback]
+intro = "El intento anterior no pasó la validación. Corrige esto antes de terminar:"
+outro = "No basta con decir que ya está hecho: los archivos deben cumplir lo anterior."
+missing = "no se creó"
+no_notes = "ninguna nota nueva ni actualizada en esta carpeta"
+stale = "desactualizada y sin re-verificar: corrígela o confirma que sigue vigente (`updated: <fecha>` y `status: draft`)"
+still_stale = "editada pero sigue con `status: stale`: cámbialo a `status: draft`"
+template = "sigue siendo la plantilla: complétala con contenido y `sources`"
+
+[cli.inspect.out]
+tasks_to_run = "{count} tareas por ejecutar"
+tasks_to_run_one = "1 tarea por ejecutar"
+attempts = "{count} intentos"
+problem_label = "problema"
+agent_label = "agente"
+question_label = "pregunta"
+answer_hint = "→ responde con `adoc task answer {id} \"…\"` (o en vivo: `adoc task run {id} --interactive`)"
+interrupted = "interrumpida: vuelve a `pending`"
+waits_for = "{id} espera {deps}"
+last_failure = "Último fallo (run {run} · {date})"
+log_label = "log"
+
+[cli.inspect.out.label]
+summary = "Resumen"
+blocked = "Bloqueadas"
+out_of_scope = "Fuera de alcance"
+log = "Logs"
+next = "Siguiente"
+
+[cli.inspect.out.count]
+done = "{count} completadas"
+done_one = "1 completada"
+failed = "{count} fallidas"
+failed_one = "1 fallida"
+question = "{count} con pregunta"
+question_one = "1 con pregunta"
+interrupted = "{count} interrumpidas"
+interrupted_one = "1 interrumpida"
+blocked = "{count} bloqueadas"
+blocked_one = "1 bloqueada"
+
+[cli.inspect.out.next]
+answer = "el agente necesita una respuesta para seguir"
+show = "mira qué falta en {id} y reintenta con `adoc inspect --resume`"
+agent_failed = "el agente no terminó {id}; revisa su log y reintenta"
+interrupted = "retoma las tareas interrumpidas"

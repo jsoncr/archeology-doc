@@ -1,0 +1,77 @@
+# Agent limits (quota, rate limit, login, context) and model selection per
+# agent CLI. Keys: agents.limit.*, agents.model.*, cli.limit.*, cli.agent_models.*.
+# Keep the same keys and placeholders as locales/es/limits.toml.
+
+[agents.limit]
+reason = "{kind} of the agent: {message}"
+log_line = "[limit] {kind} · {message}{reset}"
+reset_suffix = " · resets {when}"
+run_log = "run stopped ({kind}) with agent {agent} on {task}: {message}{reset}; {count} task(s) not started; exit code {code}"
+context_hint = "The task does not fit in the agent's context: split it. Lower [plan] max_files_per_task (now {files}) or max_bytes_per_task (now {bytes}) in archeology-doc.toml, then run `adoc plan --force`; or use a model with a larger context (`--model`)."
+relative_in = "in {duration}"
+relative_past = "should already be available"
+reset_when = "{relative} ({local} local time)"
+
+[agents.limit.kind]
+rate_limit = "rate limit"
+usage_limit = "usage limit"
+auth = "authentication"
+context = "context limit"
+
+[agents.limit.login]
+claude = "run `claude` and type /login (or `claude auth login`); with an API key, export ANTHROPIC_API_KEY"
+codex = "run `codex login` (or export OPENAI_API_KEY)"
+gemini = "run `gemini` and choose an authentication method (or export GEMINI_API_KEY)"
+qwen = "run `qwen` and authenticate with /auth"
+devin = "run `devin auth login` (check it with `devin auth status`)"
+opencode = "run `opencode auth login` and choose the provider"
+agent = "run `agent login` (Cursor CLI)"
+copilot = "run `copilot` and type /login"
+amp = "run `amp login`"
+goose = "run `goose configure` and set up the provider"
+aider = "export the provider's API key (e.g. ANTHROPIC_API_KEY or OPENAI_API_KEY)"
+generic = "log in to the agent's CLI (or configure its API key) and try again"
+
+[agents.model]
+has_spaces = "invalid model ({model}): model ids have no spaces, use the id instead of the display name"
+examples_suffix = " (e.g. {examples})"
+list_suffix = ". List the available ones with `{command}`"
+needs_provider = "{agent} expects the model as provider/model, not {model}: e.g. {examples}{list}"
+unsupported = "{agent} does not let you choose the model from the command line: remove it with `adoc agent use <agent> --no-model` (or `--model` in that run) and choose it in the agent's own settings"
+no_placeholder = "the adapter command `{program}` is not a known agent CLI: to pass the model, add \"{model}\" to its args (e.g. args = [\"--model\", \"{model}\", …])"
+export_mode = "the manual (export) mode does not run an agent: the model does not apply"
+
+[cli.limit]
+title_quota = "Agent limit reached · {agent} ({kind})"
+title_auth = "The agent is not logged in · {agent}"
+agent_label = "Agent"
+reset_label = "Resets"
+reset_unknown = "not stated (see the agent's message)"
+stopped_label = "Stopped"
+stopped = "{task} back to pending · {count} task(s) not started · exit code {code}"
+next_after_reset = "After the reset: adoc inspect --resume"
+next_switch = "Or switch agent: adoc agent use {other}  (only for this run: adoc inspect --agent {other})"
+next_login = "Log in: {hint}"
+next_after_login = "Then: adoc inspect --resume"
+task_stopped = "stopped: {kind}"
+count_stopped_one = "1 stopped by the agent's limit"
+count_stopped = "{count} stopped by the agent's limit"
+next_quota = "when the {agent} limit resets ({when})"
+next_quota_unknown = "when the {agent} limit resets"
+next_auth = "after logging in to {agent}"
+next_context = "{id} does not fit in the agent's context: split it"
+
+[cli.agent_models]
+header = "{agent}: {how} · format {format} · e.g. {examples}"
+running = "Models available ({command}):"
+no_list = "{agent} has no command to list its models: check its documentation. Pass it with `adoc agent use {name} --model <model>`."
+unsupported = "{agent} does not let you choose the model from the command line."
+unknown = "`{program}` is not a known agent CLI: if it accepts a model, add \"{model}\" to the adapter's args."
+how_flag = "model with `{flag} <model>` before the prompt"
+how_env = "model with GOOSE_PROVIDER/GOOSE_MODEL"
+format_name = "name or alias"
+format_provider = "provider/model"
+format_optional = "name or provider/model"
+preview = "Command: {command}"
+not_trusted = "the adapter {name} is not approved: review it and run `adoc agent trust {name}`"
+failed = "`{command}` failed: {error}"

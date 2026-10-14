@@ -12,19 +12,27 @@ pub mod doctor;
 pub mod graph;
 pub mod init;
 pub mod inspect;
+pub mod install_location;
 pub mod plan;
 pub mod projects;
+pub mod projects_delete;
 pub mod report;
 pub mod resume;
 pub mod review;
 pub mod scan;
 pub mod site;
-pub mod spec;
+// `adoc spec` está desactivado temporalmente mientras se rediseña: `spec.rs`
+// sigue en el repositorio pero no se compila. La detección de OpenSpec y el
+// cumplimiento (status, review, check, plan) usan `specs`.
+// pub mod spec;
+pub mod specs;
 pub mod status;
+pub mod status_view;
 pub mod sync;
 pub mod task;
 pub mod toolchain;
 pub mod uninstall;
+pub mod upgrade;
 
 /// Resuelve el proyecto objetivo: `--project <nombre|id>` contra el registro,
 /// o descubrimiento ascendente desde el directorio actual (RF-173).
@@ -114,12 +122,6 @@ pub fn run(command: super::Commands, project_arg: Option<String>) -> Result<()> 
             site::run(&p, cmd)
         }
         Agent { cmd } => agent::run(cmd, project_arg),
-        Spec { cmd } => {
-            let p = resolve_project(&project_arg)?;
-            touch_registry(&p, "spec");
-            let _lock = p.lock("spec")?;
-            spec::run(&p, cmd)
-        }
         Projects { cmd } => projects::run(cmd),
         Resume(args) => resume::run(args, project_arg),
         Preview(args) => {
@@ -144,10 +146,27 @@ pub fn run(command: super::Commands, project_arg: Option<String>) -> Result<()> 
             ask::run(&p, args)
         }
         Status(args) => {
-            let p = resolve_project(&project_arg)?;
+            let p = match resolve_project(&project_arg) {
+                Ok(p) => p,
+                // Sin proyecto en modo texto: se explica cómo empezar.
+                Err(e)
+                    if args.format == "text"
+                        && project_arg.is_none()
+                        && matches!(
+                            e.downcast_ref::<archeology_core::Error>(),
+                            Some(archeology_core::Error::ProjectNotFound)
+                        ) =>
+                {
+                    println!("{}", t!("cli.status.not_initialized"));
+                    println!("\n{} → adoc init", t!("cli.status.section.next"));
+                    return Ok(());
+                }
+                Err(e) => return Err(e),
+            };
             status::run(&p, args)
         }
         Uninstall(args) => uninstall::run(args),
+        Upgrade(args) => upgrade::run(args),
         Doctor(args) => {
             let code = doctor::run(args, project_arg)?;
             if code != 0 {

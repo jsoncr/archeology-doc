@@ -4,15 +4,16 @@
 //! Éxito de una tarea = código de salida 0 **y** validación de los
 //! artefactos declarados en `# Produce` (§14.2).
 
-use crate::adapter::{self, expand_args};
+use crate::adapter;
+use crate::limits::{self, AgentLimit, LimitKind};
 use anyhow::Result;
 use archeology_core::config::AdapterMode;
-use archeology_core::frontmatter::IssueSeverity;
 use archeology_core::model::{RunRecord, TaskRun};
 use archeology_core::planner::{self, TaskMeta};
 use archeology_core::state::State;
 use archeology_core::t;
-use archeology_core::validate;
+use archeology_core::task_context;
+use archeology_core::validate::{self, OutputProblem};
 use archeology_core::Project;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -39,6 +40,8 @@ pub type InspectCallback = Box<dyn Fn(&InspectEvent)>;
 /// Progreso de una corrida de `inspect`, para mostrarlo en la terminal.
 #[derive(Debug, Clone)]
 pub enum InspectEvent {
+    /// Empieza la corrida: `total` tareas por ejecutar.
+    RunStarted { run_id: String, total: usize },
     /// Empieza un intento de una tarea.
     TaskStarted {
         task_id: String,
@@ -51,13 +54,67 @@ pub enum InspectEvent {
         total: usize,
     },
     /// Terminó una tarea (tras todos sus intentos).
-    TaskFinished {
-        task_id: String,
-        ok: bool,
-        duration_ms: u128,
-        detail: Option<String>,
-    },
+    TaskFinished(Box<TaskOutcome>),
 }
+
+/// Resultado de una tarea en una corrida, listo para mostrarlo.
+#[derive(Debug, Clone, Default)]
+pub struct TaskOutcome {
+    pub task_id: String,
+    pub kind: String,
+    pub module: Option<String>,
+    /// `done`, `failed`, `question` o `pending` (interrumpida).
+    pub status: String,
+    pub duration_ms: u128,
+    pub attempts: u32,
+    /// Problemas en frases legibles, agrupados por tipo (vacío si terminó bien).
+    pub problems: Vec<String>,
+    /// Qué hacer ante problemas de validación (None si el fallo es del agente).
+    pub hint: Option<String>,
+    /// Primera frase del mensaje final del agente.
+    pub agent_message: Option<String>,
+    /// Se dejó de reintentar porque el fallo se repitió igual.
+    pub stopped_early: bool,
+    /// El agente terminó mal (código de salida, timeout…), no la validación.
+    pub agent_failed: bool,
+    /// Pregunta con la que terminó el agente (estado `question`).
+    pub question: Option<String>,
+    /// Log de la tarea en esta corrida.
+    pub log: PathBuf,
+    /// Evidencias ajustadas al final del archivo citado (avisos, no fallos).
+    pub adjusted: Vec<String>,
+    /// Límite del agente que cortó la tarea (cuota, sesión, contexto).
+    pub limit: Option<AgentLimit>,
+}
+
+/// La corrida se detuvo porque el agente alcanzó un límite (cuota, rate
+/// limit) o no tiene sesión: la tarea volvió a `pending` y no se lanzaron más.
+#[derive(Debug, Clone)]
+pub struct LimitStop {
+    pub agent: String,
+    /// Ejecutable del agente (para la ayuda de inicio de sesión).
+    pub program: String,
+    pub task_id: String,
+    pub limit: AgentLimit,
+    /// Tareas seleccionadas que no llegaron a empezar.
+    pub not_started: usize,
+}
+
+impl LimitStop {
+    /// Código de salida del proceso: 75 (EX_TEMPFAIL) ante un límite de uso
+    /// o de peticiones; 77 (EX_NOPERM) si el agente no tiene sesión.
+    pub fn exit_code(&self) -> i32 {
+        match self.limit.kind {
+            LimitKind::Auth => EXIT_AUTH,
+            _ => EXIT_LIMIT,
+        }
+    }
+}
+
+/// Código de salida cuando la corrida se detiene por un límite del agente.
+pub const EXIT_LIMIT: i32 = 75;
+/// Código de salida cuando el agente no tiene sesión iniciada.
+pub const EXIT_AUTH: i32 = 77;
 
 #[derive(Debug, Default)]
 pub struct InspectReport {
@@ -69,6 +126,8 @@ pub struct InspectReport {
     pub blocked: Vec<(String, Vec<String>)>,
     /// Archivos modificados por el agente fuera de las rutas permitidas (§19).
     pub out_of_scope: Vec<(String, Vec<String>)>,
+    /// Evidencias ajustadas automáticamente por tarea (avisos).
+    pub adjusted: Vec<(String, Vec<String>)>,
     /// Causa raíz de los bloqueos: dependencias fuera de esta corrida
     /// (fallidas antes, manuales, interrumpidas o filtradas) y su estado.
     pub root_causes: Vec<(String, String)>,
@@ -76,6 +135,12 @@ pub struct InspectReport {
     pub manual_waiting: Vec<String>,
     /// Tareas que terminaron con una pregunta del agente (estado `question`).
     pub questions: Vec<(String, String)>,
+    /// Resultado por tarea ejecutada, en orden.
+    pub tasks: Vec<TaskOutcome>,
+    /// Carpeta de logs de la corrida (None en simulación o modo manual).
+    pub run_dir: Option<PathBuf>,
+    /// La corrida se detuvo por un límite del agente.
+    pub limit_stop: Option<LimitStop>,
 }
 
 pub struct TaskFile {
@@ -140,8 +205,11 @@ pub fn run_tasks(project: &Project, opts: &InspectOptions) -> Result<InspectRepo
     if opts.model.is_some() {
         adapter.model = opts.model.clone();
     }
-    // El modelo llega a los argumentos del agente: se valida antes de tocar tareas.
-    if let Some(m) = adapter.model.as_deref().filter(|m| !m.is_empty()) {
+    // El modelo llega a los argumentos del agente: se valida (con el formato
+    // que espera ese CLI) antes de tocar tareas.
+    if adapter.mode == AdapterMode::Headless {
+        adapter::apply_model(&adapter, &adapter.args)?;
+    } else if let Some(m) = adapter.model.as_deref().filter(|m| !m.is_empty()) {
         adapter::validate_model(m)?;
     }
     if adapter.mode == archeology_core::config::AdapterMode::Headless
@@ -242,6 +310,15 @@ pub fn run_tasks(project: &Project, opts: &InspectOptions) -> Result<InspectRepo
         chrono::Utc::now().format("%Y%m%d-%H%M%S")
     ));
     fs::create_dir_all(&run_dir)?;
+    report.run_dir = Some(run_dir.clone());
+    if let Some(f) = &opts.on_event {
+        f(&InspectEvent::RunStarted {
+            run_id: run_id.clone(),
+            total: selected.len(),
+        });
+    }
+    let ui_lang = archeology_core::i18n::ui_lang();
+    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
     let timeout = adapter
         .timeout_secs
         .unwrap_or(cfg.agent.timeout_secs)
@@ -283,6 +360,21 @@ pub fn run_tasks(project: &Project, opts: &InspectOptions) -> Result<InspectRepo
         let mut question: Option<String> = None;
         let mut interrupted = false;
         let mut log = String::new();
+        // La tarea dice qué salidas están desactualizadas (y por qué) y cuáles
+        // ya están vigentes: re-verificar no exige reescribir lo que sigue bien.
+        let mut content = task_context::refresh_task_file(project, &state, &t.path, &today)
+            .unwrap_or_else(|_| t.content.clone());
+        let task_lang = planner::task_lang(&content);
+        // Retroalimentación que ya recibió el agente (intento o corrida anterior).
+        let mut last_feedback = task_context::previous_feedback(&content);
+        let mut problems: Vec<OutputProblem> = Vec::new();
+        let mut stale_in_dirs: Vec<String> = Vec::new();
+        // Se acumulan entre intentos: el ajuste ya quedó escrito en la nota.
+        let mut adjusted: Vec<String> = Vec::new();
+        let mut agent_message: Option<String> = None;
+        let mut agent_failed = false;
+        let mut stopped_early = false;
+        let mut limit: Option<AgentLimit> = None;
         for attempt in 1..=attempts {
             if let Some(f) = &opts.on_event {
                 f(&InspectEvent::TaskStarted {
@@ -295,8 +387,7 @@ pub fn run_tasks(project: &Project, opts: &InspectOptions) -> Result<InspectRepo
                     total: selected.len(),
                 });
             }
-            let result =
-                adapter::run_headless(&adapter, &t.path, &t.content, &project.root, timeout);
+            let result = adapter::run_headless(&adapter, &t.path, &content, &project.root, timeout);
             log.push_str(&t!(
                 "agents.orchestrator.attempt_header",
                 attempt = attempt,
@@ -304,10 +395,14 @@ pub fn run_tasks(project: &Project, opts: &InspectOptions) -> Result<InspectRepo
             ));
             log.push('\n');
             used_attempts = attempt;
+            problems.clear();
+            stale_in_dirs.clear();
+            agent_failed = false;
             if let Ok(run) = &result {
                 total_ms += run.duration_ms;
                 exit_code = run.code;
                 interrupted = run.interrupted;
+                agent_message = task_context::agent_summary(&run.output);
             }
             outcome = match result {
                 Ok(run) if run.success() && !run.interrupted => {
@@ -315,28 +410,34 @@ pub fn run_tasks(project: &Project, opts: &InspectOptions) -> Result<InspectRepo
                     log.push_str(&output);
                     // Desde el inicio de la tarea, no del intento: un archivo
                     // escrito en un intento anterior también cuenta.
-                    let issues = validate::validate_task_output(
+                    let check = validate::check_task_output(
                         project,
                         &t.meta.produce,
                         &t.meta.optional,
                         Some(task_start),
                     );
-                    let errors: Vec<String> = issues
-                        .iter()
-                        .filter(|i| i.severity == IssueSeverity::Error)
-                        .map(|i| format!("{}: {}", i.path, i.message))
-                        .collect();
-                    for i in &issues {
+                    problems = check.problems.clone();
+                    stale_in_dirs = check.stale_in_dirs.clone();
+                    adjusted.extend(check.repairs.iter().map(|r| r.message()));
+                    if !log.ends_with('\n') {
+                        log.push('\n');
+                    }
+                    for i in &check.issues {
                         log.push_str(&format!(
                             "{} {}: {}\n",
                             t!("agents.orchestrator.validation_prefix"),
-                            i.path,
+                            project.rel(Path::new(&i.path)),
                             i.message
                         ));
                     }
                     tracing::info!(task = %id, ms, "{}", t!("agents.orchestrator.agent_finished"));
-                    if errors.is_empty() {
+                    if problems.is_empty() {
                         Ok(())
+                    } else if let Some(l) = limits::classify(&output, true) {
+                        // Terminó con 0 pero sin escribir: el agente avisó de un límite.
+                        let reason = l.reason();
+                        limit = Some(l);
+                        Err(reason)
                     } else if let Some(q) = extract_question(&output) {
                         // No reintentar: la misma tarea volvería a preguntar.
                         question = Some(q.clone());
@@ -347,18 +448,41 @@ pub fn run_tasks(project: &Project, opts: &InspectOptions) -> Result<InspectRepo
                             .unwrap_or_default();
                         Err(t!(
                             "agents.orchestrator.invalid_output",
-                            errors = errors.join("; "),
+                            errors = task_context::summarize(ui_lang, &problems, &stale_in_dirs)
+                                .join("; "),
                             hint = hint
                         ))
                     }
                 }
                 Ok(run) => {
+                    agent_failed = true;
                     log.push_str(&run.output);
-                    Err(run.failure_reason())
+                    // Cuota, sesión o contexto: reintentar no sirve.
+                    match (!run.timed_out && !run.interrupted)
+                        .then(|| limits::classify(&run.output, false))
+                        .flatten()
+                    {
+                        Some(l) => {
+                            let reason = l.reason();
+                            limit = Some(l);
+                            Err(reason)
+                        }
+                        None => Err(run.failure_reason()),
+                    }
                 }
-                Err(e) => Err(e.to_string()),
+                Err(e) => {
+                    agent_failed = true;
+                    Err(e.to_string())
+                }
             };
-            if outcome.is_ok() || question.is_some() || interrupted {
+            if let Some(l) = &limit {
+                if !log.ends_with('\n') {
+                    log.push('\n');
+                }
+                log.push_str(&format!("\n{}\n", l.log_line()));
+                tracing::info!(task = %id, kind = l.kind.code(), "{}", l.message);
+            }
+            if outcome.is_ok() || question.is_some() || interrupted || limit.is_some() {
                 break;
             }
             if let Err(reason) = &outcome {
@@ -366,6 +490,21 @@ pub fn run_tasks(project: &Project, opts: &InspectOptions) -> Result<InspectRepo
                     "\n{}\n",
                     t!("agents.orchestrator.failure_line", reason = reason)
                 ));
+            }
+            // Fallo de validación: el siguiente intento recibe los problemas y
+            // cómo corregirlos. Si se repite igual, no se gastan más intentos.
+            if !problems.is_empty() {
+                let items = task_context::feedback_items(task_lang, &problems);
+                if items == last_feedback {
+                    stopped_early = true;
+                    log.push_str(&format!("{}\n", t!("core.task_output.same_failure")));
+                    break;
+                }
+                let updated = task_context::apply_feedback_section(&content, Some(&items));
+                if archeology_core::fsutil::atomic_write(&t.path, updated.as_bytes()).is_ok() {
+                    content = updated;
+                }
+                last_feedback = items;
             }
         }
         fs::write(run_dir.join(format!("{id}.log")), &log).ok();
@@ -384,14 +523,7 @@ pub fn run_tasks(project: &Project, opts: &InspectOptions) -> Result<InspectRepo
         }
 
         let reason = outcome.as_ref().err().cloned();
-        if let Some(f) = &opts.on_event {
-            f(&InspectEvent::TaskFinished {
-                task_id: id.clone(),
-                ok: outcome.is_ok(),
-                duration_ms: total_ms,
-                detail: reason.clone(),
-            });
-        }
+        let stop = limit.as_ref().filter(|l| l.kind.stops_run()).cloned();
         let new_status = match outcome {
             // Interrumpida por el usuario: vuelve a `pending` (se retoma con
             // `adoc inspect`); no cuenta como fallo del agente.
@@ -401,10 +533,22 @@ pub fn run_tasks(project: &Project, opts: &InspectOptions) -> Result<InspectRepo
             }
             Ok(()) => {
                 report.executed.push(id.clone());
-                // Línea base de las fuentes citadas por las notas nuevas (RF-120).
+                // Línea base de las fuentes citadas por las notas nuevas (RF-120);
+                // las notas re-verificadas dejan de figurar como desactualizadas.
                 archeology_core::index::refresh_hashes(project, &mut state, task_start);
+                // Sin retroalimentación pendiente y con el contexto al día.
+                if let Ok(text) = fs::read_to_string(&t.path) {
+                    let cleared = task_context::apply_feedback_section(&text, None);
+                    if cleared != text {
+                        archeology_core::fsutil::atomic_write(&t.path, cleared.as_bytes()).ok();
+                    }
+                }
+                task_context::refresh_task_file(project, &state, &t.path, &today).ok();
                 "done"
             }
+            // Cuota, rate limit o sin sesión: la tarea no falló, vuelve a
+            // `pending` y la corrida se detiene (las siguientes fallarían igual).
+            Err(_) if stop.is_some() => "pending",
             Err(_) if question.is_some() => {
                 let q = question.clone().unwrap_or_default();
                 state.questions.insert(id.clone(), q.clone());
@@ -417,26 +561,90 @@ pub fn run_tasks(project: &Project, opts: &InspectOptions) -> Result<InspectRepo
                 "failed"
             }
         };
+        // Problemas en frases legibles: los de validación agrupados por
+        // tipo; si falló el agente, su motivo tal cual.
+        let failed = new_status == "failed";
+        let lines = if !failed {
+            Vec::new()
+        } else if !problems.is_empty() {
+            task_context::summarize(ui_lang, &problems, &stale_in_dirs)
+        } else {
+            reason.clone().into_iter().collect()
+        };
+        let hint = if failed && !problems.is_empty() {
+            Some(task_context::fix_hint(ui_lang, &id, &problems))
+        } else if failed && limit.as_ref().is_some_and(|l| l.kind == LimitKind::Context) {
+            // La tarea no cabe en el contexto: dividirla.
+            Some(limits::context_hint(
+                cfg.plan.max_files_per_task,
+                cfg.plan.max_bytes_per_task,
+            ))
+        } else {
+            None
+        };
+        let task_outcome = TaskOutcome {
+            task_id: id.clone(),
+            kind: t.meta.kind.clone(),
+            module: t.meta.module.clone(),
+            status: new_status.to_string(),
+            duration_ms: total_ms,
+            attempts: used_attempts,
+            problems: lines.clone(),
+            hint: hint.clone(),
+            agent_message: agent_message.clone().filter(|_| failed),
+            stopped_early: stopped_early && failed,
+            agent_failed: agent_failed && failed,
+            question: question.clone(),
+            log: run_dir.join(format!("{id}.log")),
+            adjusted: adjusted.clone(),
+            limit: limit.clone(),
+        };
+        if !adjusted.is_empty() {
+            report.adjusted.push((id.clone(), adjusted.clone()));
+        }
+        if let Some(f) = &opts.on_event {
+            f(&InspectEvent::TaskFinished(Box::new(task_outcome.clone())));
+        }
+        report.tasks.push(task_outcome);
         task_runs.push(TaskRun {
             task_id: id.clone(),
             status: new_status.into(),
             duration_ms: total_ms,
             exit_code,
             attempts: used_attempts,
-            reason,
+            reason: if failed && !lines.is_empty() {
+                Some(lines.join("; "))
+            } else {
+                reason
+            },
+            problems: lines,
+            hint,
+            agent_message: agent_message.filter(|_| failed),
         });
         set_task_status(&t.path, new_status)?;
         state.tasks.insert(id.clone(), new_status.into());
-        status.insert(id, new_status.into());
+        status.insert(id.clone(), new_status.into());
         state.save(&project.state_file())?;
+        if let Some(l) = stop {
+            report.limit_stop = Some(LimitStop {
+                agent: opts.agent.clone(),
+                program: crate::command::program_stem(adapter.command.as_deref().unwrap_or("")),
+                task_id: id,
+                limit: l,
+                not_started: remaining.len(),
+            });
+            break;
+        }
         if interrupted {
             break;
         }
     }
     let was_interrupted = crate::interrupt::requested();
+    let stopped = was_interrupted || report.limit_stop.is_some();
 
-    // Tras una interrupción, las que faltan no están bloqueadas: siguen pendientes.
-    for t in remaining.into_iter().filter(|_| !was_interrupted) {
+    // Tras una interrupción o un límite del agente, las que faltan no están
+    // bloqueadas: siguen pendientes.
+    for t in remaining.into_iter().filter(|_| !stopped) {
         report
             .blocked
             .push((t.meta.task_id.clone(), unmet_deps(&t.meta, &status)));
@@ -503,6 +711,30 @@ pub fn run_tasks(project: &Project, opts: &InspectOptions) -> Result<InspectRepo
             files = files.join(", ")
         ));
         summary.push('\n');
+    }
+    for (id, notes) in &report.adjusted {
+        for n in notes {
+            summary.push_str(&format!("{id} {n}\n"));
+        }
+    }
+    if let Some(stop) = &report.limit_stop {
+        summary.push_str(&format!(
+            "\n{}\n",
+            t!(
+                "agents.limit.run_log",
+                kind = stop.limit.kind.code(),
+                agent = stop.agent,
+                task = stop.task_id,
+                message = stop.limit.message,
+                reset = stop
+                    .limit
+                    .reset_at
+                    .map(|r| t!("agents.limit.reset_suffix", when = r.to_rfc3339()))
+                    .unwrap_or_default(),
+                count = stop.not_started,
+                code = stop.exit_code()
+            )
+        ));
     }
     if was_interrupted {
         summary.push_str(&format!("\n{}\n", t!("agents.run_log.interrupted")));
@@ -659,7 +891,11 @@ pub fn preview_command(
     prompt_content: &str,
 ) -> Option<String> {
     let cmd = adapter.command.clone()?;
-    let args = expand_args(&adapter.args, prompt_file, prompt_content);
+    // Con el modelo aplicado: la vista previa muestra el flag real.
+    let templates = adapter::apply_model(adapter, &adapter.args)
+        .map(|m| m.args)
+        .unwrap_or_else(|_| adapter.args.clone());
+    let args = adapter::expand_args(&templates, prompt_file, prompt_content);
     let preview_args: Vec<String> = args
         .iter()
         .map(|a| {

@@ -5,6 +5,8 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+build = "build.rs"
+
 [lib]
 name = "archeology_cli"
 path = "src/lib.rs"
@@ -19,6 +21,12 @@ path = "src/bin/adoc.rs"
 
 [dependencies]
 anyhow.workspace = true
+# `adoc upgrade`: descarga (rustls, sin OpenSSL), SHA-256 y archivos .tar.gz/.zip.
+flate2 = "1"
+sha2 = "0.10"
+tar = "0.4"
+ureq = { version = "2.12", default-features = false, features = ["tls"] }
+zip = { version = "2.2", default-features = false, features = ["deflate-flate2", "flate2"] }
 archeology-agents = { path = "../archeology-agents" }
 archeology-core = { path = "../archeology-core" }
 archeology-openspec = { path = "../archeology-openspec" }

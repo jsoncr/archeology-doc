@@ -3,6 +3,7 @@
 //! Nunca toca los proyectos: `archeology-doc.toml`, `knowledge/`, `docs/` y
 //! las regiones de AGENTS.md quedan en cada repositorio.
 
+use super::install_location::{is_symlink, InstallLocation, BIN_NAMES};
 use anyhow::{bail, Context, Result};
 use archeology_core::t;
 use std::fs;
@@ -20,22 +21,15 @@ pub struct UninstallArgs {
     yes: bool,
 }
 
-/// Binarios que instala archeology-doc (el mismo programa con dos nombres).
-const BIN_NAMES: &[&str] = &["adoc", "archeology-doc"];
-
 pub fn run(args: UninstallArgs) -> Result<()> {
-    let running = std::env::current_exe().with_context(|| t!("cli.uninstall.no_executable"))?;
-    let running_real = archeology_core::paths::canonicalize(&running).unwrap_or(running.clone());
-    // La ruta que invocó el usuario (p. ej. el enlace `~/.local/bin/adoc`), no
-    // su destino: borrar el destino de un enlace dejaría el enlace roto y
-    // podría tocar archivos de otro gestor (Homebrew).
-    let invoked = invoked_path(&running_real).unwrap_or(running);
-    let bin_dir = invoked
-        .parent()
-        .with_context(|| t!("cli.uninstall.no_parent"))?
-        .to_path_buf();
-    let bin_dir_real = archeology_core::paths::canonicalize(&bin_dir).unwrap_or(bin_dir.clone());
-    let homebrew = is_homebrew(&running_real);
+    let InstallLocation {
+        running_real,
+        bin_dir,
+        bin_dir_real,
+        homebrew,
+        via_cargo,
+        ..
+    } = InstallLocation::detect()?;
     let bins: Vec<PathBuf> = if homebrew {
         Vec::new()
     } else {
@@ -63,7 +57,6 @@ pub fn run(args: UninstallArgs) -> Result<()> {
             t!("cli.uninstall.homebrew", path = running_real.display())
         );
     }
-    let via_cargo = !homebrew && installed_with_cargo(&bin_dir_real);
     let purge_dirs = if args.purge {
         purge_targets()?
     } else {
@@ -143,55 +136,6 @@ pub fn run(args: UninstallArgs) -> Result<()> {
     }
     println!("{}", t!("cli.uninstall.vscode"));
     Ok(())
-}
-
-/// Ruta con la que se invocó el programa (`argv[0]`, resuelto en el `PATH`
-/// si no trae carpeta), sin seguir enlaces. Solo si apunta a este mismo
-/// ejecutable; si no (argv[0] arbitrario), None.
-fn invoked_path(running_real: &Path) -> Option<PathBuf> {
-    let argv0 = PathBuf::from(std::env::args_os().next()?);
-    let path = if argv0.components().count() > 1 {
-        if argv0.is_absolute() {
-            argv0
-        } else {
-            std::env::current_dir().ok()?.join(argv0)
-        }
-    } else {
-        archeology_agents::command::find_program(&argv0.to_string_lossy(), None)?
-    };
-    let real = archeology_core::paths::canonicalize(&path).ok()?;
-    (real == running_real).then_some(path)
-}
-
-fn is_symlink(path: &Path) -> bool {
-    fs::symlink_metadata(path)
-        .map(|m| m.file_type().is_symlink())
-        .unwrap_or(false)
-}
-
-/// ¿El ejecutable real vive en un Cellar de Homebrew?
-fn is_homebrew(real: &Path) -> bool {
-    real.components().any(|c| {
-        let c = c.as_os_str().to_string_lossy();
-        c == "Cellar" || c.eq_ignore_ascii_case("homebrew") || c == ".linuxbrew"
-    })
-}
-
-/// ¿Instalado con `cargo install`? Entonces cargo lleva su propio registro.
-fn installed_with_cargo(bin_dir: &Path) -> bool {
-    let cargo_home = std::env::var_os("CARGO_HOME")
-        .map(PathBuf::from)
-        .or_else(|| {
-            std::env::var_os("HOME")
-                .or_else(|| std::env::var_os("USERPROFILE"))
-                .map(|h| PathBuf::from(h).join(".cargo"))
-        });
-    let Some(cargo_home) = cargo_home else {
-        return false;
-    };
-    let cargo_bin = archeology_core::paths::canonicalize(&cargo_home.join("bin"))
-        .unwrap_or_else(|_| cargo_home.join("bin"));
-    bin_dir == cargo_bin && cargo_home.join(".crates.toml").is_file()
 }
 
 /// Carpetas que borra `--purge`: la configuración global (y la del nombre
@@ -331,16 +275,5 @@ mod tests {
         assert!(!looks_like_config_dir(&empty));
         assert!(!looks_like_config_dir(Path::new("/")));
         fs::remove_dir_all(&tmp).ok();
-    }
-
-    #[test]
-    fn detects_homebrew_installs() {
-        assert!(is_homebrew(Path::new(
-            "/opt/homebrew/Cellar/archeology-doc/0.1.0/bin/adoc"
-        )));
-        assert!(is_homebrew(Path::new(
-            "/usr/local/Cellar/archeology-doc/0.1.0/bin/adoc"
-        )));
-        assert!(!is_homebrew(Path::new("/home/ana/.local/bin/adoc")));
     }
 }

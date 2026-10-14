@@ -23,6 +23,10 @@ pub struct State {
     /// Notas marcadas como desactualizadas (RF-121).
     #[serde(default)]
     pub stale_notes: Vec<String>,
+    /// Por qué está desactualizada cada nota: fuentes cambiadas que la
+    /// volvieron `stale` (nota → fuentes). Se limpia al re-verificarla.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub stale_reasons: BTreeMap<String, Vec<String>>,
     /// Historial de ejecuciones.
     #[serde(default)]
     pub runs: Vec<RunRecord>,
@@ -47,6 +51,7 @@ impl Default for State {
             tasks: BTreeMap::new(),
             source_to_notes: BTreeMap::new(),
             stale_notes: Vec::new(),
+            stale_reasons: BTreeMap::new(),
             runs: Vec::new(),
             questions: BTreeMap::new(),
             project_id: None,
@@ -130,6 +135,21 @@ impl State {
             return Err(e.into());
         }
         Ok(())
+    }
+
+    /// Fija la lista de notas desactualizadas y descarta los motivos de las
+    /// que ya no lo están (re-verificadas o corregidas).
+    pub fn set_stale_notes(&mut self, notes: Vec<String>) {
+        self.stale_reasons.retain(|n, _| notes.contains(n));
+        self.stale_notes = notes;
+    }
+
+    /// Registra que `source` cambió y volvió `stale` a `note`.
+    pub fn add_stale_reason(&mut self, note: &str, source: &str) {
+        let list = self.stale_reasons.entry(note.to_string()).or_default();
+        if !list.iter().any(|s| s == source) {
+            list.push(source.to_string());
+        }
     }
 
     /// Notas afectadas por una lista de fuentes cambiadas. Las rutas se

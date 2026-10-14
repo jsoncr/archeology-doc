@@ -1,0 +1,15 @@
+# Reparación automática de evidencias (`sources:`) cuyo rango se pasa del
+# final del archivo citado: validación de tareas y `adoc check --fix`.
+# Mantener las mismas claves y marcadores en locales/en/evidence.toml.
+
+[core.evidence]
+adjusted = "ajustado: {from} → {to} (el archivo tiene {total} líneas)"
+
+[cli.help.check.arg]
+fix = "Ajusta las evidencias cuyo rango termina después del final del archivo (p. ej. `a.ejs:1-400` con 339 líneas → `a.ejs:1-339`)"
+
+[cli.check.fix]
+adjusted = "{count} evidencias ajustadas al final del archivo"
+adjusted_one = "1 evidencia ajustada al final del archivo"
+fixable = "{count} se pueden ajustar automáticamente"
+fixable_one = "1 se puede ajustar automáticamente"

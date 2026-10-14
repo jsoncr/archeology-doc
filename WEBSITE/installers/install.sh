@@ -176,8 +176,8 @@ EOF
     cat <<'EOF'
 archeology-doc installer (`adoc` CLI) for macOS and Linux.
 
-  curl -fsSL https://<site>/download/install.sh | sh
-  curl -fsSL https://<site>/download/install.sh | sh -s -- --with-vscode
+  curl -fsSL https://archeology-doc.com/download/install.sh | sh
+  curl -fsSL https://archeology-doc.com/download/install.sh | sh -s -- --with-vscode
   WEBSITE/installers/install.sh      # from a clone: builds the local code
 
 Downloads the prebuilt binary for your platform and verifies its SHA-256. If

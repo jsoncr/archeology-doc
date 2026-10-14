@@ -2,7 +2,7 @@
   "name": "archeology-doc",
   "displayName": "Archeology Doc",
   "description": "%extension.description%",
-  "version": "0.1.1",
+  "version": "0.10.21",
   "publisher": "jcruz",
   "author": "jcruz",
   "license": "MIT",
@@ -10,12 +10,34 @@
     "type": "git",
     "url": "https://github.com/jsoncr/archeology-doc"
   },
+  "homepage": "https://archeology-doc.com",
+  "bugs": {
+    "url": "https://github.com/jsoncr/archeology-doc/issues"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": [
+    "AI",
+    "Visualization",
     "Other"
   ],
+  "keywords": [
+    "documentation",
+    "legacy code",
+    "code archaeology",
+    "knowledge graph",
+    "ai agents",
+    "claude",
+    "codex",
+    "findings",
+    "onboarding",
+    "vitepress"
+  ],
+  "galleryBanner": {
+    "color": "#04133a",
+    "theme": "dark"
+  },
   "icon": "media/icon.png",
   "activationEvents": [
     "workspaceContains:**/archeology-doc.toml"

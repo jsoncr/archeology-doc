@@ -31,6 +31,8 @@ agent = "Default agent (claude, codex, manual, ...)"
 name = "Project name (default: directory name)"
 adapters = "Context adapters (claude,cursor,copilot). Default: based on the agent"
 dir = "Project directory (default: current)"
+force = "Re-initialize an already initialized project (overwrites archeology-doc.toml; keeps the ID)"
+new_id = "Give this folder a new project ID (copied folder or clone of a registered project)"
 
 [cli.help.config]
 about = "User preferences (~/.archeology-doc/config.toml), e.g. the language"
@@ -109,7 +111,7 @@ severity = "Filter findings by severity"
 format = "Output format"
 
 [cli.help.check]
-about = "Validations for CI (frontmatter, links, evidence)"
+about = "Checklist of what is done and missing: config, inventory, notes, evidence, links, AGENTS.md, site (exit code for CI)"
 [cli.help.check.arg]
 strict = "Warnings also fail"
 site = "Also verify that the VitePress site builds (RF-134)"
@@ -117,10 +119,11 @@ yes = "With --site, approve running the project's VitePress configuration (repos
 format = "Output format"
 
 [cli.help.sync]
-about = "Detect changes and mark outdated notes"
+about = "Detect code changes, mark outdated notes and reopen their tasks"
 [cli.help.sync.arg]
 since = "Compare against a git ref instead of the stored hashes"
 dry_run = "Show what would change without modifying notes, tasks or state"
+format = "Output format"
 
 [cli.help.site]
 about = "VitePress documentation site"
@@ -155,9 +158,18 @@ Change the agent (and optionally the model) used by `inspect` in this project.
 Examples: `adoc agent use claude --model opus`, `adoc agent use devin`, `adoc agent use manual`."""
 [cli.help.agent.use.arg]
 name = "Built-in adapter (claude, codex, devin, gemini, qwen, opencode, cursor, copilot, amp, goose, aider, manual) or another one defined in the config"
-model = "Agent model (e.g. opus, sonnet, gpt-5)"
+model = "Agent model (e.g. opus, sonnet, gpt-5; opencode: provider/model). See `adoc agent models <agent>`"
 no_model = "Remove the pinned model and use the agent's default"
 reset = "Replace the adapter definition with the current built-in one (e.g. after updating adoc)"
+[cli.help.agent.models]
+about = "Show how the agent receives the model and, if its CLI can list them, the available models"
+long_about = """
+Show how the agent receives the model (flag, format, examples) and, if its CLI can list them, the available models.
+
+Examples: `adoc agent models opencode`, `adoc agent models devin`."""
+[cli.help.agent.models.arg]
+name = "Adapter (default: the active one)"
+args = "Extra arguments for the command that lists the models"
 [cli.help.agent.trust]
 about = "Approve an adapter defined in archeology-doc.toml for this project"
 long_about = """
@@ -168,27 +180,6 @@ The config travels with the repository: an adapter that is not built in decides 
 yes = "Do not ask for confirmation (scripts, CI)"
 [cli.help.agent.untrust]
 about = "Withdraw the approval of an adapter in this project"
-
-[cli.help.spec]
-about = "OpenSpec integration"
-[cli.help.spec.status]
-about = "Requirement compliance status (RF-150, RF-163)"
-[cli.help.spec.status.arg]
-capability = "Only this capability"
-format = "Output format"
-[cli.help.spec.baseline]
-about = "Prepare inferred baseline specs as an OpenSpec change (RF-157)"
-long_about = """
-Prepare inferred baseline specs as an OpenSpec change (RF-157).
-
-Creates `openspec/changes/baseline-<date>/` and a task for the agent to write the inferred requirement deltas."""
-[cli.help.spec.baseline.arg]
-capability = "Only this capability (inventory module)"
-dry_run = "Show what would be generated without writing"
-[cli.help.spec.validate]
-about = "Validate an OpenSpec change (official CLI or structural validation, RF-159)"
-[cli.help.spec.validate.arg]
-change = "Change name (folder in openspec/changes/)"
 
 [cli.help.projects]
 about = "Management of the global project registry"
@@ -209,6 +200,12 @@ depth = "Maximum depth"
 about = "Remove entries whose directory no longer exists"
 [cli.help.projects.prune.arg]
 yes = "Without asking for confirmation"
+[cli.help.projects.delete]
+about = "Remove a project: registry entry, workspace (state, tasks, runs) and approvals; -d also deletes the generated files in the project"
+[cli.help.projects.delete.arg]
+project = "Name or ID of the project"
+yes = "Without asking for confirmation"
+delete_files = "Also delete the files adoc generated in the project (archeology-doc.toml, knowledge/, llms.txt, managed regions, generated docs)"
 
 [cli.help.resume]
 about = "Resume the last pending inspection"
@@ -240,12 +237,14 @@ agent = "Agent to use (default: the active one)"
 model = "Agent model for this question only"
 
 [cli.help.graph]
-about = "Knowledge graph: JSON, text or interactive HTML (notes, relations and evidence)"
+about = "Knowledge graph: opens the interactive HTML in the browser (`--json` prints the JSON)"
 [cli.help.graph.arg]
-format = "Output format"
+json = "Print the graph as JSON (with --out, write it to that file)"
+no_open = "Generate the HTML without opening the browser"
+format = "Legacy output format (json, text, html)"
 
 [cli.help.status]
-about = "Full project status as JSON (tasks, findings, notes, agent)"
+about = "Project snapshot: structure, progress, pending tasks and next step (`--format json` for integrations)"
 [cli.help.status.arg]
 format = "Output format"
 
@@ -253,6 +252,15 @@ format = "Output format"
 about = "Check requirements: git, Node, VitePress, OpenSpec, agents and configuration"
 [cli.help.doctor.arg]
 format = "Output format"
+
+[cli.help.upgrade]
+about = "Update `adoc` to the latest published version (`--check` only reports)"
+[cli.help.upgrade.arg]
+check = "Only report whether a newer version exists (exit code 0 either way)"
+format = "Output format of --check"
+yes = "Do not ask for confirmation (required in non-interactive mode)"
+force = "Reinstall even if this is already the latest version"
+with_vscode = "Also update the VS Code extension (requires the `code` command)"
 
 [cli.help.uninstall]
 about = "Uninstall `adoc`; with --purge also delete ~/.archeology-doc (projects are not touched)"

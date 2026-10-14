@@ -31,6 +31,8 @@ agent = "Agente por defecto (claude, codex, manual, ...)"
 name = "Nombre del proyecto (por defecto: nombre del directorio)"
 adapters = "Adaptadores de contexto (claude,cursor,copilot). Por defecto, según el agente"
 dir = "Directorio del proyecto (por defecto: actual)"
+force = "Reinicializa un proyecto ya inicializado (sobrescribe archeology-doc.toml; conserva el ID)"
+new_id = "Asigna un ID de proyecto nuevo a esta carpeta (copia o clon de un proyecto registrado)"
 
 [cli.help.config]
 about = "Preferencias del usuario (~/.archeology-doc/config.toml), p. ej. el idioma"
@@ -118,7 +120,7 @@ severity = "Filtrar hallazgos por severidad"
 format = "Formato de salida"
 
 [cli.help.check]
-about = "Validaciones para CI (frontmatter, enlaces, evidencias)"
+about = "Lista de lo hecho y lo que falta: configuración, inventario, notas, evidencias, enlaces, AGENTS.md, sitio (código de salida para CI)"
 [cli.help.check.arg]
 strict = "Las advertencias también fallan"
 site = "Verifica además que el sitio VitePress compila (RF-134)"
@@ -126,10 +128,11 @@ yes = "Con --site, aprueba ejecutar la configuración de VitePress del proyecto 
 format = "Formato de salida"
 
 [cli.help.sync]
-about = "Detecta cambios y marca notas desactualizadas"
+about = "Detecta cambios en el código, marca notas desactualizadas y reabre sus tareas"
 [cli.help.sync.arg]
 since = "Comparar contra una ref git en vez de los hashes guardados"
 dry_run = "Mostrar qué cambiaría sin modificar notas, tareas ni estado"
+format = "Formato de salida"
 
 [cli.help.site]
 about = "Sitio de documentación VitePress"
@@ -171,9 +174,19 @@ Cambia el agente (y opcionalmente el modelo) que usa `inspect` en este proyecto.
 Ejemplos: `adoc agent use claude --model opus`, `adoc agent use devin`, `adoc agent use manual`."""
 [cli.help.agent.use.arg]
 name = "Adaptador predefinido (claude, codex, devin, gemini, qwen, opencode, cursor, copilot, amp, goose, aider, manual) u otro definido en la config"
-model = "Modelo del agente (p. ej. opus, sonnet, gpt-5)"
+model = "Modelo del agente (p. ej. opus, sonnet, gpt-5; opencode: proveedor/modelo). Ver `adoc agent models <agente>`"
 no_model = "Quita el modelo fijado y usa el predeterminado del agente"
 reset = "Reemplaza la definición del adaptador por la predefinida actual (p. ej. tras actualizar adoc)"
+
+[cli.help.agent.models]
+about = "Muestra cómo recibe el modelo el agente y, si su CLI sabe listarlos, los modelos disponibles"
+long_about = """
+Muestra cómo recibe el modelo el agente (flag, formato, ejemplos) y, si su CLI sabe listarlos, los modelos disponibles.
+
+Ejemplos: `adoc agent models opencode`, `adoc agent models devin`."""
+[cli.help.agent.models.arg]
+name = "Adaptador (por defecto: el activo)"
+args = "Argumentos extra para el comando que lista los modelos"
 
 [cli.help.agent.trust]
 about = "Aprueba un adaptador definido en archeology-doc.toml para este proyecto"
@@ -186,30 +199,6 @@ yes = "No pedir confirmación (scripts, CI)"
 
 [cli.help.agent.untrust]
 about = "Retira la aprobación de un adaptador en este proyecto"
-
-[cli.help.spec]
-about = "Integración con OpenSpec"
-
-[cli.help.spec.status]
-about = "Estado de cumplimiento de requisitos (RF-150, RF-163)"
-[cli.help.spec.status.arg]
-capability = "Solo esta capability"
-format = "Formato de salida"
-
-[cli.help.spec.baseline]
-about = "Prepara specs base inferidas como cambio de OpenSpec (RF-157)"
-long_about = """
-Prepara specs base inferidas como cambio de OpenSpec (RF-157).
-
-Crea `openspec/changes/baseline-<fecha>/` y una tarea para que el agente escriba los deltas de requisitos inferidos."""
-[cli.help.spec.baseline.arg]
-capability = "Solo esta capability (módulo del inventario)"
-dry_run = "Mostrar qué se generaría sin escribir"
-
-[cli.help.spec.validate]
-about = "Valida un cambio de OpenSpec (CLI oficial o validación estructural, RF-159)"
-[cli.help.spec.validate.arg]
-change = "Nombre del cambio (carpeta en openspec/changes/)"
 
 [cli.help.projects]
 about = "Gestión del registro global de proyectos"
@@ -234,6 +223,12 @@ depth = "Profundidad máxima"
 about = "Elimina entradas cuyo directorio ya no existe"
 [cli.help.projects.prune.arg]
 yes = "Sin pedir confirmación"
+[cli.help.projects.delete]
+about = "Elimina un proyecto: entrada del registro, espacio de trabajo (estado, tareas, ejecuciones) y aprobaciones; -d también borra los archivos generados en el proyecto"
+[cli.help.projects.delete.arg]
+project = "Nombre o ID del proyecto"
+yes = "Sin pedir confirmación"
+delete_files = "También borra los archivos que adoc generó en el proyecto (archeology-doc.toml, knowledge/, llms.txt, regiones gestionadas, docs generados)"
 
 [cli.help.resume]
 about = "Retoma la última inspección pendiente"
@@ -265,12 +260,14 @@ agent = "Agente a usar (por defecto, el activo)"
 model = "Modelo del agente solo para esta pregunta"
 
 [cli.help.graph]
-about = "Grafo del conocimiento: JSON, texto o HTML interactivo (notas, relaciones y evidencias)"
+about = "Grafo del conocimiento: abre el HTML interactivo en el navegador (`--json` imprime el JSON)"
 [cli.help.graph.arg]
-format = "Formato de salida"
+json = "Imprime el grafo en JSON (con --out, lo escribe en ese archivo)"
+no_open = "Genera el HTML sin abrir el navegador"
+format = "Formato de salida antiguo (json, text, html)"
 
 [cli.help.status]
-about = "Estado completo del proyecto en JSON (tareas, hallazgos, notas, agente)"
+about = "Resumen del proyecto: estructura, progreso, tareas pendientes y siguiente paso (`--format json` para integraciones)"
 [cli.help.status.arg]
 format = "Formato de salida"
 
@@ -278,6 +275,15 @@ format = "Formato de salida"
 about = "Verifica requisitos: git, Node, VitePress, OpenSpec, agentes y configuración"
 [cli.help.doctor.arg]
 format = "Formato de salida"
+
+[cli.help.upgrade]
+about = "Actualiza `adoc` a la última versión publicada (`--check` solo informa)"
+[cli.help.upgrade.arg]
+check = "Solo informa si hay una versión nueva (código de salida 0 en ambos casos)"
+format = "Formato de salida de --check"
+yes = "No pedir confirmación (obligatorio en modo no interactivo)"
+force = "Reinstala aunque ya sea la última versión"
+with_vscode = "Actualiza también la extensión de VS Code (requiere el comando `code`)"
 
 [cli.help.uninstall]
 about = "Desinstala `adoc`; con --purge borra también ~/.archeology-doc (los proyectos no se tocan)"

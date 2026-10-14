@@ -50,7 +50,7 @@ pub fn run(args: ResumeArgs, project_flag: Option<String>) -> Result<()> {
         .get(&agent)
         .map(|a| a.mode == archeology_core::config::AdapterMode::Headless)
         .unwrap_or(false);
-    let (pb, on_event) = super::inspect::progress(&agent, headless);
+    let (pb, on_event) = super::inspect::progress(&project, &agent, headless);
     let opts = InspectOptions {
         model: args.model.clone(),
         on_event,
@@ -65,6 +65,7 @@ pub fn run(args: ResumeArgs, project_flag: Option<String>) -> Result<()> {
     pb.finish_and_clear();
     let report = report?;
     super::inspect::print_report(&project, &report, &opts.agent, false);
+    super::inspect::exit_on_limit(&report);
     Ok(())
 }
 

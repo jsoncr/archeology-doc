@@ -33,8 +33,11 @@
         <a href="#comandos" data-i18n="nav.commands">Commands</a>
         <a href="#agentes" data-i18n="nav.agents">Agents</a>
         <a href="#vscode">VS Code</a>
+        <a href="#codigo-abierto" data-i18n="nav.openSource">Open source</a>
       </nav>
       <div class="nav-tools">
+        <!-- Repositorio en GitHub (icono SVG en línea, sin recursos externos). -->
+        <a class="icon-btn" href="https://github.com/jsoncr/archeology-doc" rel="noopener" aria-label="GitHub repository" title="GitHub repository" data-i18n-attr="aria-label:repo.github;title:repo.github"><svg class="gh-mark" viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a>
         <div class="lang" role="group" aria-label="Language" data-i18n-attr="aria-label:lang.group">
           <button type="button" data-lang="en" aria-pressed="true" lang="en" title="English">EN</button>
           <button type="button" data-lang="es" aria-pressed="false" lang="es" title="Español">ES</button>
@@ -97,7 +100,7 @@
           <article class="card">
             <div class="icon">📐</div>
             <h3 data-i18n="card.specs.title">Specs with OpenSpec</h3>
-            <p data-i18n="card.specs.text">Requirement compliance checked against the code, and inferred baseline specs for projects that have none.</p>
+            <p data-i18n="card.specs.text">Requirement compliance checked against the code, with abandoned changes flagged in review, status and check.</p>
           </article>
           <article class="card">
             <div class="icon">✅</div>
@@ -191,18 +194,32 @@
           <div class="code" data-copy><pre><code><span class="c" data-i18n="code.sourceNeedsRust"># Requires Rust (rustup.rs). Installs `adoc` into ~/.cargo/bin</span>
 git clone https://github.com/jsoncr/archeology-doc.git
 cd archeology-doc
-WEBSITE/installers/install.sh
+installers/install.sh
 
 <span class="c" data-i18n="code.orCargo"># or directly with cargo</span>
 cargo install --path crates/archeology-cli --locked</code></pre></div>
         </div>
+
+        <p class="step-label" data-i18n="install.vscode">VS Code extension</p>
+        <div class="downloads-row">
+          <a class="btn primary" href="https://marketplace.visualstudio.com/items?itemName=jcruz.archeology-doc" rel="noopener" data-i18n="vscode.marketplace">Install from the Marketplace</a>
+          <a class="btn dl" data-file="archeology-doc.vsix" href="download/archeology-doc.vsix" download>.vsix <small></small></a>
+        </div>
+        <div class="code code-gap" data-copy><pre><code><span class="prompt">$</span> code --install-extension jcruz.archeology-doc</code></pre></div>
+        <p class="note" data-i18n-html="install.vscodeNote">The <code>.vsix</code> is for offline installs and for editors that don't use the Microsoft Marketplace (Cursor, Windsurf): <code>code --install-extension archeology-doc.vsix</code>.</p>
 
         <p class="step-label" data-i18n="install.extras">Extras</p>
         <div class="code" data-copy><pre><code><span class="c" data-i18n="code.extrasWith"># With shared VitePress and the VS Code extension</span>
 curl -fsSL <span data-base>https://your-site/download/</span>install.sh | sh -s -- --with-vitepress --with-vscode
 
 <span class="c" data-i18n="code.doctor"># Checks requirements: git, Node, VitePress, OpenSpec and agents</span>
-adoc doctor</code></pre></div>
+adoc doctor
+
+<span class="c" data-i18n="code.upgradeCheck"># Only checks whether a new version is available</span>
+adoc upgrade --check
+<span class="c" data-i18n="code.upgrade"># Downloads and installs the new version automatically</span>
+adoc upgrade</code></pre></div>
+        <p class="note" data-i18n-html="install.upgradeNote">Stay up to date: <code>adoc upgrade</code> checks for a new version and updates itself automatically; <code>adoc upgrade --check</code> only checks, without changing anything.</p>
         <p class="note" data-i18n-html="install.binariesNote">Two equivalent binaries are installed: <code>adoc</code> (short) and <code>archeology-doc</code>.
           To uninstall: <code>adoc uninstall</code> (with <code>--purge</code> it also deletes
           <code>~/.archeology-doc</code>; your project files are never touched).</p>
@@ -212,7 +229,7 @@ adoc doctor</code></pre></div>
           <table class="downloads">
             <thead><tr><th data-i18n="downloads.file">File</th><th data-i18n="downloads.platform">Platform</th><th data-i18n="downloads.size">Size</th><th>SHA-256</th></tr></thead>
             <tbody id="dl-table">
-              <tr><td colspan="4" class="muted" data-i18n-html="downloads.placeholder">List available once the site is published (<code>WEBSITE/dist.sh</code>).</td></tr>
+              <tr><td colspan="4" class="muted" data-i18n="downloads.placeholder">List available once a release is published.</td></tr>
             </tbody>
           </table>
         </div>
@@ -221,34 +238,59 @@ adoc doctor</code></pre></div>
       </div>
     </section>
 
-    <!-- Uso rápido -->
+    <!-- Comandos -->
     <section class="section alt" id="comandos">
-      <div class="wrap two">
-        <div>
-          <h2 data-i18n="start.title">Getting started</h2>
-          <p class="sub" data-i18n="start.sub">In your project folder:</p>
-          <div class="code" data-copy><pre><code>cd <span data-i18n="code.projectName">my-project</span>
+      <div class="wrap">
+        <div class="two">
+          <div>
+            <h2 data-i18n="start.title">Getting started</h2>
+            <p class="sub" data-i18n="start.sub">In your project folder:</p>
+            <div class="code" data-copy><pre><code>cd <span data-i18n="code.projectName">my-project</span>
 
 adoc init                 <span class="c" data-i18n="code.init"># config + structure</span>
 adoc agent use claude     <span class="c" data-i18n="code.agentUse"># or devin, codex, gemini…</span>
 adoc scan                 <span class="c" data-i18n="code.scan"># deterministic inventory</span>
 adoc plan                 <span class="c" data-i18n="code.plan"># tasks sized to the project</span>
 adoc inspect              <span class="c" data-i18n="code.inspect"># the agent documents</span>
+adoc status               <span class="c" data-i18n="code.status"># where you are and what's next</span>
 adoc preview              <span class="c" data-i18n="code.preview"># see the result</span></code></pre></div>
+          </div>
+          <div>
+            <h2 data-i18n="daily.title">Day to day</h2>
+            <table class="cmds">
+              <tr><td><code>adoc status</code></td><td data-i18n-html="daily.status">Summary: progress, pending tasks and the next step (<code>--format json</code> for integrations)</td></tr>
+              <tr><td><code>adoc review</code></td><td data-i18n="daily.review">Progress, findings, features without tests</td></tr>
+              <tr><td><code>adoc check</code></td><td data-i18n="daily.check">Checklist of what is done and missing, with hints to fix it (exit code for CI)</td></tr>
+              <tr><td><code>adoc sync</code></td><td data-i18n="daily.sync">Shows changed and uncovered files, marks outdated notes and reopens their tasks</td></tr>
+              <tr><td><code>adoc inspect --resume</code></td><td data-i18n="daily.resume">Retries failed or interrupted tasks</td></tr>
+              <tr><td><code>adoc task answer T-014 "…"</code></td><td data-i18n="daily.answer">Answers an agent that asked a question</td></tr>
+              <tr><td><code>adoc task run T-014 -i</code></td><td data-i18n="daily.run">Interactive session with the agent</td></tr>
+              <tr><td><code data-i18n="daily.askExample">adoc ask "…?"</code></td><td data-i18n="daily.ask">Ask about the project → FAQ</td></tr>
+              <tr><td><code>adoc graph</code></td><td data-i18n-html="daily.graph">Interactive knowledge graph in the browser; <code>--json</code> prints it as JSON</td></tr>
+              <tr><td><code>adoc report</code></td><td data-i18n="daily.report">Single HTML report to share</td></tr>
+            </table>
+          </div>
         </div>
-        <div>
-          <h2 data-i18n="daily.title">Day to day</h2>
-          <table class="cmds">
-            <tr><td><code>adoc review</code></td><td data-i18n="daily.review">Progress, findings, features without tests</td></tr>
-            <tr><td><code>adoc inspect --resume</code></td><td data-i18n="daily.resume">Retries failed or interrupted tasks</td></tr>
-            <tr><td><code>adoc task answer T-014 "…"</code></td><td data-i18n="daily.answer">Answers an agent that asked a question</td></tr>
-            <tr><td><code>adoc task run T-014 -i</code></td><td data-i18n="daily.run">Interactive session with the agent</td></tr>
-            <tr><td><code data-i18n="daily.askExample">adoc ask "…?"</code></td><td data-i18n="daily.ask">Ask about the project → FAQ</td></tr>
-            <tr><td><code>adoc sync</code></td><td data-i18n="daily.sync">Detects changes and marks outdated notes</td></tr>
-            <tr><td><code>adoc check</code></td><td data-i18n="daily.check">Validations for CI</td></tr>
-            <tr><td><code>adoc report</code></td><td data-i18n="daily.report">Single HTML report to share</td></tr>
-            <tr><td><code>adoc projects list</code></td><td data-i18n="daily.projects">All your projects and their progress</td></tr>
-          </table>
+
+        <div class="two cmds-more">
+          <div>
+            <h3 data-i18n="setup.title">Projects, agents and settings</h3>
+            <table class="cmds">
+              <tr><td><code>adoc projects list</code></td><td data-i18n="setup.projectsList">All your projects and their progress</td></tr>
+              <tr><td><code data-i18n="setup.projectsDeleteExample">adoc projects delete &lt;name&gt;</code></td><td data-i18n-html="setup.projectsDelete">Removes a project from the registry; with <code>-d</code> it also deletes its generated files</td></tr>
+              <tr><td><code>adoc agent use claude --model opus</code></td><td data-i18n="setup.agentUse">Project agent and model</td></tr>
+              <tr><td><code>adoc config set language es</code></td><td data-i18n-html="setup.language">Interface language: <code>en</code> or <code>es</code></td></tr>
+            </table>
+          </div>
+          <div>
+            <h3 data-i18n="maint.title">Maintenance</h3>
+            <table class="cmds">
+              <tr><td><code>adoc doctor</code></td><td data-i18n="maint.doctor">Checks git, Node, VitePress, OpenSpec and agents</td></tr>
+              <tr><td><code>adoc upgrade --check</code></td><td data-i18n="maint.upgradeCheck">Only checks whether a new version is available</td></tr>
+              <tr><td><code>adoc upgrade</code></td><td data-i18n="maint.upgrade">Downloads and installs the latest version</td></tr>
+              <tr><td><code>adoc uninstall</code></td><td data-i18n-html="maint.uninstall">Removes <code>adoc</code>; <code>--purge</code> also deletes <code>~/.archeology-doc</code></td></tr>
+            </table>
+          </div>
         </div>
       </div>
     </section>
@@ -284,10 +326,11 @@ adoc inspect --agent codex            <span class="c" data-i18n="code.agentOnce"
           </ul>
         </div>
         <div>
-          <div class="code" data-copy><pre><code>cd archeology-doc/extension
-npm ci
-npm run package
-code --install-extension archeology-doc-0.1.0.vsix</code></pre></div>
+          <div class="cta cta-tight">
+            <a class="btn primary" href="https://marketplace.visualstudio.com/items?itemName=jcruz.archeology-doc" rel="noopener" data-i18n="vscode.marketplace">Install from the Marketplace</a>
+          </div>
+          <p class="step-label" data-i18n="vscode.orTerminal">or from the terminal</p>
+          <div class="code" data-copy><pre><code><span class="prompt">$</span> code --install-extension jcruz.archeology-doc</code></pre></div>
           <div class="mock" aria-hidden="true">
             <div class="mock-bar"><span></span><span></span><span></span></div>
             <div class="mock-body">
@@ -348,11 +391,73 @@ code --install-extension archeology-doc-0.1.0.vsix</code></pre></div>
         </div>
       </div>
     </section>
+
+    <!-- Código abierto -->
+    <section class="section alt" id="codigo-abierto">
+      <div class="wrap">
+        <h2 data-i18n="oss.title">Open source</h2>
+        <p class="sub" data-i18n-html="oss.sub">The whole project lives on GitHub under the <a href="https://github.com/jsoncr/archeology-doc/blob/main/LICENSE-MIT" rel="noopener">MIT license</a>: use it, modify it and share it freely.</p>
+        <div class="grid repo-cards">
+          <article class="card">
+            <h3 data-i18n="oss.cli.title">Rust CLI</h3>
+            <p data-i18n-html="oss.cli.text"><code>crates/</code>: the <code>adoc</code> CLI plus the core, scan, agents, OpenSpec and registry crates.</p>
+          </article>
+          <article class="card">
+            <h3 data-i18n="oss.ext.title">VS Code extension</h3>
+            <p data-i18n-html="oss.ext.text"><code>extension/</code>: tasks, findings, knowledge graph and questions inside the editor.</p>
+          </article>
+          <article class="card">
+            <h3 data-i18n="oss.installers.title">Installers</h3>
+            <p data-i18n-html="oss.installers.text"><code>install.sh</code> and <code>install.ps1</code>: one-command install for macOS, Linux and Windows, with SHA-256 verification.</p>
+          </article>
+          <article class="card">
+            <h3 data-i18n="oss.templates.title">Templates</h3>
+            <p data-i18n-html="oss.templates.text"><code>templates/</code>: the Markdown notes and prompts the agents fill in, in English and Spanish.</p>
+          </article>
+        </div>
+
+        <div class="repo-links">
+          <a class="btn primary" href="https://github.com/jsoncr/archeology-doc" rel="noopener"><svg class="gh-mark" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span data-i18n="oss.source">Source code</span></a>
+          <a class="btn" href="https://github.com/jsoncr/archeology-doc/releases" rel="noopener" data-i18n="oss.releases">Releases</a>
+          <a class="btn" href="https://github.com/jsoncr/archeology-doc/issues" rel="noopener" data-i18n="oss.issues">Report a bug or request a feature</a>
+        </div>
+
+        <div class="two oss-more">
+          <div>
+            <h3 data-i18n="oss.contribute.title">How to contribute</h3>
+            <ol class="steps compact">
+              <li><span class="n">1</span><div><p data-i18n-html="oss.contribute.fork"><b>Fork</b> the repository and create a branch for your change.</p></div></li>
+              <li><span class="n">2</span><div><p data-i18n-html="oss.contribute.test">Run <code>cargo test --workspace</code> (and <code>npm run compile</code> in <code>extension/</code> if you touch it).</p></div></li>
+              <li><span class="n">3</span><div><p data-i18n-html="oss.contribute.pr">Open a <b>pull request</b> describing what changes and why. For larger ideas, open an issue first.</p></div></li>
+            </ol>
+          </div>
+          <div>
+            <h3 data-i18n="oss.build.title">Build from source</h3>
+            <div class="code" data-copy><pre><code><span class="c" data-i18n="code.ossCli"># CLI (requires Rust)</span>
+git clone https://github.com/jsoncr/archeology-doc
+cd archeology-doc
+cargo install --path crates/archeology-cli
+
+<span class="c" data-i18n="code.ossExt"># VS Code extension (requires Node 18+) → .vsix</span>
+cd extension
+npm ci
+npm run package</code></pre></div>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <footer class="footer">
     <div class="wrap">
-      <span>archeology-doc · MIT</span>
+      <span class="footer-brand">archeology-doc <span class="muted" id="site-version" hidden></span></span>
+      <nav class="footer-links" aria-label="Project" data-i18n-attr="aria-label:footer.nav">
+        <a href="https://github.com/jsoncr/archeology-doc" rel="noopener">GitHub</a>
+        <a href="https://github.com/jsoncr/archeology-doc/releases" rel="noopener" data-i18n="footer.releases">Releases</a>
+        <a href="https://marketplace.visualstudio.com/items?itemName=jcruz.archeology-doc" rel="noopener">VS Code Marketplace</a>
+        <a href="https://github.com/jsoncr/archeology-doc/issues" rel="noopener" data-i18n="footer.issues">Issues</a>
+        <a href="https://github.com/jsoncr/archeology-doc/blob/main/LICENSE-MIT" rel="noopener" data-i18n="footer.license">MIT License</a>
+      </nav>
       <span class="muted" data-i18n="footer.made">Made with Rust 🦀</span>
     </div>
   </footer>

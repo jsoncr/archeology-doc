@@ -180,10 +180,10 @@ fn refresh_where(project: &Project, state: &mut State, include: impl Fn(&Path) -
             }
         }
     }
-    state.stale_notes = stale_notes(project);
+    state.set_stale_notes(stale_notes(project));
 }
 
-/// Notas cuyo frontmatter tiene `status: stale`.
+/// Notas cuyo frontmatter tiene `status: stale` (o `stale: true`).
 pub fn stale_notes(project: &Project) -> Vec<String> {
     vault_notes(project)
         .into_iter()
@@ -191,7 +191,7 @@ pub fn stale_notes(project: &Project) -> Vec<String> {
             fs::read_to_string(p)
                 .ok()
                 .and_then(|t| NoteFrontmatter::parse(&t))
-                .map(|fm| fm.status.as_deref() == Some("stale"))
+                .map(|fm| crate::validate::is_stale(&fm))
                 .unwrap_or(false)
         })
         .map(|p| project.rel(&p))

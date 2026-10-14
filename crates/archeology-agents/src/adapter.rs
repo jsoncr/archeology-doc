@@ -153,11 +153,6 @@ pub fn expand_args_in(
         .collect()
 }
 
-/// CLIs que aceptan `--model <nombre>`.
-const MODEL_FLAG_CLIS: &[&str] = &[
-    "claude", "codex", "devin", "gemini", "qwen", "opencode", "agent", "copilot", "aider",
-];
-
 /// Programa a lanzar para el comando del adaptador (en Windows, resuelve
 /// los shims `.cmd` de npm con `PATH` + `PATHEXT`).
 pub fn program_for(cfg: &AdapterConfig, cmd: &str) -> std::path::PathBuf {
@@ -171,6 +166,136 @@ pub fn command_found(cfg: &AdapterConfig) -> bool {
     })
 }
 
+/// Cómo recibe el modelo un CLI conocido.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ModelPassing {
+    /// Opción `<flag> <modelo>`, insertada antes del prompt (el argumento
+    /// posicional o la opción que lo recibe), para que ningún CLI la tome
+    /// como parte del mensaje.
+    Flag(&'static str),
+    /// Variables de entorno de goose: `GOOSE_MODEL` (y `GOOSE_PROVIDER` si
+    /// el modelo viene como `proveedor/modelo`).
+    GooseEnv,
+    /// El CLI no permite elegir el modelo por línea de comandos.
+    Unsupported,
+}
+
+/// Formato del nombre del modelo que espera un CLI.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ModelFormat {
+    /// Nombre o alias (`opus`, `gpt-5`).
+    Name,
+    /// Siempre `proveedor/modelo` (`anthropic/claude-sonnet-4-5`).
+    ProviderModel,
+    /// Nombre, con proveedor opcional (`sonnet`, `anthropic/claude-…`).
+    OptionalProvider,
+}
+
+/// Cómo se elige el modelo en un CLI conocido.
+#[derive(Debug, Clone, Copy)]
+pub struct ModelSpec {
+    /// Ejecutable (sin extensión, en minúsculas).
+    pub program: &'static str,
+    pub passing: ModelPassing,
+    pub format: ModelFormat,
+    /// Valores de ejemplo para los mensajes y la documentación.
+    pub examples: &'static [&'static str],
+    /// Subcomando del CLI que lista los modelos disponibles (`adoc agent models`).
+    pub list_args: Option<&'static [&'static str]>,
+}
+
+/// Tabla de CLIs conocidos: cómo reciben el modelo (`adoc agent use X --model Y`).
+pub const MODEL_SPECS: &[ModelSpec] = &[
+    ModelSpec {
+        program: "claude",
+        passing: ModelPassing::Flag("--model"),
+        format: ModelFormat::Name,
+        examples: &["sonnet", "opus", "claude-sonnet-4-5"],
+        list_args: None,
+    },
+    ModelSpec {
+        program: "codex",
+        passing: ModelPassing::Flag("--model"),
+        format: ModelFormat::Name,
+        examples: &["gpt-5", "gpt-5-codex", "o3"],
+        list_args: None,
+    },
+    ModelSpec {
+        program: "devin",
+        passing: ModelPassing::Flag("--model"),
+        format: ModelFormat::Name,
+        examples: &["opus", "claude-sonnet-4", "codex"],
+        list_args: Some(&["models", "list"]),
+    },
+    ModelSpec {
+        program: "gemini",
+        passing: ModelPassing::Flag("--model"),
+        format: ModelFormat::Name,
+        examples: &["gemini-2.5-pro", "gemini-2.5-flash"],
+        list_args: None,
+    },
+    ModelSpec {
+        program: "qwen",
+        passing: ModelPassing::Flag("--model"),
+        format: ModelFormat::Name,
+        examples: &["qwen3-coder-plus"],
+        list_args: None,
+    },
+    ModelSpec {
+        program: "opencode",
+        passing: ModelPassing::Flag("--model"),
+        format: ModelFormat::ProviderModel,
+        examples: &[
+            "anthropic/claude-sonnet-4-5",
+            "openai/gpt-5",
+            "opencode/grok-code",
+        ],
+        list_args: Some(&["models"]),
+    },
+    // Cursor CLI (ejecutable `agent`).
+    ModelSpec {
+        program: "agent",
+        passing: ModelPassing::Flag("--model"),
+        format: ModelFormat::Name,
+        examples: &["sonnet-4.5", "gpt-5", "auto"],
+        list_args: None,
+    },
+    ModelSpec {
+        program: "copilot",
+        passing: ModelPassing::Flag("--model"),
+        format: ModelFormat::Name,
+        examples: &["claude-sonnet-4.5", "gpt-5"],
+        list_args: None,
+    },
+    ModelSpec {
+        program: "aider",
+        passing: ModelPassing::Flag("--model"),
+        format: ModelFormat::OptionalProvider,
+        examples: &["sonnet", "gpt-4o", "anthropic/claude-sonnet-4-5"],
+        list_args: None,
+    },
+    ModelSpec {
+        program: "goose",
+        passing: ModelPassing::GooseEnv,
+        format: ModelFormat::OptionalProvider,
+        examples: &["anthropic/claude-sonnet-4-5", "openai/gpt-4o"],
+        list_args: None,
+    },
+    ModelSpec {
+        program: "amp",
+        passing: ModelPassing::Unsupported,
+        format: ModelFormat::Name,
+        examples: &[],
+        list_args: None,
+    },
+];
+
+/// Especificación de modelo del CLI de un adaptador, si es conocido.
+pub fn model_spec(cfg: &AdapterConfig) -> Option<&'static ModelSpec> {
+    let program = crate::command::program_stem(cfg.command.as_deref().unwrap_or(""));
+    MODEL_SPECS.iter().find(|s| s.program == program)
+}
+
 /// Un modelo válido: solo `[A-Za-z0-9._:/@+-]`, sin `-` inicial (no puede
 /// pasar por una opción del CLI) y no vacío.
 pub fn validate_model(model: &str) -> Result<()> {
@@ -180,40 +305,199 @@ pub fn validate_model(model: &str) -> Result<()> {
         && model
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || "._:/@+-".contains(c));
-    if !ok {
-        anyhow::bail!(t!(
-            "agents.adapter.invalid_model",
-            model = format!("{model:?}")
-        ));
+    if ok {
+        return Ok(());
+    }
+    if model.trim() != model || model.trim().contains(char::is_whitespace) {
+        // Lo habitual: el nombre visible ("Claude Sonnet 4.5") en vez del id.
+        anyhow::bail!(t!("agents.model.has_spaces", model = format!("{model:?}")));
+    }
+    anyhow::bail!(t!(
+        "agents.adapter.invalid_model",
+        model = format!("{model:?}")
+    ));
+}
+
+/// Ejemplos de modelo para un CLI: ` (p. ej. a, b)` o vacío.
+fn examples_suffix(spec: &ModelSpec) -> String {
+    if spec.examples.is_empty() {
+        return String::new();
+    }
+    t!(
+        "agents.model.examples_suffix",
+        examples = spec.examples.join(", ")
+    )
+}
+
+/// Cómo listar los modelos de un CLI: ` Lista los disponibles con `x y`.` o vacío.
+fn list_suffix(spec: &ModelSpec) -> String {
+    spec.list_args
+        .map(|a| {
+            t!(
+                "agents.model.list_suffix",
+                command = format!("{} {}", spec.program, a.join(" "))
+            )
+        })
+        .unwrap_or_default()
+}
+
+/// Valida el modelo con el formato que espera el CLI (`proveedor/modelo` en
+/// opencode) y comprueba que el CLI permita elegirlo.
+pub fn validate_model_for(spec: &ModelSpec, model: &str) -> Result<()> {
+    validate_model(model)
+        .map_err(|e| anyhow::anyhow!("{e}{}{}", examples_suffix(spec), list_suffix(spec)))?;
+    match spec.passing {
+        ModelPassing::Unsupported => {
+            anyhow::bail!(t!("agents.model.unsupported", agent = spec.program))
+        }
+        ModelPassing::Flag(_) | ModelPassing::GooseEnv => {}
+    }
+    if spec.format == ModelFormat::ProviderModel {
+        let ok = model
+            .split_once('/')
+            .is_some_and(|(p, m)| !p.is_empty() && !m.is_empty());
+        if !ok {
+            anyhow::bail!(t!(
+                "agents.model.needs_provider",
+                agent = spec.program,
+                model = format!("{model:?}"),
+                examples = spec.examples.join(", "),
+                list = list_suffix(spec)
+            ));
+        }
     }
     Ok(())
 }
 
-/// Aplica `model`: sustituye `{model}` en los args o, en CLIs conocidos,
-/// añade `--model <nombre>`. El modelo se valida antes de usarlo.
-pub fn with_model(cfg: &AdapterConfig, args: Vec<String>) -> Result<Vec<String>> {
+/// Argumentos (plantillas, antes de expandir los placeholders) y variables
+/// de entorno con el modelo aplicado.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ModelArgs {
+    pub args: Vec<String>,
+    pub env: Vec<(String, String)>,
+}
+
+/// ¿Es `arg` una opción que toma el siguiente argumento como valor?
+fn takes_value(arg: &str) -> bool {
+    arg.len() > 1 && arg.starts_with('-') && !arg.contains('=')
+}
+
+/// Dónde insertar `--model X`: antes del prompt (placeholder o `-` de stdin)
+/// o de la opción que lo recibe (`-p {prompt_file_content}`, `--prompt-file
+/// {prompt_file}`); sin prompt en los args, al final.
+fn model_insert_index(args: &[String]) -> usize {
+    let is_prompt = |a: &String| a.contains("{prompt_file") || a == "-";
+    match args.iter().position(is_prompt) {
+        Some(i) if i > 0 && takes_value(&args[i - 1]) => i - 1,
+        Some(i) => i,
+        None => args.len(),
+    }
+}
+
+/// Aplica `model` a las plantillas de args del adaptador (antes de expandir
+/// `{prompt_file…}`): sustituye `{model}` o, en CLIs conocidos, usa su forma
+/// de recibir el modelo ([`MODEL_SPECS`]). El modelo se valida antes.
+///
+/// Error si el CLI no permite elegir el modelo o si el adaptador no es de un
+/// CLI conocido y sus args no tienen `{model}`: el modelo no se ignora en silencio.
+pub fn apply_model(cfg: &AdapterConfig, templates: &[String]) -> Result<ModelArgs> {
     let Some(model) = cfg.model.as_deref().filter(|m| !m.is_empty()) else {
         // Sin modelo, `{model}` no debe llegar literal al comando.
-        return Ok(args.into_iter().filter(|a| a != "{model}").collect());
+        return Ok(ModelArgs {
+            args: templates
+                .iter()
+                .filter(|a| *a != "{model}")
+                .cloned()
+                .collect(),
+            env: Vec::new(),
+        });
     };
-    validate_model(model)?;
-    if args.iter().any(|a| a.contains("{model}")) {
-        return Ok(args.iter().map(|a| a.replace("{model}", model)).collect());
+    if templates.iter().any(|a| a.contains("{model}")) {
+        validate_model(model)?;
+        return Ok(ModelArgs {
+            args: templates
+                .iter()
+                .map(|a| a.replace("{model}", model))
+                .collect(),
+            env: Vec::new(),
+        });
     }
-    let name = crate::command::program_stem(cfg.command.as_deref().unwrap_or(""));
-    let mut args = args;
-    if MODEL_FLAG_CLIS.contains(&name.as_str()) && !args.iter().any(|a| a == "--model" || a == "-m")
-    {
-        // Antes de un `-` final (prompt por stdin en codex).
-        let at = if args.last().map(|a| a == "-").unwrap_or(false) {
-            args.len() - 1
+    if cfg.mode == AdapterMode::Export {
+        anyhow::bail!(t!("agents.model.export_mode"));
+    }
+    let Some(spec) = model_spec(cfg) else {
+        validate_model(model)?;
+        anyhow::bail!(t!(
+            "agents.model.no_placeholder",
+            program = cfg.command.as_deref().unwrap_or("")
+        ));
+    };
+    validate_model_for(spec, model)?;
+    let mut args = templates.to_vec();
+    let mut env = Vec::new();
+    match spec.passing {
+        ModelPassing::Flag(flag) => {
+            // El usuario ya puso el flag en sus args: se respeta.
+            let present = args
+                .iter()
+                .any(|a| a == flag || a == "-m" || a.starts_with(&format!("{flag}=")));
+            if !present {
+                let at = model_insert_index(&args);
+                args.insert(at, model.to_string());
+                args.insert(at, flag.to_string());
+            }
+        }
+        ModelPassing::GooseEnv => match model.split_once('/') {
+            Some((provider, name)) if !provider.is_empty() && !name.is_empty() => {
+                env.push(("GOOSE_PROVIDER".into(), provider.into()));
+                env.push(("GOOSE_MODEL".into(), name.into()));
+            }
+            _ => env.push(("GOOSE_MODEL".into(), model.into())),
+        },
+        ModelPassing::Unsupported => unreachable!("validate_model_for lo rechaza"),
+    }
+    Ok(ModelArgs { args, env })
+}
+
+/// Comando efectivo de un adaptador, legible: con el modelo aplicado y el
+/// prompt abreviado (`opencode run --model anthropic/x "<prompt>"`).
+pub fn command_preview(cfg: &AdapterConfig, interactive: bool) -> Result<Option<String>> {
+    let Some(cmd) = cfg.command.as_deref().filter(|c| !c.is_empty()) else {
+        return Ok(None);
+    };
+    let templates = if interactive {
+        &cfg.interactive_args
+    } else {
+        &cfg.args
+    };
+    let applied = apply_model(cfg, templates)?;
+    let quote = |a: &str| {
+        if a.is_empty() || a.contains(char::is_whitespace) || a.contains('"') {
+            format!("{a:?}")
         } else {
-            args.len()
-        };
-        args.insert(at, model.to_string());
-        args.insert(at, "--model".to_string());
+            a.to_string()
+        }
+    };
+    let mut parts: Vec<String> = applied
+        .env
+        .iter()
+        .map(|(k, v)| format!("{k}={}", quote(v)))
+        .collect();
+    parts.push(quote(cmd));
+    for a in &applied.args {
+        let shown = a
+            .replace("{prompt_file_content}", "<prompt>")
+            .replace("{prompt_file}", "<task.md>");
+        parts.push(if shown == "<prompt>" || shown == "<task.md>" {
+            shown
+        } else {
+            quote(&shown)
+        });
     }
-    Ok(args)
+    if cfg.stdin && !interactive {
+        parts.push("< <prompt>".into());
+    }
+    Ok(Some(parts.join(" ")))
 }
 
 /// Resultado de una ejecución headless.
@@ -288,14 +572,16 @@ pub fn run_headless(
         .with_context(|| t!("agents.adapter.missing_command"))?;
     // El encabezado del prompt va en el idioma de la documentación del proyecto.
     let lang = project_lang(workdir);
-    let args = with_model(
-        cfg,
-        expand_args_in(lang, &cfg.args, prompt_file, prompt_content),
-    )?;
+    let model = apply_model(cfg, &cfg.args)?;
+    let args = expand_args_in(lang, &model.args, prompt_file, prompt_content);
 
     let mut cmd = Command::new(program_for(cfg, &command));
     cmd.args(&args).current_dir(workdir);
     for (k, v) in &cfg.env {
+        cmd.env(k, v);
+    }
+    // El modelo por entorno (goose) tiene prioridad sobre `env` del adaptador.
+    for (k, v) in &model.env {
         cmd.env(k, v);
     }
     cmd.stdin(if cfg.stdin {
@@ -667,28 +953,211 @@ mod tests {
         }
     }
 
-    #[test]
-    fn model_is_added_for_known_clis() {
+    fn headless(command: &str, model: &str) -> AdapterConfig {
         let mut cfg = AdapterConfig::manual();
         cfg.mode = AdapterMode::Headless;
-        cfg.command = Some("codex".into());
-        cfg.model = Some("gpt-5".into());
-        let args = with_model(&cfg, vec!["exec".into(), "-".into()]).unwrap();
-        assert_eq!(args, vec!["exec", "--model", "gpt-5", "-"]);
+        cfg.command = Some(command.into());
+        cfg.model = Some(model.into());
+        cfg
+    }
+
+    fn strings(v: &[&str]) -> Vec<String> {
+        v.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn model_is_added_for_known_clis() {
+        let cfg = headless("codex", "gpt-5");
+        let m = apply_model(&cfg, &strings(&["exec", "-s", "workspace-write", "-"])).unwrap();
+        assert_eq!(
+            m.args,
+            strings(&["exec", "-s", "workspace-write", "--model", "gpt-5", "-"])
+        );
         // Shim de npm en Windows: `codex.CMD` también es codex.
-        cfg.command = Some("C:\\npm\\codex.CMD".into());
-        let args = with_model(&cfg, vec!["exec".into()]).unwrap();
-        assert_eq!(args, vec!["exec", "--model", "gpt-5"]);
-        cfg.command = Some("mi-agente".into());
-        let args = with_model(&cfg, vec!["--modelo={model}".into()]).unwrap();
-        assert_eq!(args, vec!["--modelo=gpt-5"]);
+        let cfg = headless("C:\\npm\\codex.CMD", "gpt-5");
+        let m = apply_model(&cfg, &strings(&["exec"])).unwrap();
+        assert_eq!(m.args, strings(&["exec", "--model", "gpt-5"]));
+        let cfg = headless("mi-agente", "gpt-5");
+        let m = apply_model(&cfg, &strings(&["--modelo={model}"])).unwrap();
+        assert_eq!(m.args, strings(&["--modelo=gpt-5"]));
+    }
+
+    /// Cada CLI predefinido recibe el modelo en el lugar correcto: antes del
+    /// prompt (posicional o la opción que lo recibe), nunca detrás.
+    #[test]
+    fn model_position_per_builtin_adapter() {
+        let builtin = archeology_core::config::builtin_adapters();
+        let cases: &[(&str, &str, &[&str])] = &[
+            (
+                "claude",
+                "opus",
+                &["-p", "--permission-mode", "acceptEdits", "--model", "opus"],
+            ),
+            (
+                "codex",
+                "gpt-5",
+                &["exec", "-s", "workspace-write", "--model", "gpt-5", "-"],
+            ),
+            (
+                "devin",
+                "opus",
+                &[
+                    "-p",
+                    "--permission-mode",
+                    "smart",
+                    "--respect-workspace-trust",
+                    "false",
+                    "--model",
+                    "opus",
+                    "--prompt-file",
+                    "{prompt_file}",
+                ],
+            ),
+            (
+                "gemini",
+                "gemini-2.5-pro",
+                &["--approval-mode", "auto_edit", "--model", "gemini-2.5-pro"],
+            ),
+            (
+                "opencode",
+                "anthropic/claude-sonnet-4-5",
+                &[
+                    "run",
+                    "--model",
+                    "anthropic/claude-sonnet-4-5",
+                    "{prompt_file_content}",
+                ],
+            ),
+            (
+                "cursor",
+                "gpt-5",
+                &[
+                    "-p",
+                    "--force",
+                    "--output-format",
+                    "text",
+                    "--model",
+                    "gpt-5",
+                    "{prompt_file_content}",
+                ],
+            ),
+            (
+                "copilot",
+                "gpt-5",
+                &[
+                    "--model",
+                    "gpt-5",
+                    "-p",
+                    "{prompt_file_content}",
+                    "--allow-all-tools",
+                ],
+            ),
+            (
+                "aider",
+                "sonnet",
+                &[
+                    "--model",
+                    "sonnet",
+                    "--message-file",
+                    "{prompt_file}",
+                    "--yes-always",
+                    "--no-auto-commits",
+                ],
+            ),
+        ];
+        for (name, model, expected) in cases {
+            let mut cfg = builtin[*name].clone();
+            cfg.model = Some(model.to_string());
+            let m = apply_model(&cfg, &cfg.args).unwrap();
+            assert_eq!(m.args, strings(expected), "{name}");
+            assert!(m.env.is_empty(), "{name}");
+        }
+        // Interactivo: también antes del prompt (`-i <prompt>` en gemini).
+        let mut cfg = builtin["gemini"].clone();
+        cfg.model = Some("gemini-2.5-pro".into());
+        let m = apply_model(&cfg, &cfg.interactive_args).unwrap();
+        assert_eq!(
+            m.args,
+            strings(&[
+                "--approval-mode",
+                "auto_edit",
+                "--model",
+                "gemini-2.5-pro",
+                "-i",
+                "{prompt_file_content}"
+            ])
+        );
+        // goose: por entorno, con proveedor opcional.
+        let mut cfg = builtin["goose"].clone();
+        cfg.model = Some("anthropic/claude-sonnet-4-5".into());
+        let m = apply_model(&cfg, &cfg.args).unwrap();
+        assert_eq!(m.args, cfg.args);
+        assert_eq!(
+            m.env,
+            vec![
+                ("GOOSE_PROVIDER".to_string(), "anthropic".to_string()),
+                ("GOOSE_MODEL".to_string(), "claude-sonnet-4-5".to_string())
+            ]
+        );
+    }
+
+    /// opencode exige `proveedor/modelo` y lo explica con ejemplos.
+    #[test]
+    fn opencode_requires_provider_slash_model() {
+        archeology_core::i18n::set_ui_lang(Lang::Es);
+        let mut cfg = archeology_core::config::builtin_adapters()["opencode"].clone();
+        for bad in ["claude-sonnet-4-5", "anthropic/", "/gpt-5"] {
+            cfg.model = Some(bad.into());
+            let e = apply_model(&cfg, &cfg.args).unwrap_err().to_string();
+            assert!(e.contains("proveedor/modelo"), "{e}");
+            assert!(e.contains("anthropic/claude-sonnet-4-5"), "{e}");
+            assert!(e.contains("opencode models"), "{e}");
+        }
+        cfg.model = Some("Claude Sonnet 4.5".into());
+        let e = apply_model(&cfg, &cfg.args).unwrap_err().to_string();
+        assert!(e.contains("espacios"), "{e}");
+        assert!(e.contains("opencode models"), "{e}");
+    }
+
+    #[test]
+    fn unsupported_and_unknown_clis_reject_the_model() {
+        archeology_core::i18n::set_ui_lang(Lang::Es);
+        let mut cfg = archeology_core::config::builtin_adapters()["amp"].clone();
+        cfg.model = Some("gpt-5".into());
+        let e = apply_model(&cfg, &cfg.args).unwrap_err().to_string();
+        assert!(e.contains("amp") && e.contains("--no-model"), "{e}");
+        // CLI desconocido sin `{model}`: no se ignora en silencio.
+        let cfg = headless("mi-agente", "x");
+        let e = apply_model(&cfg, &strings(&["run"]))
+            .unwrap_err()
+            .to_string();
+        assert!(e.contains("{model}"), "{e}");
+        // Sin modelo, `{model}` suelto desaparece.
+        let mut cfg = headless("mi-agente", "x");
+        cfg.model = None;
+        let m = apply_model(&cfg, &strings(&["--model", "{model}", "run"])).unwrap();
+        assert_eq!(m.args, strings(&["--model", "run"]));
+    }
+
+    #[test]
+    fn preview_shows_the_model_flag() {
+        let mut cfg = archeology_core::config::builtin_adapters()["opencode"].clone();
+        cfg.model = Some("anthropic/claude-sonnet-4-5".into());
+        assert_eq!(
+            command_preview(&cfg, false).unwrap().unwrap(),
+            "opencode run --model anthropic/claude-sonnet-4-5 <prompt>"
+        );
+        let mut cfg = archeology_core::config::builtin_adapters()["claude"].clone();
+        cfg.model = Some("opus".into());
+        assert_eq!(
+            command_preview(&cfg, false).unwrap().unwrap(),
+            "claude -p --permission-mode acceptEdits --model opus < <prompt>"
+        );
     }
 
     #[test]
     fn model_is_validated_before_substitution() {
-        let mut cfg = AdapterConfig::manual();
-        cfg.mode = AdapterMode::Headless;
-        cfg.command = Some("mi-agente".into());
+        let mut cfg = headless("mi-agente", "");
         for ok in [
             "opus",
             "gpt-5.1",
@@ -696,12 +1165,15 @@ mod tests {
             "x:y+z_w",
         ] {
             cfg.model = Some(ok.into());
-            assert!(with_model(&cfg, vec!["--m={model}".into()]).is_ok(), "{ok}");
+            assert!(
+                apply_model(&cfg, &strings(&["--m={model}"])).is_ok(),
+                "{ok}"
+            );
         }
         for bad in ["--yolo", "a b", "a;rm -rf", "$(id)", "a\nb", "`x`", "a'b"] {
             cfg.model = Some(bad.into());
             assert!(
-                with_model(&cfg, vec!["--m={model}".into()]).is_err(),
+                apply_model(&cfg, &strings(&["--m={model}"])).is_err(),
                 "{bad}"
             );
         }

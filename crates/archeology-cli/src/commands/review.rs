@@ -249,9 +249,9 @@ pub fn build_report(project: &Project, severity: Option<&str>) -> Result<ReviewR
     }
 
     let openspec = if project.config.openspec_enabled(&project.root) {
-        match super::spec::load_spec(project) {
+        match super::specs::load_spec(project) {
             Ok(Some(spec)) => {
-                let summary = super::spec::compliance(project, &spec);
+                let summary = super::specs::compliance(project, &spec);
                 Some(serde_json::json!({
                     "capabilities": spec.capabilities.len(),
                     "requirements": summary.total_requirements,

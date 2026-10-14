@@ -101,6 +101,9 @@ pub fn run(args: DoctorArgs, project_arg: Option<String>) -> Result<i32> {
         r.add("proyecto", Level::Ok, t!("cli.doctor.no_project"), None);
     }
 
+    pb.set_message(t!("cli.upgrade.checking"));
+    check_update(&mut r);
+
     pb.finish_and_clear();
     let failed = r.0.iter().any(|c| c.level == Level::Fail);
     if args.format == "json" {
@@ -131,6 +134,33 @@ pub fn run(args: DoctorArgs, project_arg: Option<String>) -> Result<i32> {
         );
     }
     Ok(if failed { 1 } else { 0 })
+}
+
+/// Aviso de versión nueva (caché de 24 h; sin red o con
+/// `ADOC_NO_UPDATE_CHECK=1` no aparece). Nunca es un fallo.
+fn check_update(r: &mut Report) {
+    let Some(c) = super::upgrade::passive_check() else {
+        return;
+    };
+    if c.update_available {
+        r.add(
+            "actualización",
+            Level::Warn,
+            t!(
+                "cli.upgrade.notice_available",
+                latest = c.latest,
+                current = super::upgrade::CURRENT_VERSION
+            ),
+            Some("adoc upgrade".into()),
+        );
+    } else {
+        r.add(
+            "actualización",
+            Level::Ok,
+            t!("cli.upgrade.notice_up_to_date", latest = c.latest),
+            None,
+        );
+    }
 }
 
 fn check_config_dir(r: &mut Report) {

@@ -1,0 +1,85 @@
+# Task output validation, re-verification of stale notes and the output of
+# `adoc inspect`. Keep the same keys and placeholders in
+# locales/es/inspect.toml.
+
+[core.validate]
+stale_not_reverified = "stale note not re-verified: fix it or confirm it is still correct (set `updated: <date>` and remove `status: stale`)"
+still_stale = "the note was edited but still has `status: stale`: change it to `status: draft` once verified"
+still_template = "the note is still the template: fill it in with content and `sources`"
+
+[core.task_output]
+more = "+{count} more"
+stale = "the agent didn't re-verify {count} stale notes: {files}"
+stale_one = "the agent didn't re-verify 1 stale note: {files}"
+still_stale = "{count} edited notes still have `status: stale`: {files}"
+still_stale_one = "1 edited note still has `status: stale`: {files}"
+missing = "{count} files were not created: {files}"
+missing_one = "1 file was not created: {files}"
+template = "{count} notes are still the template: {files}"
+template_one = "1 note is still the template: {files}"
+no_notes = "no new or updated note in {count} folders: {files}"
+no_notes_one = "no new or updated note in {files}"
+invalid = "{count} notes fail validation: {files}"
+invalid_one = "1 note fails validation: {files}"
+stale_in_dirs = " ({count} stale, not re-verified: {files})"
+fix_stale = "re-verify the notes (`updated: <date>` and remove `status: stale`) and retry with `adoc inspect --resume`, or edit them and run `adoc task done {id}`"
+fix_output = "check the task with `adoc task show {id}` and retry with `adoc inspect --resume`"
+fix_agent = "check the log ({log}) and retry with `adoc inspect --resume`"
+same_failure = "same problem as the previous attempt: stopped retrying"
+
+[doc.task.section]
+reverify = "Re-verification"
+feedback = "Previous attempt validation"
+
+[doc.task.reverify]
+stale_intro = "This task was reopened because the code these notes document changed (they are marked `status: stale`):"
+stale_item = "`{note}` — changed: {sources}"
+rule = "Check each one against the current code. If it is still correct, keep the content, set `updated: {date}` and change `status: stale` to `status: draft`. Otherwise fix it and leave `status: draft`. A note still marked `status: stale` fails the task."
+existing_intro = "Already documented and up to date: only update them if the code they describe changed."
+
+[doc.task.feedback]
+intro = "The previous attempt failed validation. Fix this before finishing:"
+outro = "Saying it is already done is not enough: the files must meet the above."
+missing = "was not created"
+no_notes = "no new or updated note in this folder"
+stale = "stale and not re-verified: fix it or confirm it is still correct (`updated: <date>` and `status: draft`)"
+still_stale = "edited but still has `status: stale`: change it to `status: draft`"
+template = "still the template: fill it in with content and `sources`"
+
+[cli.inspect.out]
+tasks_to_run = "{count} tasks to run"
+tasks_to_run_one = "1 task to run"
+attempts = "{count} attempts"
+problem_label = "problem"
+agent_label = "agent"
+question_label = "question"
+answer_hint = "→ answer with `adoc task answer {id} \"…\"` (or live: `adoc task run {id} --interactive`)"
+interrupted = "interrupted: back to `pending`"
+waits_for = "{id} waits for {deps}"
+last_failure = "Last failure (run {run} · {date})"
+log_label = "log"
+
+[cli.inspect.out.label]
+summary = "Summary"
+blocked = "Blocked"
+out_of_scope = "Out of scope"
+log = "Logs"
+next = "Next step"
+
+[cli.inspect.out.count]
+done = "{count} completed"
+done_one = "1 completed"
+failed = "{count} failed"
+failed_one = "1 failed"
+question = "{count} with a question"
+question_one = "1 with a question"
+interrupted = "{count} interrupted"
+interrupted_one = "1 interrupted"
+blocked = "{count} blocked"
+blocked_one = "1 blocked"
+
+[cli.inspect.out.next]
+answer = "the agent needs an answer to continue"
+show = "see what is missing in {id} and retry with `adoc inspect --resume`"
+agent_failed = "the agent did not finish {id}; check its log and retry"
+interrupted = "resume the interrupted tasks"

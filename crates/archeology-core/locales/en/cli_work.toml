@@ -12,12 +12,6 @@ adapter_undefined = "adapter '{agent}' is not defined"
 yes = "yes"
 no = "no"
 
-[cli.check]
-error_line = "error: {path} — {message}"
-warning_line = "warning: {path} — {message}"
-summary = "check: {errors} errors, {warnings} warnings"
-site_build_failed = "error: the site does not build — {error}"
-
 [cli.plan]
 no_inventory = "no inventory found; run `adoc scan` first"
 profile_small = "small"
@@ -94,12 +88,7 @@ attempt = " (attempt {attempt}/{attempts})"
 working = "[{index}/{total}] {task} · {kind}{module} · {agent} working{retry}…"
 dry_run = "dry-run (agent: {agent}): {count} tasks would run:"
 run_header = "run {run} (agent: {agent})"
-completed = "  completed: {tasks}"
 exported = "  exported (manual mode): {tasks} — complete them with your agent and use `task done <id>`"
-failed = "  {id} failed: {reason}"
-question = "  ? {id} asks: {question}"
-answer_hint = "    answer with: adoc task answer {id} \"<answer>\"  (or answer it live: adoc task run {id} --interactive)"
-out_of_scope = "  warning: {id} modified files outside its scope: {files}"
 manual_waiting = "  {count} tasks in manual mode (exported to be done by hand):"
 manual_hint_done = "    · do them in that agent and close them with `adoc task done <id>` (see `adoc task show <id>`)"
 manual_hint_resume = "    · or run them with {agent}: `adoc inspect --resume`"
@@ -140,13 +129,41 @@ saved = "saved in {path} (it shows up in the FAQ of `adoc preview`)"
 [cli.sync]
 comparing = "Comparing the sources cited by the notes…"
 git_diff_failed = "could not run git diff against {reference}"
-no_changes = "sync: no changes detected"
-changed = "sync: {count} sources changed"
-deleted_suffix = " (deleted)"
-stale = "  stale: {note}"
-locked = "  locked, left untouched: {note}"
-reopened = "reopened tasks: {tasks} — run `adoc inspect`"
+dry_run_banner = "DRY-RUN: nothing is modified (notes, tasks and state stay as they are)"
+compared_hashes = "hashes saved by the last sync (or the first time each source was cited)"
+compared_git = "git diff {reference} → working tree"
+no_watched = "no note cites code yet: sync cannot tell which notes become outdated"
+watched = "{files} files cited in {notes} notes"
+notes_count = "{count} notes"
+more = "+{count} more"
+uncovered_hint = "not covered by any note → `adoc scan` updates the inventory and `adoc plan` adds tasks"
+uncovered_unavailable = "not computed (needs git and a previous `adoc scan`)"
+locked = "locked, left untouched: {note}"
+no_changes = "No changes: the documentation is in sync with the code."
+sum_changed = "{count} documented sources changed"
+sum_stale = "{count} notes stale"
+sum_reopened = "{count} tasks reopened"
+sum_uncovered = "{count} changes outside the docs"
 dry_run = "(dry-run: notes, tasks and state left unchanged)"
+
+[cli.sync.label]
+compared = "Compared against"
+watched = "Watched sources"
+uncovered = "Outside the docs"
+reopened = "Tasks reopened"
+next = "Next step"
+
+[cli.sync.section]
+changed = "Changes in documented sources ({count})"
+uncovered = "Changes outside the documentation ({count})"
+stale = "Notes marked stale ({count})"
+
+[cli.sync.next]
+scan = "no inventory yet"
+scan_plan = "{count} changed files are not documented; then `adoc inspect`"
+inspect = "re-document the stale notes (reopened tasks)"
+no_watched = "let the agent write notes with evidence first"
+nothing = "nothing to do"
 
 # Generated content (project documentation language, `tl!`).
 [doc.faq]

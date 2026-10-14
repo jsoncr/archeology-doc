@@ -24,7 +24,7 @@ pub enum AgentCmd {
         /// Adaptador predefinido (claude, codex, devin, gemini, qwen, opencode, cursor, copilot,
         /// amp, goose, aider, manual) u otro definido en la config.
         name: String,
-        /// Modelo del agente (p. ej. opus, sonnet, gpt-5).
+        /// Modelo del agente (p. ej. opus, sonnet, gpt-5; opencode: proveedor/modelo).
         #[arg(long, conflicts_with = "no_model")]
         model: Option<String>,
         /// Quita el modelo fijado y usa el predeterminado del agente.
@@ -34,6 +34,15 @@ pub enum AgentCmd {
         /// (p. ej. tras actualizar adoc).
         #[arg(long)]
         reset: bool,
+    },
+    /// Muestra cómo recibe el modelo un agente y, si su CLI sabe listarlos,
+    /// los modelos disponibles (p. ej. `opencode models`, `devin models list`).
+    Models {
+        /// Adaptador (por defecto: el activo).
+        name: Option<String>,
+        /// Argumentos extra para el comando que lista los modelos.
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
     },
     /// Aprueba un adaptador definido en archeology-doc.toml para este proyecto.
     ///
@@ -95,6 +104,7 @@ pub fn run(cmd: AgentCmd, project_arg: Option<String>) -> Result<()> {
             match cmd {
                 AgentCmd::List => list(&config),
                 AgentCmd::Test { agent } => test(&config, agent),
+                AgentCmd::Models { name, args } => return models(&config, name, args),
                 AgentCmd::Use { .. } | AgentCmd::Trust { .. } | AgentCmd::Untrust { .. } => {
                     unreachable!()
                 }
@@ -184,6 +194,16 @@ fn test(config: &ArcheologyConfig, agent: Option<String>) {
             Some(adapter) => {
                 let st = check_adapter(&name, adapter);
                 println!("{name}: {}", st.detail);
+                // Comando efectivo, con el modelo aplicado (o por qué no se puede).
+                if adapter.mode == AdapterMode::Headless {
+                    match archeology_agents::adapter::command_preview(adapter, false) {
+                        Ok(Some(c)) => {
+                            println!("  {}", t!("cli.agent_models.preview", command = c))
+                        }
+                        Ok(None) => {}
+                        Err(e) => println!("  {}", t!("core.common.warning", message = e)),
+                    }
+                }
                 for w in archeology_agents::adapter_warnings(&name, adapter) {
                     println!("  {}", t!("core.common.warning", message = w));
                 }
@@ -365,6 +385,15 @@ fn use_agent(
     let updated = doc.to_string();
     let parsed: ArcheologyConfig = toml::from_str(&updated)?;
     parsed.validate()?;
+    // El modelo con el formato que espera ese CLI (p. ej. proveedor/modelo en
+    // opencode) y solo si el CLI permite elegirlo: antes de escribir.
+    if let Some(a) = parsed.agent.adapters.get(name) {
+        if a.mode == AdapterMode::Headless {
+            archeology_agents::adapter::apply_model(a, &a.args)?;
+        } else if model.is_some() {
+            anyhow::bail!(t!("agents.model.export_mode"));
+        }
+    }
     // Sin atravesar symlinks del repositorio, de forma atómica.
     archeology_core::fsutil::write_in_root(&project.root, &path, updated.as_bytes())?;
     // Recarga completa: predefinidos, patrones de secretos y confianza.
@@ -407,6 +436,10 @@ fn use_agent(
     match adapter.mode {
         AdapterMode::Export => println!("{}", t!("cli.agent.export_mode", name = name)),
         AdapterMode::Headless => {
+            // Comando efectivo: se ve dónde va el modelo.
+            if let Ok(Some(c)) = archeology_agents::adapter::command_preview(adapter, false) {
+                println!("{}", t!("cli.agent_models.preview", command = c));
+            }
             if let Some(st) = status.filter(|st| !st.available) {
                 println!("{}", t!("core.common.warning", message = st.detail));
             }
@@ -417,6 +450,80 @@ fn use_agent(
                 println!("{}", t!("core.common.warning", message = w));
             }
         }
+    }
+    Ok(())
+}
+
+/// `agent models`: cómo recibe el modelo el agente y, si su CLI tiene un
+/// comando para listarlos, su salida tal cual.
+fn models(config: &ArcheologyConfig, name: Option<String>, extra: Vec<String>) -> Result<()> {
+    use archeology_agents::adapter::{model_spec, ModelFormat, ModelPassing};
+    let name = name.unwrap_or_else(|| config.agent.default.clone());
+    let builtin = archeology_core::config::builtin_adapters();
+    let adapter = config
+        .agent
+        .adapters
+        .get(&name)
+        .or_else(|| builtin.get(&name))
+        .cloned()
+        .with_context(|| t!("cli.commands.adapter_undefined", agent = name))?;
+    if adapter.mode == AdapterMode::Export {
+        anyhow::bail!(t!("agents.model.export_mode"));
+    }
+    let command = adapter.command.clone().unwrap_or_default();
+    let Some(spec) = model_spec(&adapter) else {
+        println!("{}", t!("cli.agent_models.unknown", program = command));
+        return Ok(());
+    };
+    let how = match spec.passing {
+        ModelPassing::Flag(flag) => t!("cli.agent_models.how_flag", flag = flag),
+        ModelPassing::GooseEnv => t!("cli.agent_models.how_env"),
+        ModelPassing::Unsupported => {
+            println!("{}", t!("cli.agent_models.unsupported", agent = name));
+            return Ok(());
+        }
+    };
+    let format = match spec.format {
+        ModelFormat::Name => t!("cli.agent_models.format_name"),
+        ModelFormat::ProviderModel => t!("cli.agent_models.format_provider"),
+        ModelFormat::OptionalProvider => t!("cli.agent_models.format_optional"),
+    };
+    println!(
+        "{}",
+        t!(
+            "cli.agent_models.header",
+            agent = name,
+            how = how,
+            format = format,
+            examples = spec.examples.join(", ")
+        )
+    );
+    let Some(list) = spec.list_args else {
+        println!(
+            "{}",
+            t!("cli.agent_models.no_list", agent = name, name = name)
+        );
+        return Ok(());
+    };
+    // Se ejecuta el comando del adaptador: solo si es de confianza.
+    if !adapter.trusted {
+        anyhow::bail!(t!("cli.agent_models.not_trusted", name = name));
+    }
+    let shown = format!("{command} {}", list.join(" "));
+    println!("{}", t!("cli.agent_models.running", command = shown));
+    use std::io::Write;
+    std::io::stdout().flush().ok();
+    let status =
+        std::process::Command::new(archeology_agents::adapter::program_for(&adapter, &command))
+            .args(list)
+            .args(&extra)
+            .envs(&adapter.env)
+            .status()
+            .map_err(|e| {
+                anyhow::anyhow!(t!("cli.agent_models.failed", command = shown, error = e))
+            })?;
+    if !status.success() {
+        std::process::exit(status.code().unwrap_or(1));
     }
     Ok(())
 }

@@ -123,7 +123,7 @@
     document.querySelectorAll('[data-base]').forEach((el) => (el.textContent = base));
   });
 
-  // Tabla de descargas y tamaños desde download/latest.json (lo genera WEBSITE/dist.sh).
+  // Tabla de descargas y tamaños desde download/latest.json (lo genera el proceso de release).
   const PLATFORM = {
     'aarch64-apple-darwin': 'macOS · Apple Silicon',
     'x86_64-apple-darwin': 'macOS · Intel',
@@ -150,6 +150,12 @@
     .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
     .then((manifest) => {
       document.getElementById('dl-version').textContent = `v${manifest.version}`;
+      // Versión publicada también en el pie (oculta hasta tener manifiesto).
+      const siteVersion = document.getElementById('site-version');
+      if (siteVersion && manifest.version) {
+        siteVersion.textContent = `v${manifest.version}`;
+        siteVersion.hidden = false;
+      }
       const body = document.getElementById('dl-table');
       body.textContent = '';
       const byFile = {};

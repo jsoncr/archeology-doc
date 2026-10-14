@@ -13,12 +13,6 @@ adapter_undefined = "adaptador '{agent}' no definido"
 yes = "sí"
 no = "no"
 
-[cli.check]
-error_line = "error: {path} — {message}"
-warning_line = "aviso: {path} — {message}"
-summary = "check: {errors} errores, {warnings} avisos"
-site_build_failed = "error: el sitio no compila — {error}"
-
 [cli.plan]
 no_inventory = "no hay inventario; ejecuta `adoc scan` primero"
 profile_small = "pequeño"
@@ -95,12 +89,7 @@ attempt = " (intento {attempt}/{attempts})"
 working = "[{index}/{total}] {task} · {kind}{module} · {agent} trabajando{retry}…"
 dry_run = "dry-run (agente: {agent}): se ejecutarían {count} tareas:"
 run_header = "run {run} (agente: {agent})"
-completed = "  completadas: {tasks}"
 exported = "  exportadas (modo manual): {tasks} — complétalas con tu agente y usa `task done <id>`"
-failed = "  falló {id}: {reason}"
-question = "  ? {id} pregunta: {question}"
-answer_hint = "    responde con: adoc task answer {id} \"<respuesta>\"  (o hazla en vivo: adoc task run {id} --interactive)"
-out_of_scope = "  aviso: {id} modificó archivos fuera de su alcance: {files}"
 manual_waiting = "  {count} tareas en modo manual (exportadas para hacerlas a mano):"
 manual_hint_done = "    · hazlas en ese agente y ciérralas con `adoc task done <id>` (ver `adoc task show <id>`)"
 manual_hint_resume = "    · o ejecútalas con {agent}: `adoc inspect --resume`"
@@ -139,15 +128,43 @@ note_missing = "{path} no existe"
 saved = "guardada en {path} (aparece en la FAQ de `adoc preview`)"
 
 [cli.sync]
-comparing = "Comparando fuentes citadas por las notas…"
-git_diff_failed = "no se pudo hacer git diff contra {reference}"
-no_changes = "sync: sin cambios detectados"
-changed = "sync: {count} fuentes cambiadas"
-deleted_suffix = " (eliminado)"
-stale = "  stale: {note}"
-locked = "  bloqueada (locked), no se toca: {note}"
-reopened = "tareas reabiertas: {tasks} — ejecuta `adoc inspect`"
-dry_run = "(dry-run: notas, tareas y estado sin modificar)"
+comparing = "Comparando las fuentes citadas por las notas…"
+git_diff_failed = "no se pudo ejecutar git diff contra {reference}"
+dry_run_banner = "DRY-RUN: no se modifica nada (notas, tareas y estado quedan igual)"
+compared_hashes = "hashes guardados en el último sync (o la primera vez que se citó cada fuente)"
+compared_git = "git diff {reference} → árbol de trabajo"
+no_watched = "ninguna nota cita código todavía: sync no puede saber qué notas quedan desactualizadas"
+watched = "{files} archivos citados en {notes} notas"
+notes_count = "{count} notas"
+more = "+{count} más"
+uncovered_hint = "sin nota que los cubra → `adoc scan` actualiza el inventario y `adoc plan` añade tareas"
+uncovered_unavailable = "no calculado (requiere git y un `adoc scan` previo)"
+locked = "bloqueada, no se modifica: {note}"
+no_changes = "Sin cambios: la documentación está al día con el código."
+sum_changed = "{count} fuentes documentadas cambiaron"
+sum_stale = "{count} notas obsoletas"
+sum_reopened = "{count} tareas reabiertas"
+sum_uncovered = "{count} cambios fuera de la documentación"
+dry_run = "(dry-run: notas, tareas y estado sin cambios)"
+
+[cli.sync.label]
+compared = "Comparado con"
+watched = "Fuentes vigiladas"
+uncovered = "Fuera de la doc."
+reopened = "Tareas reabiertas"
+next = "Siguiente paso"
+
+[cli.sync.section]
+changed = "Cambios en fuentes documentadas ({count})"
+uncovered = "Cambios fuera de la documentación ({count})"
+stale = "Notas marcadas obsoletas ({count})"
+
+[cli.sync.next]
+scan = "todavía no hay inventario"
+scan_plan = "{count} archivos cambiados no están documentados; después `adoc inspect`"
+inspect = "volver a documentar las notas obsoletas (tareas reabiertas)"
+no_watched = "primero el agente debe escribir notas con evidencias"
+nothing = "nada que hacer"
 
 # Contenido generado (idioma de la documentación del proyecto, `tl!`).
 [doc.faq]

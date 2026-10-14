@@ -454,7 +454,9 @@ pub struct AdapterConfig {
     #[serde(default)]
     pub stdin: bool,
     /// Modelo del agente. Se sustituye en `{model}` dentro de `args`; en los
-    /// CLIs conocidos (claude, codex, gemini, opencode) se añade `--model`.
+    /// CLIs conocidos se pasa como lo espera cada uno (`--model` antes del
+    /// prompt, `proveedor/modelo` en opencode, entorno en goose; ver
+    /// `archeology_agents::adapter::MODEL_SPECS`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
     /// Argumentos para abrir una sesión interactiva con la tarea como primer

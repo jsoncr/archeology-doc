@@ -199,7 +199,7 @@ export class DashboardPanel {
       return;
     }
     try {
-      const graph = JSON.parse(await cli.exec(this.host.root, ['graph', '--format', 'json']));
+      const graph = await cli.graph(this.host.root);
       await this.panel.webview.postMessage({ type: 'graph', graph });
     } catch {
       // Sin vault todavía: la pestaña del grafo queda vacía.

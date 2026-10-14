@@ -1,0 +1,15 @@
+# Automatic repair of evidence (`sources:`) whose range runs past the end of
+# the cited file: task output validation and `adoc check --fix`.
+# Keep the same keys and placeholders in locales/es/evidence.toml.
+
+[core.evidence]
+adjusted = "adjusted: {from} → {to} (the file has {total} lines)"
+
+[cli.help.check.arg]
+fix = "Adjust evidence whose range ends past the end of the file (e.g. `a.ejs:1-400` with 339 lines → `a.ejs:1-339`)"
+
+[cli.check.fix]
+adjusted = "{count} evidence ranges adjusted to the end of the file"
+adjusted_one = "1 evidence range adjusted to the end of the file"
+fixable = "{count} can be adjusted automatically"
+fixable_one = "1 can be adjusted automatically"

@@ -217,19 +217,24 @@ pub fn project_region(project: &Project, inv: &Inventory) -> String {
     s.trim_end().to_string()
 }
 
-/// Escribe o actualiza AGENTS.md: región `context` (protocolo) y, si hay
-/// inventario, región `project` (comandos, módulos, zonas sensibles).
-pub fn write_agents_md(project: &Project, inv: Option<&Inventory>) -> Result<bool> {
+/// Contenido que debería tener AGENTS.md: (texto actual o `None` si no
+/// existe, texto actualizado con las regiones `context` y, si hay
+/// inventario, `project`).
+fn render_agents_md(
+    project: &Project,
+    inv: Option<&Inventory>,
+) -> Result<(Option<String>, String)> {
     let path = project.root.join("AGENTS.md");
     crate::fsutil::check_no_symlinks(&project.root, &path)?;
     let lang = project.doc_lang();
-    let existing = managed::read_or_default(&path, || {
+    let current = crate::fsutil::read_to_string_nofollow(&path)?;
+    let existing = current.clone().unwrap_or_else(|| {
         format!(
             "# {}\n\n{}\n",
             project.config.project.name,
             tl!(lang, "doc.agents.default_intro")
         )
-    })?;
+    });
     let context = templates::render(
         lang,
         "agents.md",
@@ -242,7 +247,40 @@ pub fn write_agents_md(project: &Project, inv: Option<&Inventory>) -> Result<boo
     if let Some(inv) = inv {
         updated = managed::upsert_region(&updated, "project", &project_region(project, inv))?;
     }
+    Ok((current, updated))
+}
+
+/// Escribe o actualiza AGENTS.md: región `context` (protocolo) y, si hay
+/// inventario, región `project` (comandos, módulos, zonas sensibles).
+pub fn write_agents_md(project: &Project, inv: Option<&Inventory>) -> Result<bool> {
+    let path = project.root.join("AGENTS.md");
+    let (_, updated) = render_agents_md(project, inv)?;
     write_if_changed(&project.root, &path, &updated)
+}
+
+/// Estado de AGENTS.md respecto de lo que generaría archeology-doc.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AgentsMdState {
+    /// No existe.
+    Missing,
+    /// Existe pero sin regiones gestionadas.
+    NoRegion,
+    /// Las regiones gestionadas difieren de las actuales.
+    Outdated,
+    /// Al día.
+    UpToDate,
+}
+
+/// Compara AGENTS.md con lo que escribiría `adoc scan` sin modificarlo.
+pub fn agents_md_state(project: &Project, inv: Option<&Inventory>) -> Result<AgentsMdState> {
+    let (current, updated) = render_agents_md(project, inv)?;
+    Ok(match current {
+        None => AgentsMdState::Missing,
+        Some(text) if managed::region_names(&text).is_empty() => AgentsMdState::NoRegion,
+        // Mismo criterio que la escritura (ignora el salto de línea final).
+        Some(text) if text.trim_end() != updated.trim_end() => AgentsMdState::Outdated,
+        Some(_) => AgentsMdState::UpToDate,
+    })
 }
 
 /// Archivos por herramienta que referencian AGENTS.md sin duplicarlo (RF-101).

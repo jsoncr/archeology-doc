@@ -157,7 +157,91 @@ fn show(project: &Project, id: &str) -> Result<()> {
     let text =
         fs::read_to_string(&path).with_context(|| t!("core.error.task_not_found", id = id))?;
     println!("{text}");
+    if planner::parse_task(&text).is_some_and(|m| m.status == "failed") {
+        print!("{}", last_failure(project, id));
+    }
     Ok(())
+}
+
+/// Último fallo de la tarea en `state.json`, con el mismo formato que
+/// `adoc inspect`: problema, mensaje del agente, cómo corregirlo y el log.
+fn last_failure(project: &Project, id: &str) -> String {
+    use crate::ui;
+    let Ok(state) = archeology_core::state::State::load(&project.state_file()) else {
+        return String::new();
+    };
+    let Some((run, task)) = state.runs.iter().rev().find_map(|r| {
+        r.tasks
+            .iter()
+            .find(|t| t.task_id == id && t.status == "failed")
+            .map(|t| (r, t))
+    }) else {
+        return String::new();
+    };
+    let date = run
+        .finished_at
+        .as_deref()
+        .and_then(|d| chrono::DateTime::parse_from_rfc3339(d).ok())
+        .map(|d| {
+            d.with_timezone(&chrono::Local)
+                .format("%Y-%m-%d %H:%M")
+                .to_string()
+        })
+        .unwrap_or_default();
+    let mut out = format!(
+        "\n{}\n",
+        ui::bold(&t!(
+            "cli.inspect.out.last_failure",
+            run = run.run_id,
+            date = date
+        ))
+    );
+    let row = |out: &mut String, label: &str, text: &str| {
+        out.push_str(&format!("  {} {text}\n", ui::dim(&ui::pad(label, 9))));
+    };
+    let problems: Vec<String> = if task.problems.is_empty() {
+        task.reason.clone().into_iter().collect()
+    } else {
+        task.problems.clone()
+    };
+    for (i, p) in problems.iter().enumerate() {
+        let label = if i == 0 {
+            t!("cli.inspect.out.problem_label")
+        } else {
+            String::new()
+        };
+        row(&mut out, &label, p);
+    }
+    if let Some(m) = &task.agent_message {
+        row(
+            &mut out,
+            &t!("cli.inspect.out.agent_label"),
+            &ui::dim(&format!("“{m}”")),
+        );
+    }
+    let log = std::fs::read_dir(project.runs_dir())
+        .ok()
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|e| e.path())
+        .find(|p| {
+            p.file_name()
+                .is_some_and(|n| n.to_string_lossy().ends_with(&format!("-{}", run.run_id)))
+        })
+        .map(|d| d.join(format!("{id}.log")))
+        .filter(|p| p.is_file());
+    if let Some(l) = &log {
+        row(&mut out, &t!("cli.inspect.out.log_label"), &ui::tilde(l));
+    }
+    let hint = task.hint.clone().unwrap_or_else(|| {
+        t!(
+            "core.task_output.fix_agent",
+            log = log.as_deref().map(ui::tilde).unwrap_or_default()
+        )
+    });
+    out.push_str(&format!("  {}\n", ui::cyan(&format!("→ {hint}"))));
+    out
 }
 
 fn export(project: &Project, out: Option<&str>) -> Result<()> {
@@ -208,9 +292,11 @@ fn done(project: &Project, id: &str, force: bool) -> Result<()> {
         ));
     }
 
+    // Cerrada: la retroalimentación de intentos fallidos ya no aplica.
+    let closed = archeology_core::task_context::apply_feedback_section(&text, None);
     archeology_core::fsutil::atomic_write(
         &path,
-        planner::set_status_in_markdown(&text, "done").as_bytes(),
+        planner::set_status_in_markdown(&closed, "done").as_bytes(),
     )?;
     let mut state = archeology_core::state::State::load(&project.state_file())?;
     state.tasks.insert(id.to_string(), "done".into());
@@ -273,9 +359,8 @@ fn check_runnable(project: &Project, agent: &str, model: Option<&str>) -> Result
     if !adapter.trusted {
         anyhow::bail!(archeology_core::trust::untrusted_message(agent));
     }
-    if let Some(m) = adapter.model.as_deref().filter(|m| !m.is_empty()) {
-        archeology_agents::adapter::validate_model(m)?;
-    }
+    // Con el formato que espera ese CLI (p. ej. proveedor/modelo en opencode).
+    archeology_agents::adapter::apply_model(&adapter, &adapter.args)?;
     let problems = archeology_agents::adapter_warnings(agent, &adapter);
     if !problems.is_empty() {
         anyhow::bail!(t!(
@@ -311,7 +396,7 @@ fn run_one(project: &Project, id: &str, agent: &str, model: Option<String>) -> R
         .get(agent)
         .map(|a| a.mode == archeology_core::config::AdapterMode::Headless)
         .unwrap_or(false);
-    let (pb, on_event) = super::inspect::progress(agent, headless);
+    let (pb, on_event) = super::inspect::progress(project, agent, headless);
     let opts = archeology_agents::InspectOptions {
         agent: agent.to_string(),
         only_tasks: vec![id.to_string()],
@@ -332,7 +417,9 @@ fn run_one(project: &Project, id: &str, agent: &str, model: Option<String>) -> R
     if still_pending {
         restore_task(project, id, &path, &text, previous_state)?;
     }
-    super::inspect::print_report(project, &report?, agent, false);
+    let report = report?;
+    super::inspect::print_report(project, &report, agent, false);
+    super::inspect::exit_on_limit(&report);
     Ok(())
 }
 
@@ -395,16 +482,15 @@ fn run_interactive(project: &Project, id: &str, agent: &str, model: Option<Strin
         return Ok(());
     };
 
-    let args = archeology_agents::adapter::with_model(
-        &adapter,
-        // El encabezado del prompt va en el idioma del proyecto, no en el de la interfaz.
-        archeology_agents::adapter::expand_args_in(
-            project.doc_lang(),
-            &adapter.interactive_args,
-            &path,
-            &text,
-        ),
-    )?;
+    // El modelo se aplica a las plantillas: así va antes del prompt.
+    let model_args = archeology_agents::adapter::apply_model(&adapter, &adapter.interactive_args)?;
+    // El encabezado del prompt va en el idioma del proyecto, no en el de la interfaz.
+    let args = archeology_agents::adapter::expand_args_in(
+        project.doc_lang(),
+        &model_args.args,
+        &path,
+        &text,
+    );
     let mut state = archeology_core::state::State::load(&project.state_file())?;
     if let Some(q) = state.questions.get(id) {
         println!("{}", t!("cli.task.pending_question", question = q));
@@ -414,6 +500,7 @@ fn run_interactive(project: &Project, id: &str, agent: &str, model: Option<Strin
     let status =
         std::process::Command::new(archeology_agents::adapter::program_for(&adapter, &command))
             .envs(&adapter.env)
+            .envs(model_args.env.iter().map(|(k, v)| (k, v)))
             .args(&args)
             .current_dir(&project.root)
             .status()

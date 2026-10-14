@@ -156,7 +156,8 @@ pub fn code_files(inv: &Inventory) -> usize {
         .sum()
 }
 
-const NON_CODE_LANGUAGES: &[&str] = &["Markdown", "JSON", "YAML", "TOML", "XML", "HTML", "CSS"];
+/// Lenguajes que no cuentan como código (docs, datos, configuración, estilos).
+pub const NON_CODE_LANGUAGES: &[&str] = &["Markdown", "JSON", "YAML", "TOML", "XML", "HTML", "CSS"];
 
 /// Agrupa módulos (ya priorizados) en lotes que respetan los límites de
 /// contexto (RNF-02): muchos módulos pequeños comparten una tarea.

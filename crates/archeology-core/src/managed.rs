@@ -110,6 +110,55 @@ pub fn read_or_default(path: &Path, default: impl FnOnce() -> String) -> Result<
     Ok(crate::fsutil::read_to_string_nofollow(path)?.unwrap_or_else(default))
 }
 
+/// Quita todas las regiones gestionadas (marcadores incluidos) y deja el
+/// resto del texto del usuario. `None` si los marcadores están
+/// desbalanceados o anidados: ante la duda no se toca nada.
+pub fn strip_regions(text: &str) -> Option<String> {
+    let mut out = String::with_capacity(text.len());
+    let mut inside = false;
+    for line in text.split_inclusive('\n') {
+        let t = line.trim();
+        let marker = t.ends_with(SUFFIX.trim());
+        if marker && is_marker(t, "begin ") {
+            if inside {
+                return None;
+            }
+            inside = true;
+        } else if marker && is_marker(t, "end ") {
+            if !inside {
+                return None;
+            }
+            inside = false;
+        } else if !inside {
+            out.push_str(line);
+        }
+    }
+    if inside {
+        return None;
+    }
+    // Sin los bloques quedan líneas en blanco de más: como máximo una seguida.
+    let mut clean = String::with_capacity(out.len());
+    let mut blank_run = 0;
+    for line in out.lines() {
+        if line.trim().is_empty() {
+            blank_run += 1;
+            if blank_run > 1 {
+                continue;
+            }
+        } else {
+            blank_run = 0;
+        }
+        clean.push_str(line);
+        clean.push('\n');
+    }
+    let trimmed = clean.trim();
+    Some(if trimmed.is_empty() {
+        String::new()
+    } else {
+        format!("{trimmed}\n")
+    })
+}
+
 /// Lista los nombres de regiones presentes en un texto.
 pub fn region_names(text: &str) -> Vec<String> {
     let mut names = Vec::new();
@@ -184,6 +233,16 @@ mod tests {
             "plantilla"
         );
         fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn strip_regions_keeps_user_text() {
+        let text = upsert_region("# T\n\nMío.\n", "ctx", "gen").unwrap();
+        let text = upsert_region(&text, "project", "gen2").unwrap();
+        assert_eq!(strip_regions(&text).unwrap(), "# T\n\nMío.\n");
+        assert_eq!(strip_regions(&region("a", "x")).unwrap(), "");
+        let broken = text.replace("<!-- archeology-doc:end ctx -->\n", "");
+        assert!(strip_regions(&broken).is_none());
     }
 
     #[test]

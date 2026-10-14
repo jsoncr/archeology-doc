@@ -4,9 +4,6 @@
 # Placeholders: {name}. Keep the same keys and placeholders in
 # locales/es/cli_site.toml.
 
-[cli.status]
-summary = "{name} · agent {agent} · {progress}% · {tasks} tasks · {findings} findings · {notes} notes"
-
 [cli.graph]
 summary = "{notes} notes, {code} code files, {edges} relations"
 
@@ -43,6 +40,8 @@ preparing = "Preparing site: wiki, specs, dashboard, sidebar and llms.txt…"
 summary = "site: {items} pages in the sidebar ({wiki} from the vault, {specs} specs)"
 unresolved_links = "warning: wikilinks without a target (left as text): {links}"
 
+# `adoc spec` is temporarily disabled (commands/spec.rs is not compiled):
+# these strings are kept for when it returns.
 [cli.spec]
 change_not_found = "change {path} does not exist"
 change_invalid = "change {change} is not valid"

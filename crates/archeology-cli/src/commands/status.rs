@@ -1,12 +1,13 @@
 //! `status` — estado completo del proyecto en una sola llamada.
 //!
-//! Pensado para integraciones (extensión de VS Code): tareas, hallazgos,
-//! notas, cumplimiento de specs y agente activo, con rutas absolutas.
+//! Por defecto, un resumen de texto para la terminal (ver `status_view`).
+//! Con `--format json`, el estado completo para integraciones (extensión de
+//! VS Code): tareas, hallazgos, notas, cumplimiento de specs y agente
+//! activo, con rutas absolutas. El JSON es un contrato: solo se añaden claves.
 
 use anyhow::Result;
 use archeology_core::frontmatter::NoteFrontmatter;
 use archeology_core::planner;
-use archeology_core::t;
 use archeology_core::Project;
 use clap::Args;
 use serde::Serialize;
@@ -17,8 +18,8 @@ use std::path::{Path, PathBuf};
 #[derive(Args)]
 pub struct StatusArgs {
     /// Formato de salida.
-    #[arg(long, default_value = "json", value_parser = ["json", "text"])]
-    format: String,
+    #[arg(long, default_value = "text", value_parser = ["text", "json"])]
+    pub format: String,
 }
 
 #[derive(Serialize)]
@@ -268,18 +269,7 @@ pub fn run(project: &Project, args: StatusArgs) -> Result<()> {
     if args.format == "json" {
         println!("{}", serde_json::to_string_pretty(&status)?);
     } else {
-        println!(
-            "{}",
-            t!(
-                "cli.status.summary",
-                name = status.project.name,
-                agent = status.agent.active,
-                progress = status.progress,
-                tasks = status.tasks.len(),
-                findings = status.findings.len(),
-                notes = status.notes.len()
-            )
-        );
+        print!("{}", super::status_view::render(project, &status));
     }
     Ok(())
 }
@@ -341,10 +331,10 @@ pub fn build(project: &Project) -> Result<Status> {
         .unwrap_or_else(|| "unknown".into());
 
     let specs = if project.config.openspec_enabled(&project.root) {
-        super::spec::load_spec(project)
+        super::specs::load_spec(project)
             .ok()
             .flatten()
-            .map(|spec| super::spec::compliance(project, &spec))
+            .map(|spec| super::specs::compliance(project, &spec))
             .and_then(|c| serde_json::to_value(c).ok())
     } else {
         None
@@ -572,7 +562,7 @@ fn timing(state: &archeology_core::state::State, tasks: &[TaskInfo]) -> Timing {
 
 /// Texto del overview escrito por el agente: sin frontmatter, sin regiones
 /// gestionadas y sin el título; los primeros párrafos.
-fn overview_excerpt(project: &Project) -> Option<String> {
+pub(crate) fn overview_excerpt(project: &Project) -> Option<String> {
     let text = fs::read_to_string(project.knowledge_dir().join("00-overview.md")).ok()?;
     let body = archeology_core::frontmatter::extract_frontmatter(&text)
         .map(|(_, b)| b.to_string())

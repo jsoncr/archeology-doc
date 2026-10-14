@@ -131,12 +131,13 @@ impl Registry {
     }
 
     /// Registra o actualiza un proyecto. Re-vincula por ID si la ruta cambió (RF-175).
+    ///
+    /// Nunca quedan dos entradas para la misma ruta canónica: otra entrada
+    /// (con otro ID) en la misma ruta se reemplaza por esta.
     pub fn upsert(&mut self, id: &str, name: &str, path: &Path, command: &str) {
         let now = chrono::Utc::now().to_rfc3339();
-        let canonical = archeology_core::paths::canonicalize(path)
-            .unwrap_or_else(|_| path.to_path_buf())
-            .display()
-            .to_string();
+        let canonical = canonical_string(path);
+        self.projects.retain(|p| p.id == id || p.path != canonical);
         if let Some(entry) = self.projects.iter_mut().find(|p| p.id == id) {
             entry.name = name.to_string();
             entry.path = canonical;
@@ -189,6 +190,18 @@ impl Registry {
         }
     }
 
+    /// Entrada registrada en la misma ruta canónica que `path`.
+    pub fn find_by_path(&self, path: &Path) -> Option<&RegistryEntry> {
+        let canonical = canonical_string(path);
+        self.projects.iter().find(|p| p.path == canonical)
+    }
+
+    /// Quita la entrada con este ID exacto. Devuelve la eliminada.
+    pub fn remove(&mut self, id: &str) -> Option<RegistryEntry> {
+        let pos = self.projects.iter().position(|p| p.id == id)?;
+        Some(self.projects.remove(pos))
+    }
+
     /// Elimina entradas cuyo directorio ya no existe. Devuelve las eliminadas.
     pub fn prune(&mut self) -> Vec<RegistryEntry> {
         let (gone, kept): (Vec<_>, Vec<_>) = self
@@ -198,6 +211,15 @@ impl Registry {
         self.projects = kept;
         gone
     }
+}
+
+/// Ruta canónica en texto (la ruta tal cual si no existe): la clave de
+/// las entradas del registro.
+pub fn canonical_string(path: &Path) -> String {
+    archeology_core::paths::canonicalize(path)
+        .unwrap_or_else(|_| path.to_path_buf())
+        .display()
+        .to_string()
 }
 
 fn ambiguous(q: &str, candidates: &[&RegistryEntry]) -> anyhow::Error {
@@ -325,7 +347,8 @@ mod tests {
                         r.upsert(
                             &format!("id-{i}"),
                             &format!("p{i}"),
-                            Path::new("/tmp"),
+                            // Rutas distintas: una ruta tiene una sola entrada.
+                            Path::new(&format!("/tmp/arq-p{i}")),
                             "test",
                         )
                     })
@@ -376,6 +399,20 @@ mod tests {
         let err = r.resolve("app").unwrap_err().to_string();
         assert!(err.contains("id-1") && err.contains("id-2"), "{err}");
         assert_eq!(r.find("id-2").unwrap().path, "/b");
+    }
+
+    #[test]
+    fn one_entry_per_path_and_remove_by_id() {
+        let mut r = Registry::default();
+        r.upsert("id-1", "app", Path::new("/a"), "init");
+        r.upsert("id-2", "app2", Path::new("/a"), "init");
+        assert_eq!(r.projects.len(), 1);
+        assert_eq!(r.find_by_path(Path::new("/a")).unwrap().id, "id-2");
+        // Re-vincular por ID (carpeta movida) sigue funcionando.
+        r.upsert("id-2", "app2", Path::new("/b"), "add");
+        assert!(r.find_by_path(Path::new("/a")).is_none());
+        assert_eq!(r.remove("id-2").unwrap().path, "/b");
+        assert!(r.projects.is_empty() && r.remove("id-2").is_none());
     }
 
     #[test]

@@ -4,9 +4,6 @@
 # Marcadores: {nombre}. Mantener las mismas claves y marcadores en
 # locales/en/cli_site.toml.
 
-[cli.status]
-summary = "{name} · agente {agent} · {progress}% · {tasks} tareas · {findings} hallazgos · {notes} notas"
-
 [cli.graph]
 summary = "{notes} notas, {code} archivos de código, {edges} relaciones"
 
@@ -43,6 +40,8 @@ preparing = "Preparando sitio: wiki, specs, dashboard, sidebar y llms.txt…"
 summary = "sitio: {items} páginas en el sidebar ({wiki} del vault, {specs} specs)"
 unresolved_links = "aviso: wikilinks sin destino (quedan como texto): {links}"
 
+# `adoc spec` está desactivado temporalmente (commands/spec.rs no se compila):
+# estos textos se conservan para cuando vuelva.
 [cli.spec]
 change_not_found = "no existe el cambio {path}"
 change_invalid = "el cambio {change} no es válido"

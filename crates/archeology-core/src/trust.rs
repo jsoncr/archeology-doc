@@ -176,6 +176,33 @@ pub fn revoke(root: &Path, name: &str) -> Result<bool> {
     Ok(true)
 }
 
+/// Aprobaciones guardadas para el proyecto `root` (adaptadores y sitio).
+pub fn project_entries(root: &Path) -> usize {
+    let key = root_key(root);
+    let store = load_store();
+    store.adapter.iter().filter(|e| e.root == key).count()
+        + store.site.iter().filter(|s| **s == key).count()
+}
+
+/// Retira todas las aprobaciones del proyecto `root` (`adoc projects
+/// delete`). Devuelve cuántas había.
+pub fn forget_project(root: &Path) -> Result<usize> {
+    let path = store_path()?;
+    if !path.exists() {
+        return Ok(0);
+    }
+    let mut store = read_store()?;
+    let key = root_key(root);
+    let before = store.adapter.len() + store.site.len();
+    store.adapter.retain(|e| e.root != key);
+    store.site.retain(|s| *s != key);
+    let removed = before - store.adapter.len() - store.site.len();
+    if removed > 0 {
+        save_store(&path, &store)?;
+    }
+    Ok(removed)
+}
+
 /// `true` si el usuario aprobó ejecutar el sitio VitePress de `root`.
 pub fn is_site_trusted(root: &Path) -> bool {
     load_store().site.contains(&root_key(root))

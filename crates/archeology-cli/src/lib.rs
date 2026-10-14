@@ -60,9 +60,9 @@ pub enum Commands {
     },
     /// Summary of status, findings and progress.
     Review(commands::review::ReviewArgs),
-    /// Validations for CI (frontmatter, links, evidence).
+    /// Checklist of what is done and missing, with fix hints (exit code for CI).
     Check(commands::check::CheckArgs),
-    /// Detect changes and mark outdated notes.
+    /// Detect code changes, mark outdated notes and reopen their tasks.
     Sync(commands::sync::SyncArgs),
     /// VitePress documentation site.
     Site {
@@ -73,11 +73,6 @@ pub enum Commands {
     Agent {
         #[command(subcommand)]
         cmd: commands::agent::AgentCmd,
-    },
-    /// OpenSpec integration.
-    Spec {
-        #[command(subcommand)]
-        cmd: commands::spec::SpecCmd,
     },
     /// Management of the global project registry.
     Projects {
@@ -92,12 +87,14 @@ pub enum Commands {
     Report(commands::report::ReportArgs),
     /// Ask the agent about the project; the answer is saved in the FAQ (knowledge/faq/).
     Ask(commands::ask::AskArgs),
-    /// Knowledge graph as JSON: notes, relations and evidence.
+    /// Knowledge graph: opens the interactive HTML in the browser (`--json` prints the JSON).
     Graph(commands::graph::GraphArgs),
-    /// Full project status as JSON (tasks, findings, notes, agent).
+    /// Project snapshot: structure, progress, pending tasks and next step (`--format json` for integrations).
     Status(commands::status::StatusArgs),
     /// Check requirements: git, Node, VitePress, OpenSpec, agents and configuration.
     Doctor(commands::doctor::DoctorArgs),
+    /// Update `adoc` to the latest published version (`--check` only reports).
+    Upgrade(commands::upgrade::UpgradeArgs),
     /// Uninstall `adoc`; with --purge also delete ~/.archeology-doc (projects are not touched).
     Uninstall(commands::uninstall::UninstallArgs),
 }
@@ -145,6 +142,10 @@ pub fn main_entry() -> Result<()> {
     // clap y el análisis previo deben coincidir (mismo flag global).
     debug_assert_eq!(cli.lang, flag);
     ui::init(cli.verbose);
+    // Windows: restos de una actualización anterior (`adoc.exe.old`).
+    if cfg!(windows) {
+        commands::upgrade::remove_stale_old_binaries();
+    }
     let filter = match cli.verbose {
         0 => "warn",
         1 => "info",

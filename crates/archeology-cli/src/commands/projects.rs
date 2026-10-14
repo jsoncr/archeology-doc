@@ -27,6 +27,18 @@ pub enum ProjectsCmd {
         #[arg(long, default_value_t = 4)]
         depth: usize,
     },
+    /// Elimina un proyecto: registro, espacio de trabajo y aprobaciones
+    /// (con `-d`, también los archivos generados en el proyecto).
+    Delete {
+        /// Nombre o ID del proyecto.
+        project: String,
+        /// Sin pedir confirmación.
+        #[arg(long, short = 'y')]
+        yes: bool,
+        /// También borra los archivos que adoc generó en el proyecto.
+        #[arg(long, short = 'd')]
+        delete_files: bool,
+    },
     /// Elimina entradas cuyo directorio ya no existe.
     Prune {
         /// Sin pedir confirmación.
@@ -40,6 +52,11 @@ pub fn run(cmd: ProjectsCmd) -> Result<()> {
         ProjectsCmd::List { format } => list(&format),
         ProjectsCmd::Add { path } => add(&path),
         ProjectsCmd::Discover { dir, depth } => discover_cmd(&dir, depth),
+        ProjectsCmd::Delete {
+            project,
+            yes,
+            delete_files,
+        } => super::projects_delete::run(&project, yes, delete_files),
         ProjectsCmd::Prune { yes } => prune(yes),
     }
 }

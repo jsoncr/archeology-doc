@@ -53,27 +53,84 @@ export function installCli(onInstalled: () => void, previous?: string): void {
     void vscode.window.showErrorMessage((err as Error).message);
     return;
   }
-  const name = t('tools.installTerminal');
-  // Va entre comillas simples en `sh -c`: sin comillas en el texto traducido.
-  const closeHint = t('tools.closeTerminal').replace(/'/g, '');
+  openInstallTerminal(
+    t('tools.installTerminal'),
+    { sh: `curl -fsSL '${url}/install.sh' | sh`, ps: `irm '${url}/install.ps1' | iex` },
+    {},
+    () => cli.installedAdoc(),
+    onInstalled,
+    previous,
+  );
+}
+
+/**
+ * Actualiza el CLI con `adoc upgrade --yes` en un terminal (descarga,
+ * verifica y sustituye los binarios donde estén). Si falla o el CLI es
+ * anterior a `upgrade`, se ejecuta el instalador oficial.
+ */
+export function upgradeCli(onInstalled: () => void, previous?: string): void {
+  let url: string;
+  try {
+    url = downloadUrl();
+  } catch (err) {
+    void vscode.window.showErrorMessage((err as Error).message);
+    return;
+  }
+  // El binario y la URL van por variables de entorno: no se interpolan en la línea de shell.
+  const env = { ADOC_BIN: cli.adocPath(), ARCHEOLOGY_DOC_DOWNLOAD: url };
+  openInstallTerminal(
+    t('tools.upgradeTerminal'),
+    {
+      sh: `"$ADOC_BIN" upgrade --yes || { echo; echo '${shellText(t('tools.upgradeFallback'))}'; curl -fsSL '${url}/install.sh' | sh; }`,
+      ps:
+        `& $env:ADOC_BIN upgrade --yes; if (-not $?) { Write-Host ''; ` +
+        `Write-Host '${shellText(t('tools.upgradeFallback'))}'; irm '${url}/install.ps1' | iex }`,
+    },
+    env,
+    // `adoc upgrade` sustituye el binario configurado; el instalador, el de su carpeta.
+    () => cli.adocPath(),
+    onInstalled,
+    previous,
+  );
+}
+
+/** Texto traducido dentro de comillas simples de sh/PowerShell: sin comillas. */
+function shellText(text: string): string {
+  return text.replace(/'/g, '');
+}
+
+/**
+ * Terminal con `script` (sh en macOS/Linux, PowerShell en Windows). El
+ * comando no avisa al terminar: se espera a que `probe()` dé un binario que
+ * responda a `--version` con una versión distinta de `previous`.
+ */
+function openInstallTerminal(
+  name: string,
+  script: { sh: string; ps: string },
+  extraEnv: Record<string, string>,
+  probe: () => string | undefined,
+  onInstalled: () => void,
+  previous?: string,
+): void {
+  const closeHint = shellText(t('tools.closeTerminal'));
+  const env = { ...cli.terminalEnv(), ...extraEnv };
   const terminal =
     process.platform === 'win32'
       ? vscode.window.createTerminal({
           name,
-          env: cli.terminalEnv(),
+          env,
           shellPath: 'powershell.exe',
-          shellArgs: ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', `irm '${url}/install.ps1' | iex`],
+          shellArgs: ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script.ps],
         })
       : vscode.window.createTerminal({
           name,
-          env: cli.terminalEnv(),
+          env,
           shellPath: '/bin/sh',
-          shellArgs: ['-c', `curl -fsSL '${url}/install.sh' | sh; echo; echo '${closeHint}'; read _`],
+          shellArgs: ['-c', `${script.sh}; echo; echo '${closeHint}'; read _`],
         });
   terminal.show();
 
-  // El instalador no avisa al terminar: se espera a que el binario exista y
-  // se pueda ejecutar (existir no basta: puede estar a medio escribir).
+  // Existir no basta: el binario puede estar a medio escribir.
   const started = Date.now();
   let probing = false;
   const timer = setInterval(async () => {
@@ -82,7 +139,7 @@ export function installCli(onInstalled: () => void, previous?: string): void {
     }
     probing = true;
     try {
-      const found = cli.installedAdoc();
+      const found = probe();
       const current = found ? await probeVersion(found) : undefined;
       const ready = !!current && current !== previous;
       if (ready || Date.now() - started > INSTALL_WAIT_MS) {
@@ -167,7 +224,7 @@ export async function checkTools(
       const update = t('tools.update');
       const choice = await vscode.window.showInformationMessage(t('tools.allInstalled', { version: current }), update);
       if (choice === update) {
-        installCli(() => void host.refresh(), current);
+        upgradeCli(() => void host.refresh(), current);
       }
     }
     return;

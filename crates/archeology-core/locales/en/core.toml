@@ -83,7 +83,6 @@ duplicate_id = "duplicate id `{id}` (also in {first})"
 duplicate_finding = "possible duplicate of finding {first} (same kind and evidence)"
 no_notes_produced = "the task produced no note in this directory"
 expected_file_missing = "expected file not found"
-file_not_updated = "file not updated by the task"
 
 [core.note]
 no_frontmatter = "no valid YAML frontmatter"

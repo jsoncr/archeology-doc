@@ -30,6 +30,12 @@ pub struct InitArgs {
     /// Directorio del proyecto (por defecto: actual).
     #[arg(long)]
     dir: Option<String>,
+    /// Reinicializa un proyecto ya inicializado (conserva su ID).
+    #[arg(long)]
+    force: bool,
+    /// Asigna un ID nuevo (carpeta copiada o clon de un proyecto registrado).
+    #[arg(long)]
+    new_id: bool,
 }
 
 pub fn run(args: InitArgs) -> Result<()> {
@@ -41,8 +47,31 @@ pub fn run(args: InitArgs) -> Result<()> {
         .unwrap_or(std::env::current_dir()?);
     let dir = archeology_core::paths::canonicalize(&dir).unwrap_or(dir);
     let cfg_path = dir.join(archeology_core::config::CONFIG_FILE);
-    if cfg_path.exists() {
-        bail!(t!("cli.init.already_initialized"));
+    let registry = archeology_registry::Registry::load()?;
+    // Duplicados: carpeta ya inicializada o ya registrada (ID que se conserva con --force).
+    let mut keep_id: Option<String> = None;
+    if fs::symlink_metadata(&cfg_path).is_ok() {
+        let existing = ArcheologyConfig::load(&cfg_path);
+        if args.new_id {
+            return regenerate_id(&dir, &cfg_path, existing?);
+        }
+        if !args.force {
+            return Err(already_initialized(&dir, existing, &registry));
+        }
+        keep_id = existing.ok().map(|c| c.project.id);
+    } else if let Some(entry) = registry.find_by_path(&dir) {
+        if !args.force {
+            bail!(t!(
+                "projects.init.registered_at_path",
+                name = entry.name,
+                id = entry.id,
+                path = dir.display()
+            ));
+        }
+        keep_id = Some(entry.id.clone());
+    }
+    if args.new_id {
+        keep_id = None;
     }
 
     // Idioma de la documentación: `--lang` explícito (inválido = error, no
@@ -111,6 +140,11 @@ pub fn run(args: InitArgs) -> Result<()> {
         );
     }
 
+    // Un nombre ya registrado en otra ruta haría ambiguo `--project <nombre>`.
+    check_name_conflict(&registry, &name, &dir, keep_id.as_deref())?;
+    if let Some(id) = keep_id {
+        config.project.id = id;
+    }
     config.project.name = name;
     // Siempre explícito en el archivo: sin el campo se asume `es`.
     config.project.language = language.code().to_string();
@@ -242,6 +276,106 @@ pub fn run(args: InitArgs) -> Result<()> {
     );
     println!("{}", t!("cli.init.doc_language", lang = lang));
     println!("{}", t!("cli.init.next_step"));
+    Ok(())
+}
+
+/// Error de `init` en una carpeta que ya tiene `archeology-doc.toml`. Antes
+/// mantiene el registro coherente: registra la carpeta si falta o la
+/// re-vincula si se movió; si el mismo ID está registrado en otra carpeta
+/// que sigue existiendo (copia o clon), solo avisa y sugiere `--new-id`.
+fn already_initialized(
+    dir: &Path,
+    existing: archeology_core::Result<ArcheologyConfig>,
+    registry: &archeology_registry::Registry,
+) -> anyhow::Error {
+    let cfg = match existing {
+        Ok(cfg) => cfg,
+        Err(e) => {
+            return anyhow::anyhow!(t!(
+                "projects.init.already_initialized_unreadable",
+                path = dir.display(),
+                error = e
+            ))
+        }
+    };
+    let (id, name) = (&cfg.project.id, &cfg.project.name);
+    let dir_text = archeology_registry::canonical_string(dir);
+    let by_id = registry.projects.iter().find(|p| &p.id == id);
+    match by_id {
+        Some(other) if other.path != dir_text && Path::new(&other.path).is_dir() => {
+            eprintln!(
+                "{}",
+                t!(
+                    "projects.init.same_id_elsewhere",
+                    id = id,
+                    path = other.path
+                )
+            );
+        }
+        Some(other) if other.path == dir_text => {}
+        // Sin registrar, o la carpeta registrada ya no existe (se movió).
+        _ => {
+            let updated =
+                archeology_registry::Registry::update(|reg| reg.upsert(id, name, dir, "init"));
+            if updated.is_ok() {
+                eprintln!("{}", t!("projects.init.registered_now"));
+            }
+        }
+    }
+    anyhow::anyhow!(t!(
+        "projects.init.already_initialized",
+        name = name,
+        id = id,
+        path = dir.display()
+    ))
+}
+
+/// Otro proyecto registrado con el mismo nombre en otra ruta: error con
+/// las salidas posibles (`--name`, o `projects delete` si ya no existe).
+fn check_name_conflict(
+    registry: &archeology_registry::Registry,
+    name: &str,
+    dir: &Path,
+    own_id: Option<&str>,
+) -> Result<()> {
+    let dir_text = archeology_registry::canonical_string(dir);
+    let Some(other) = registry
+        .projects
+        .iter()
+        .find(|p| p.name == name && p.path != dir_text && Some(p.id.as_str()) != own_id)
+    else {
+        return Ok(());
+    };
+    let key = if Path::new(&other.path).is_dir() {
+        "projects.init.name_conflict"
+    } else {
+        "projects.init.name_conflict_gone"
+    };
+    bail!(t!(key, name = name, path = other.path, id = other.id))
+}
+
+/// `init --new-id` en una carpeta ya inicializada: solo cambia `[project] id`
+/// (el resto del archivo, comentarios incluidos, se conserva) y registra la
+/// carpeta con el ID nuevo. El espacio de trabajo anterior sigue siendo del
+/// proyecto original.
+fn regenerate_id(dir: &Path, cfg_path: &Path, cfg: ArcheologyConfig) -> Result<()> {
+    let text = archeology_core::fsutil::read_to_string_nofollow(cfg_path)?.unwrap_or_default();
+    let mut doc: toml_edit::DocumentMut = text.parse()?;
+    let new_id = uuid::Uuid::new_v4().to_string();
+    doc["project"]["id"] = toml_edit::value(new_id.clone());
+    archeology_core::fsutil::write_in_root(dir, cfg_path, doc.to_string().as_bytes())?;
+    archeology_registry::Registry::update(|reg| {
+        reg.upsert(&new_id, &cfg.project.name, dir, "init")
+    })?;
+    println!(
+        "{}",
+        t!(
+            "projects.init.new_id",
+            name = cfg.project.name,
+            old = cfg.project.id,
+            new = new_id
+        )
+    );
     Ok(())
 }
 

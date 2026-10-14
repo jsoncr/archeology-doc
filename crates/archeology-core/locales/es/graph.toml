@@ -5,12 +5,12 @@
 # locales/en/graph.toml.
 
 [cli.help.graph.arg]
-open = "Genera el grafo HTML interactivo y lo abre en el navegador"
-out = "Ruta del archivo HTML (por defecto, graph.html en el espacio de trabajo del proyecto)"
+open = "Antiguo: abre el HTML (ahora es el comportamiento por defecto)"
+out = "Escribe el HTML (o el JSON con --json) en esta ruta sin abrir el navegador"
 
 [graph.cli]
 written = "Grafo escrito en {path}"
-needs_html = "--open y --out generan el grafo HTML: úsalos con --format html o sin --format."
+needs_html = "--open y --out generan el grafo HTML: usa --json para el JSON (`--json --out <archivo>` lo escribe en un archivo)."
 
 # Textos del renderizador (assets/graph.js). `stats` conserva sus marcadores
 # para el navegador: {nodes} y {edges}.

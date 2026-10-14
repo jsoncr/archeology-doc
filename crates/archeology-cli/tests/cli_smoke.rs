@@ -65,7 +65,9 @@ fn adoc_cmd(bin: &str, config: &Path) -> Command {
     let mut cmd = Command::cargo_bin(bin).unwrap();
     // Registro global aislado: nunca tocar el del usuario.
     cmd.env("ARCHEOLOGY_DOC_CONFIG_DIR", config)
-        .env("ADOC_LANG", "es");
+        .env("ADOC_LANG", "es")
+        // `adoc doctor` no consulta la última versión publicada (sin red).
+        .env("ADOC_NO_UPDATE_CHECK", "1");
     cmd
 }
 
@@ -208,7 +210,8 @@ fn inspect_runs_all_dependency_layers_in_one_run() {
     let log = fs::read_to_string(run.path().join("run.log")).unwrap();
     assert!(log.contains("T-001 done"), "{log}");
     // Tiempos para el dashboard: última ejecución por tarea y totales.
-    let st: serde_json::Value = serde_json::from_str(&sb.run(&["status"])).unwrap();
+    let st: serde_json::Value =
+        serde_json::from_str(&sb.run(&["status", "--format", "json"])).unwrap();
     assert_eq!(st["tasks"][0]["last_run"]["status"], "done");
     assert_eq!(st["tasks"][0]["last_run"]["attempts"], 1);
     assert_eq!(st["timing"]["runs"], 1);
@@ -231,11 +234,8 @@ fn inspect_fails_task_without_output_and_blocks_dependents() {
     sb.run(&["plan"]);
 
     let out = sb.run(&["inspect", "--agent", "lazy"]);
-    assert!(out.contains("falló T-001"), "{out}");
-    assert!(
-        out.contains("bloqueada T-002") || out.contains("tareas bloqueadas"),
-        "{out}"
-    );
+    assert!(out.contains("✗ T-001"), "{out}");
+    assert!(out.contains("⏸ T-002 espera T-001"), "{out}");
     assert!(!sb.run(&["task", "list"]).contains(" done "));
 }
 
@@ -284,12 +284,22 @@ fn sync_marks_notes_stale_and_reopens_tasks() {
         "---\nid: dec-keep\ntype: decision\nstatus: reviewed\nlocked: true\nsources:\n  - src/main.py:1\n---\n";
     fs::write(&locked, locked_text).unwrap();
     sb.run(&["task", "done", "T-002"]);
-    assert!(sb.run(&["sync"]).contains("sin cambios"));
+    assert!(sb.run(&["sync"]).contains("Sin cambios"));
 
     fs::write(sb.root.join("src/main.py"), "def main():\n    return 1\n").unwrap();
     let out = sb.run(&["sync"]);
-    assert!(out.contains("stale: knowledge/modules/src.md"), "{out}");
-    assert!(out.contains("T-002"), "{out}");
+    assert!(out.contains("Notas marcadas obsoletas (1)"), "{out}");
+    assert!(out.contains("! knowledge/modules/src.md"), "{out}");
+    assert!(out.contains("M src/main.py"), "{out}");
+    assert!(
+        out.contains("Tareas reabiertas") && out.contains("T-002"),
+        "{out}"
+    );
+    assert!(
+        out.contains("bloqueada, no se modifica: knowledge/decisions/keep.md"),
+        "{out}"
+    );
+    assert!(out.contains("→ adoc inspect"), "{out}");
     assert!(fs::read_to_string(&note).unwrap().contains("status: stale"));
     assert_eq!(fs::read_to_string(&locked).unwrap(), locked_text);
     assert!(sb
@@ -297,7 +307,7 @@ fn sync_marks_notes_stale_and_reopens_tasks() {
         .contains("T-002"));
 
     // Un cambio se notifica una sola vez; `check --strict` falla con notas stale.
-    assert!(sb.run(&["sync"]).contains("sin cambios"));
+    assert!(sb.run(&["sync"]).contains("Sin cambios"));
     sb.run(&["check"]);
     sb.cmd().args(["check", "--strict"]).assert().failure();
 }
@@ -328,8 +338,12 @@ fn check_rejects_out_of_range_evidence() {
     )
     .unwrap();
     let out = sb.cmd().arg("check").assert().failure();
-    let err = String::from_utf8_lossy(&out.get_output().stderr).to_string();
-    assert!(err.contains("fuera de rango"), "{err}");
+    let out = String::from_utf8_lossy(&out.get_output().stdout).to_string();
+    assert!(out.contains("✗ Evidencias"), "{out}");
+    assert!(
+        out.contains("knowledge/features/f.md — evidencia fuera de rango"),
+        "{out}"
+    );
 }
 
 fn copy_dir(from: &Path, to: &Path) {
@@ -351,16 +365,11 @@ fn fixture_dir(name: &str) -> std::path::PathBuf {
         .join(name)
 }
 
-/// Usa la validación estructural propia (sin depender del CLI de OpenSpec).
-fn disable_openspec_cli(root: &Path) {
-    let cfg = fs::read_to_string(root.join("archeology-doc.toml")).unwrap();
-    let cfg = cfg.replace("validate_with_cli = true", "validate_with_cli = false");
-    fs::write(root.join("archeology-doc.toml"), cfg).unwrap();
-}
-
+/// Sin `adoc spec` (desactivado temporalmente), el cumplimiento de OpenSpec
+/// sigue en `review`, `status` y `check`.
 #[cfg(unix)]
 #[test]
-fn spec_status_reports_compliance_and_stale_changes() {
+fn openspec_compliance_is_reported_without_spec_command() {
     let sb = Sandbox::new();
     copy_dir(&fixture_dir("with-openspec"), &sb.root);
     // Cambio sin actividad desde 2020 (sembrado como abandonado).
@@ -374,10 +383,6 @@ fn spec_status_reports_compliance_and_stale_changes() {
         .unwrap();
     sb.run(&["init", "--yes"]);
 
-    let out = sb.run(&["spec", "status"]);
-    assert!(out.contains("unevaluated=3"), "{out}");
-    assert!(out.contains("posiblemente abandonado"), "{out}");
-
     fs::write(
         sb.root.join("knowledge/specs/billing.md"),
         "---\nid: spec-billing\ntype: spec-report\ntitle: billing\ncapability: billing\n\
@@ -386,50 +391,32 @@ fn spec_status_reports_compliance_and_stale_changes() {
          \x20 - id: billing/apply-discount\n    status: not-found\n---\n",
     )
     .unwrap();
-    let out = sb.run(&["spec", "status"]);
-    assert!(out.contains("contradicted=1"), "{out}");
-    assert!(out.contains("implemented=1"), "{out}");
-    assert!(out.contains("not-found=1"), "{out}");
-
     let review: serde_json::Value =
         serde_json::from_str(&sb.run(&["review", "--format", "json"])).unwrap();
     assert_eq!(review["openspec"]["by_status"]["contradicted"], 1);
     assert_eq!(review["openspec"]["stale_changes"][0], "add-export");
+
+    let st: serde_json::Value =
+        serde_json::from_str(&sb.run(&["status", "--format", "json"])).unwrap();
+    assert_eq!(st["specs"]["totals"]["contradicted"], 1, "{st}");
+
+    let out = sb.run(&["check"]);
+    assert!(out.contains("! OpenSpec"), "{out}");
+    assert!(out.contains("posiblemente abandonado"), "{out}");
 }
 
+/// `adoc spec` ya no es un comando (desactivado mientras se rediseña).
 #[test]
-fn spec_baseline_prepares_change_and_task() {
+fn spec_is_no_longer_a_command() {
     let sb = Sandbox::new();
-    copy_dir(&fixture_dir("legacy-py"), &sb.root);
-    sb.run(&["init", "--yes"]);
-    disable_openspec_cli(&sb.root);
-    sb.run(&["scan"]);
-    sb.run(&["plan"]);
-
-    let out = sb.run(&["spec", "baseline"]);
-    assert!(out.contains("T-BASE-"), "{out}");
-    let changes = sb.root.join("openspec/changes");
-    let change = fs::read_dir(&changes).unwrap().next().unwrap().unwrap();
-    let name = change.file_name().to_string_lossy().to_string();
-    assert!(name.starts_with("baseline-"));
-    assert!(!sb.root.join("openspec/specs").exists());
-
-    // Sin deltas todavía: la validación falla.
-    sb.cmd()
-        .args(["spec", "validate", &name])
-        .assert()
-        .failure();
-
-    fs::create_dir_all(change.path().join("specs/app")).unwrap();
-    fs::write(
-        change.path().join("specs/app/spec.md"),
-        "## ADDED Requirements\n\n### Requirement: Cap discount\n\n\
-         The system SHALL cap discounts at 20 percent.\n\n\
-         > Inferido por archeology-doc · confianza: medium · evidencia: app/billing.py:7\n\n\
-         #### Scenario: Above cap\n\n- **WHEN** 30 percent is requested\n- **THEN** 20 percent is applied\n",
-    )
-    .unwrap();
-    sb.run(&["spec", "validate", &name]);
+    fixture(&sb.root);
+    sb.run(&["init", "--yes", "--agent", "manual"]);
+    let out = sb.cmd().args(["spec", "status"]).assert().failure();
+    let err = String::from_utf8_lossy(&out.get_output().stderr).to_string();
+    assert!(err.contains("spec"), "{err}");
+    let help = sb.run(&["--help"]);
+    assert!(!help.contains("\n  spec "), "{help}");
+    sb.cmd().args(["help", "spec"]).assert().failure();
 }
 
 #[test]
@@ -652,8 +639,9 @@ fn mocs_and_duplicate_findings() {
         "{moc}"
     );
     let out = sb.cmd().arg("check").assert().success();
-    let err = String::from_utf8_lossy(&out.get_output().stderr).to_string();
-    assert!(err.contains("posible hallazgo duplicado"), "{err}");
+    let out = String::from_utf8_lossy(&out.get_output().stdout).to_string();
+    assert!(out.contains("! Duplicados"), "{out}");
+    assert!(out.contains("posible hallazgo duplicado"), "{out}");
 
     // Mismo id en dos notas: error.
     fs::write(
@@ -764,7 +752,7 @@ fn inspect_explains_previous_failure_and_resume_retries_it() {
     assert!(out.contains("T-001.log"), "{out}");
 
     let out = sb.run(&["inspect", "--agent", "fake", "--resume"]);
-    assert!(out.contains("completadas: T-001"), "{out}");
+    assert!(out.contains("✓ T-001"), "{out}");
     assert!(!out.contains("bloqueada"), "{out}");
 }
 
@@ -879,7 +867,7 @@ fn manual_tasks_are_explained_and_resumed_by_headless_agent() {
     assert!(out.contains("adoc agent use claude"), "{out}");
 
     let out = sb.run(&["inspect", "--agent", "fake", "--resume"]);
-    assert!(out.contains("completadas: T-001"), "{out}");
+    assert!(out.contains("✓ T-001"), "{out}");
     assert!(!sb.run(&["task", "list"]).contains("manual"));
 }
 
@@ -908,7 +896,7 @@ fn agent_use_headless_reopens_manual_tasks() {
     );
 
     let out = sb.run(&["inspect"]);
-    assert!(out.contains("completadas: T-002"), "{out}");
+    assert!(out.contains("✓ T-002"), "{out}");
 }
 
 /// `agent use <agente> --reset` reemplaza una definición antigua por la
@@ -963,8 +951,9 @@ fn agent_question_is_reported_and_answered() {
     sb.run(&["plan"]);
 
     let out = sb.run(&["inspect", "--agent", "dudoso"]);
+    assert!(out.contains("? T-001"), "{out}");
     assert!(
-        out.contains("? T-001 pregunta: ¿El tope correcto es 10 % o 20 %?"),
+        out.contains("pregunta  ¿El tope correcto es 10 % o 20 %?"),
         "{out}"
     );
     assert!(out.contains("adoc task answer T-001"), "{out}");
@@ -989,7 +978,7 @@ fn agent_question_is_reported_and_answered() {
     assert!(task.contains("status: pending"), "{task}");
 
     let out = sb.run(&["task", "run", "T-001", "--agent", "fake"]);
-    assert!(out.contains("completadas: T-001"), "{out}");
+    assert!(out.contains("✓ T-001"), "{out}");
 }
 
 /// `task run --interactive` abre el agente con la tarea y valida al salir.
@@ -1086,7 +1075,8 @@ fn status_json_describes_project_for_integrations() {
     )
     .unwrap();
 
-    let st: serde_json::Value = serde_json::from_str(&sb.run(&["status"])).unwrap();
+    let st: serde_json::Value =
+        serde_json::from_str(&sb.run(&["status", "--format", "json"])).unwrap();
     assert_eq!(st["agent"]["active"], "manual");
     assert_eq!(st["profile"], "small");
     assert!(st["tasks"][0]["file"].as_str().unwrap().starts_with('/'));
@@ -1178,7 +1168,8 @@ fn ask_saves_answer_in_faq() {
     assert!(out.contains("Arranca en src/main.py:1"), "{out}");
     let faq = fs::read_dir(sb.root.join("knowledge/faq")).unwrap().count();
     assert!(faq >= 1);
-    let st: serde_json::Value = serde_json::from_str(&sb.run(&["status"])).unwrap();
+    let st: serde_json::Value =
+        serde_json::from_str(&sb.run(&["status", "--format", "json"])).unwrap();
     assert_eq!(
         st["questions"]["faq"][0]["question"],
         "¿Cómo arranca la app?"
@@ -1205,7 +1196,8 @@ fn ask_accepts_unquoted_words() {
         "sabio",
     ]);
     assert!(out.contains("Sí, por día completo."), "{out}");
-    let st: serde_json::Value = serde_json::from_str(&sb.run(&["status"])).unwrap();
+    let st: serde_json::Value =
+        serde_json::from_str(&sb.run(&["status", "--format", "json"])).unwrap();
     assert_eq!(
         st["questions"]["faq"][0]["question"],
         "las reservas son por dia completo?"
@@ -1229,7 +1221,7 @@ fn graph_json_has_notes_links_and_code() {
     )
     .unwrap();
     sb.run(&["scan"]);
-    let g: serde_json::Value = serde_json::from_str(&sb.run(&["graph"])).unwrap();
+    let g: serde_json::Value = serde_json::from_str(&sb.run(&["graph", "--json"])).unwrap();
     let edges = g["edges"].as_array().unwrap();
     assert!(edges
         .iter()
@@ -2086,10 +2078,11 @@ fn work_commands_speak_english() {
     assert!(out.contains("tasks would run:"), "{out}");
 
     let (out, _) = run_en(&sb, &["check"], true);
-    assert!(out.contains("check: 0 errors"), "{out}");
+    assert!(out.contains(" · 0 errors"), "{out}");
 
     let (out, _) = run_en(&sb, &["sync", "--dry-run"], true);
-    assert!(out.contains("sync: no changes detected"), "{out}");
+    assert!(out.contains("DRY-RUN"), "{out}");
+    assert!(out.contains("No changes"), "{out}");
 
     // Cambio de agente: mensajes de `agent use` en inglés.
     let (out, _) = run_en(&sb, &["agent", "use", "manual"], true);
@@ -2222,14 +2215,14 @@ fn help_follows_the_interface_language() {
         out.contains("Arguments:") && out.contains("Task ID"),
         "{out}"
     );
-    let out = help("es", &["help", "spec", "baseline"]);
-    assert!(out.contains("Prepara specs base inferidas"), "{out}");
-    assert!(out.contains("baseline-<fecha>"), "{out}");
+    let out = help("es", &["help", "check"]);
+    assert!(out.contains("Lista de lo hecho y lo que falta"), "{out}");
     let out = help("en", &["agent", "--help"]);
     assert!(out.contains("Change the agent"), "{out}");
 }
 
-/// Mensajes de los crates (registro, OpenSpec) en el idioma de la interfaz.
+/// Mensajes de los crates (registro, OpenSpec) en el idioma de la interfaz:
+/// la validación estructural de cambios aparece en `check`.
 #[test]
 fn crate_messages_follow_the_interface_language() {
     let sb = Sandbox::new();
@@ -2237,18 +2230,1166 @@ fn crate_messages_follow_the_interface_language() {
     sb.run(&["init", "--yes", "--agent", "manual"]);
     let change = sb.root.join("openspec/changes/add-x");
     fs::create_dir_all(&change).unwrap();
-    let out = sb
-        .cmd()
-        .env("ADOC_LANG", "en")
-        .env("PATH", "")
-        .args(["spec", "validate", "add-x"])
-        .assert();
-    let o = out.get_output();
-    let text = format!(
-        "{}{}",
-        String::from_utf8_lossy(&o.stdout),
-        String::from_utf8_lossy(&o.stderr)
-    );
+    let (text, _) = run_en(&sb, &["check"], true);
     assert!(text.contains("proposal.md is missing"), "{text}");
     assert!(!text.contains("falta proposal.md"), "{text}");
+}
+
+// --- status / check / sync: salida de terminal ---
+
+/// Ejecuta con un idioma de interfaz y devuelve (código, stdout).
+fn run_lang(sb: &Sandbox, lang: &str, args: &[&str]) -> (i32, String) {
+    let out = sb.cmd().env("ADOC_LANG", lang).args(args).output().unwrap();
+    (
+        out.status.code().unwrap_or(-1),
+        String::from_utf8_lossy(&out.stdout).to_string(),
+    )
+}
+
+/// Repositorio git con un commit inicial (para `status` y `sync`).
+fn git_init(root: &Path) {
+    for args in [
+        vec!["init", "-q", "-b", "main"],
+        vec!["add", "-A"],
+        vec![
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@t",
+            "commit",
+            "-q",
+            "-m",
+            "init",
+        ],
+    ] {
+        let ok = std::process::Command::new("git")
+            .args(&args)
+            .current_dir(root)
+            .status()
+            .unwrap()
+            .success();
+        assert!(ok, "git {args:?}");
+    }
+}
+
+#[test]
+fn status_text_shows_sections_and_next_step() {
+    let sb = Sandbox::new();
+    copy_dir(&fixture_dir("medium-ts"), &sb.root);
+    git_init(&sb.root);
+    sb.run(&["init", "--yes", "--agent", "manual"]);
+    sb.run(&["scan"]);
+    sb.run(&["plan"]);
+
+    let (code, es) = run_lang(&sb, "es", &["status"]);
+    assert_eq!(code, 0);
+    for s in [
+        "Proyecto",
+        "Tipo",
+        "Node.js",
+        "TypeScript",
+        "Lenguajes",
+        "líneas de código",
+        "Git",
+        "main",
+        "Estructura generada",
+        "knowledge/",
+        "AGENTS.md ✓",
+        "Progreso",
+        "Tareas pendientes",
+        "T-001",
+        "Agente",
+        "manual",
+        "Siguiente paso",
+        "→ adoc inspect",
+    ] {
+        assert!(es.contains(s), "falta `{s}`:\n{es}");
+    }
+    // Sin terminal: sin códigos ANSI.
+    assert!(!es.contains('\u{1b}'), "{es}");
+
+    let (_, en) = run_lang(&sb, "en", &["status"]);
+    for s in [
+        "Project",
+        "Generated structure",
+        "Pending tasks",
+        "Next step",
+        "→ adoc inspect",
+    ] {
+        assert!(en.contains(s), "missing `{s}`:\n{en}");
+    }
+    // El JSON se mantiene para la extensión.
+    let (_, json) = run_lang(&sb, "en", &["status", "--format", "json"]);
+    let v: serde_json::Value = serde_json::from_str(&json).unwrap();
+    assert!(v["tasks"].as_array().unwrap().len() >= 2);
+    assert_eq!(v["project"]["has_inventory"], true);
+}
+
+#[test]
+fn status_text_without_scan_suggests_scan() {
+    let sb = Sandbox::new();
+    fixture(&sb.root);
+    sb.run(&["init", "--yes", "--agent", "manual"]);
+    let (code, out) = run_lang(&sb, "es", &["status"]);
+    assert_eq!(code, 0);
+    assert!(out.contains("sin escanear todavía"), "{out}");
+    assert!(
+        out.contains("Siguiente paso") && out.contains("→ adoc scan"),
+        "{out}"
+    );
+    assert!(!out.contains("Tareas pendientes"), "{out}");
+
+    // Sin proyecto: cómo empezar.
+    let tmp = tempfile::tempdir().unwrap();
+    let out = adoc_cmd("adoc", &sb.config)
+        .current_dir(tmp.path())
+        .arg("status")
+        .assert()
+        .success();
+    let out = String::from_utf8_lossy(&out.get_output().stdout).to_string();
+    assert!(out.contains("→ adoc init"), "{out}");
+}
+
+#[test]
+fn check_text_lists_checks_with_marks_and_hints() {
+    let sb = Sandbox::new();
+    fixture(&sb.root);
+    sb.run(&["init", "--yes", "--agent", "manual"]);
+    // Sin scan: inventario y overview pendientes, tareas omitidas.
+    let (code, out) = run_lang(&sb, "en", &["check"]);
+    assert_eq!(code, 0, "{out}");
+    for s in [
+        "✓ Configuration",
+        "! Inventory",
+        "→ adoc scan",
+        "– Tasks",
+        "✓ Frontmatter",
+        "✓ Wikilinks",
+        "– OpenSpec",
+        " ok · ",
+        " warnings · 0 errors",
+    ] {
+        assert!(out.contains(s), "missing `{s}`:\n{out}");
+    }
+
+    sb.run(&["scan"]);
+    sb.run(&["plan"]);
+    fs::write(
+        sb.root.join("knowledge/features/f.md"),
+        "---\nid: feat-f\ntype: feature\ntitle: f\nsources:\n  - src/main.py:1\n---\n\nVer [[nada]].\n",
+    )
+    .unwrap();
+    let (code, out) = run_lang(&sb, "es", &["check"]);
+    // Un wikilink roto es una advertencia: no cambia el código de salida.
+    assert_eq!(code, 0, "{out}");
+    assert!(
+        out.contains("✓ Inventario") && out.contains("✓ Tareas"),
+        "{out}"
+    );
+    assert!(out.contains("! Wikilinks"), "{out}");
+    assert!(out.contains("1 rotos"), "{out}");
+    assert!(out.contains("knowledge/features/f.md:9 — "), "{out}");
+    assert!(out.contains("→ crea la nota destino"), "{out}");
+    assert!(
+        out.contains("✓ Evidencias") && out.contains("1 evidencias citadas"),
+        "{out}"
+    );
+    // Con --strict, la advertencia falla (como antes).
+    let (code, out) = run_lang(&sb, "es", &["check", "--strict"]);
+    assert_eq!(code, 1, "{out}");
+}
+
+#[test]
+fn check_json_has_stable_checks() {
+    let sb = Sandbox::new();
+    fixture(&sb.root);
+    sb.run(&["init", "--yes", "--agent", "manual"]);
+    sb.run(&["scan"]);
+    fs::write(
+        sb.root.join("knowledge/features/f.md"),
+        "---\nid: feat-f\ntype: feature\ntitle: f\nsources:\n  - src/main.py:40-50\n---\n[[nada]]\n",
+    )
+    .unwrap();
+    let out = sb
+        .cmd()
+        .args(["check", "--format", "json"])
+        .assert()
+        .failure();
+    let v: serde_json::Value = serde_json::from_slice(&out.get_output().stdout).unwrap();
+    // Claves anteriores.
+    assert_eq!(v["ok"], false);
+    assert_eq!(v["errors"], 1);
+    assert!(v["issues"].as_array().unwrap().len() >= 2);
+    assert_eq!(v["exit_code"], 1);
+    let checks = v["checks"].as_array().unwrap();
+    let ids: Vec<&str> = checks.iter().map(|c| c["id"].as_str().unwrap()).collect();
+    for id in [
+        "config",
+        "inventory",
+        "tasks",
+        "overview",
+        "frontmatter",
+        "evidence",
+        "wikilinks",
+        "duplicates",
+        "stale",
+        "agents_md",
+        "site",
+        "openspec",
+    ] {
+        assert!(ids.contains(&id), "{id}: {ids:?}");
+    }
+    for c in checks {
+        assert!(["ok", "warn", "error", "skip"].contains(&c["status"].as_str().unwrap()));
+        assert!(c["message"].is_string() && c["details"].is_array(), "{c}");
+        assert!(c.get("count").is_some() && c.get("hint").is_some(), "{c}");
+    }
+    let by_id = |id: &str| checks.iter().find(|c| c["id"] == id).unwrap();
+    assert_eq!(by_id("evidence")["status"], "error");
+    assert_eq!(
+        by_id("evidence")["details"][0]["path"],
+        "knowledge/features/f.md"
+    );
+    assert_eq!(by_id("wikilinks")["status"], "warn");
+    assert_eq!(by_id("wikilinks")["details"][0]["line"], 8);
+    assert_eq!(by_id("tasks")["status"], "warn");
+    assert_eq!(by_id("tasks")["hint"], "adoc plan");
+    assert_eq!(v["summary"]["errors"], 1);
+}
+
+#[test]
+fn sync_without_notes_explains_and_lists_uncovered_changes() {
+    let sb = Sandbox::new();
+    fixture(&sb.root);
+    git_init(&sb.root);
+    sb.run(&["init", "--yes", "--agent", "manual"]);
+    sb.run(&["scan"]);
+    sb.run(&["plan"]);
+    // mtime posterior al scan (resolución de segundos en algunos FS).
+    std::thread::sleep(std::time::Duration::from_millis(1100));
+    fs::write(sb.root.join("src/main.py"), "def main():\n    return 2\n").unwrap();
+    fs::write(sb.root.join("src/extra.py"), "X = 1\n").unwrap();
+
+    let (code, es) = run_lang(&sb, "es", &["sync"]);
+    assert_eq!(code, 0);
+    assert!(es.contains("ninguna nota cita código todavía"), "{es}");
+    assert!(es.contains("Cambios fuera de la documentación (2)"), "{es}");
+    assert!(
+        es.contains("M src/main.py") && es.contains("A src/extra.py"),
+        "{es}"
+    );
+    assert!(es.contains("→ adoc scan && adoc plan"), "{es}");
+    // Los archivos de archeology-doc no cuentan como cambios.
+    assert!(
+        !es.contains("AGENTS.md") && !es.contains("knowledge/"),
+        "{es}"
+    );
+
+    let (_, en) = run_lang(&sb, "en", &["sync", "--dry-run"]);
+    assert!(en.contains("DRY-RUN"), "{en}");
+    assert!(en.contains("Changes outside the documentation (2)"), "{en}");
+    assert!(en.contains("Next step"), "{en}");
+
+    let (_, json) = run_lang(&sb, "en", &["sync", "--format", "json", "--dry-run"]);
+    let v: serde_json::Value = serde_json::from_str(&json).unwrap();
+    assert_eq!(v["compared_against"]["mode"], "hashes");
+    assert_eq!(v["dry_run"], true);
+    assert_eq!(v["watched"]["files"], 0);
+    assert_eq!(v["watched"]["notes"], 0);
+    assert_eq!(v["changed"].as_array().unwrap().len(), 0);
+    assert_eq!(v["uncovered_method"], "git");
+    let uncovered = v["uncovered"].as_array().unwrap();
+    assert!(uncovered
+        .iter()
+        .any(|u| u["path"] == "src/extra.py" && u["change"] == "added"));
+    assert!(v["stale_notes"].is_array() && v["reopened_tasks"].is_array());
+    assert_eq!(v["next_step"]["command"], "adoc scan && adoc plan");
+}
+
+#[test]
+fn sync_marks_cited_change_and_dry_run_keeps_everything() {
+    let sb = Sandbox::new();
+    fixture(&sb.root);
+    git_init(&sb.root);
+    sb.run(&["init", "--yes", "--agent", "manual"]);
+    sb.run(&["scan"]);
+    sb.run(&["plan"]);
+    sb.run(&["inspect", "--agent", "manual"]);
+    let note = sb.root.join("knowledge/modules/src.md");
+    fs::write(
+        &note,
+        "---\nid: mod-src\ntype: module\ntitle: src\nstatus: draft\nsources:\n  - src/main.py:1-2\n---\n",
+    )
+    .unwrap();
+    sb.run(&["task", "done", "T-002"]);
+    sb.run(&["sync"]); // línea base de hashes
+    fs::write(sb.root.join("src/main.py"), "def main():\n    return 1\n").unwrap();
+
+    // dry-run: informa, pero no toca notas ni tareas.
+    let before = fs::read_to_string(&note).unwrap();
+    let (_, json) = run_lang(&sb, "en", &["sync", "--dry-run", "--format", "json"]);
+    let v: serde_json::Value = serde_json::from_str(&json).unwrap();
+    assert_eq!(v["changed"][0]["path"], "src/main.py");
+    assert_eq!(v["changed"][0]["change"], "modified");
+    assert_eq!(v["changed"][0]["notes"][0], "knowledge/modules/src.md");
+    assert_eq!(v["stale_notes"][0], "knowledge/modules/src.md");
+    assert_eq!(v["reopened_tasks"][0], "T-002");
+    assert_eq!(fs::read_to_string(&note).unwrap(), before);
+    assert!(!sb
+        .run(&["task", "list", "--status", "pending"])
+        .contains("T-002"));
+
+    let (_, en) = run_lang(&sb, "en", &["sync"]);
+    assert!(en.contains("Changes in documented sources (1)"), "{en}");
+    assert!(en.contains("M src/main.py"), "{en}");
+    assert!(en.contains("→ 1 notes: modules/src"), "{en}");
+    assert!(
+        en.contains("Tasks reopened") && en.contains("T-002"),
+        "{en}"
+    );
+    assert!(fs::read_to_string(&note).unwrap().contains("status: stale"));
+    assert!(sb
+        .run(&["task", "list", "--status", "pending"])
+        .contains("T-002"));
+}
+
+// --- inspect: validación y formato ---
+
+/// Proyecto con todas las tareas hechas por el agente falso. Con `stale`,
+/// además cambia la fuente de las notas y `sync` las marca desactualizadas
+/// (y reabre sus tareas). `retries`: reintentos por tarea.
+#[cfg(unix)]
+fn inspected_fixture(stale: bool, retries: u32) -> Sandbox {
+    let sb = Sandbox::new();
+    fixture(&sb.root);
+    sb.run(&["init", "--yes", "--agent", "manual"]);
+    let toml = sb.root.join("archeology-doc.toml");
+    let cfg = fs::read_to_string(&toml).unwrap();
+    assert!(cfg.contains("retries = 1"), "{cfg}");
+    fs::write(
+        &toml,
+        cfg.replace("retries = 1", &format!("retries = {retries}")),
+    )
+    .unwrap();
+    add_adapter(&sb, "fake", FAKE_AGENT);
+    // Agente que no toca nada (como el que solo verificó y no editó).
+    add_adapter(
+        &sb,
+        "noop",
+        "echo 'Verifiqué las notas contra el código y siguen siendo correctas. No modifiqué nada.'",
+    );
+    sb.run(&["scan"]);
+    sb.run(&["plan"]);
+    let out = sb.run(&["inspect", "--agent", "fake"]);
+    assert!(!out.contains("✗"), "{out}");
+    let task = fs::read_to_string(sb.work().join("tasks/T-002.md")).unwrap();
+    assert!(task.contains("- `knowledge/modules/src.md`"), "{task}");
+    if stale {
+        // Solo la nota de T-002 cita `src/main.py`: solo ella queda desactualizada.
+        fs::write(
+            sb.root.join("knowledge/modules/src.md"),
+            "---\nid: mod-src\ntype: module\ntitle: src\nstatus: draft\nupdated: 2026-10-01\n\
+             sources:\n  - src/main.py:1\n---\n\n# src\n\nPunto de entrada `main`.\n",
+        )
+        .unwrap();
+        sb.run(&["sync"]);
+        fs::write(sb.root.join("src/main.py"), "def main():\n    return 1\n").unwrap();
+        let out = sb.run(&["sync"]);
+        assert!(
+            out.contains("Tareas reabiertas") && out.contains("T-002"),
+            "{out}"
+        );
+        assert!(!out.contains("T-001"), "{out}");
+    }
+    sb
+}
+
+/// Salidas que ya existen, válidas y vigentes: re-ejecutar la tarea sin
+/// tocarlas no es un fallo (antes: "archivo no actualizado por la tarea").
+#[cfg(unix)]
+#[test]
+fn inspect_accepts_untouched_outputs_that_are_not_stale() {
+    let sb = inspected_fixture(false, 1);
+    let out = sb.run(&["task", "run", "T-002", "--agent", "noop"]);
+    assert!(out.contains("✓ T-002"), "{out}");
+    assert!(!out.contains("✗"), "{out}");
+    assert!(
+        out.contains("Resumen") && out.contains("1 completada"),
+        "{out}"
+    );
+    let list = sb.run(&["task", "list"]);
+    assert!(list.contains("T-002    done"), "{list}");
+    // La tarea dice qué salidas ya están documentadas.
+    let task = fs::read_to_string(sb.work().join("tasks/T-002.md")).unwrap();
+    assert!(task.contains("# Re-verificación"), "{task}");
+    assert!(task.contains("Ya documentadas y vigentes"), "{task}");
+}
+
+/// Nota desactualizada sin re-verificar: falla con un mensaje claro, el
+/// reintento recibe la retroalimentación y, si el fallo se repite igual,
+/// no se gastan más intentos.
+#[cfg(unix)]
+#[test]
+fn inspect_fails_stale_untouched_output_with_feedback_and_stops_retrying() {
+    let sb = inspected_fixture(true, 3);
+    let task_path = sb.work().join("tasks/T-002.md");
+    // `sync` ya escribió en la tarea qué nota re-verificar y por qué.
+    let task = fs::read_to_string(&task_path).unwrap();
+    assert!(task.contains("# Re-verificación"), "{task}");
+    assert!(
+        task.contains("`knowledge/modules/src.md` — cambió: `src/main.py`"),
+        "{task}"
+    );
+    assert!(
+        task.contains("cambia `status: stale` por `status: draft`"),
+        "{task}"
+    );
+
+    // Agente que guarda cada prompt recibido y no toca nada.
+    let capture = sb.root.parent().unwrap().join("prompts.txt");
+    let script = format!(
+        "cat \"$1\" >> '{}'; echo '=====' >> '{}'; echo 'Las notas siguen vigentes. No cambié nada.'",
+        capture.display(),
+        capture.display()
+    );
+    add_adapter(&sb, "eco", &script);
+    let out = sb.run(&["inspect", "--agent", "eco", "--task", "T-002"]);
+
+    // Una línea por tarea con el problema, el mensaje del agente y cómo seguir.
+    assert!(out.contains("✗ T-002"), "{out}");
+    assert!(
+        out.contains("el agente no re-verificó 1 nota desactualizada: src.md"),
+        "{out}"
+    );
+    assert!(out.contains("“Las notas siguen vigentes.”"), "{out}");
+    assert!(out.contains("→ re-verifica las notas"), "{out}");
+    assert!(out.contains("no se reintentó más"), "{out}");
+    // El texto largo no se repite en el resumen.
+    assert_eq!(out.matches("re-verificó").count(), 1, "{out}");
+    assert!(
+        out.contains("Resumen") && out.contains("1 fallida"),
+        "{out}"
+    );
+    assert!(out.contains("Siguiente"), "{out}");
+    assert!(out.contains("→ adoc task show T-002"), "{out}");
+
+    // Dos intentos (no cuatro): el segundo falló igual que el primero.
+    let prompts = fs::read_to_string(&capture).unwrap();
+    let attempts: Vec<&str> = prompts
+        .split("=====")
+        .filter(|p| !p.trim().is_empty())
+        .collect();
+    assert_eq!(attempts.len(), 2, "{prompts}");
+    assert!(!attempts[0].contains("# Validación del intento anterior"));
+    assert!(
+        attempts[1].contains("# Validación del intento anterior"),
+        "{}",
+        attempts[1]
+    );
+    assert!(
+        attempts[1].contains("`knowledge/modules/src.md`: desactualizada y sin re-verificar"),
+        "{}",
+        attempts[1]
+    );
+    let st: serde_json::Value =
+        serde_json::from_str(&sb.run(&["status", "--format", "json"])).unwrap();
+    let t2 = st["tasks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["id"] == "T-002")
+        .unwrap();
+    assert_eq!(t2["status"], "failed", "{t2}");
+    assert_eq!(t2["last_run"]["attempts"], 2, "{t2}");
+
+    // run.log y el log de la tarea usan los mensajes claros.
+    let run = fs::read_dir(sb.work().join("runs"))
+        .unwrap()
+        .flatten()
+        .map(|e| e.path())
+        .max()
+        .unwrap();
+    let log = fs::read_to_string(run.join("run.log")).unwrap();
+    assert!(
+        log.contains("el agente no re-verificó 1 nota desactualizada"),
+        "{log}"
+    );
+    let tlog = fs::read_to_string(run.join("T-002.log")).unwrap();
+    assert!(
+        tlog.contains("nota desactualizada sin re-verificar"),
+        "{tlog}"
+    );
+
+    // `task show` muestra el último fallo con el mismo formato.
+    let show = sb.run(&["task", "show", "T-002"]);
+    assert!(show.contains("Último fallo"), "{show}");
+    assert!(
+        show.contains("el agente no re-verificó 1 nota desactualizada"),
+        "{show}"
+    );
+    assert!(show.contains("T-002.log"), "{show}");
+
+    // En inglés, el mismo formato.
+    let (en, _) = run_en(
+        &sb,
+        &["inspect", "--agent", "noop", "--resume", "--task", "T-002"],
+        true,
+    );
+    assert!(en.contains("✗ T-002"), "{en}");
+    assert!(
+        en.contains("the agent didn't re-verify 1 stale note: src.md"),
+        "{en}"
+    );
+    assert!(en.contains("Summary") && en.contains("1 failed"), "{en}");
+    assert!(
+        en.contains("Next step") && en.contains("adoc task show T-002"),
+        "{en}"
+    );
+    assert_eq!(en.matches("re-verify 1 stale note").count(), 1, "{en}");
+}
+
+/// Re-verificar sin reescribir: el agente actualiza `updated` y quita
+/// `status: stale`. La tarea termina y la nota deja de figurar como
+/// desactualizada en el estado.
+#[cfg(unix)]
+#[test]
+fn inspect_accepts_reverified_stale_output_and_clears_state() {
+    let sb = inspected_fixture(true, 1);
+    let state = || -> serde_json::Value {
+        serde_json::from_str(&fs::read_to_string(sb.work().join("state.json")).unwrap()).unwrap()
+    };
+    let note = "knowledge/modules/src.md";
+    assert!(state()["stale_notes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|n| n == note));
+    assert_eq!(state()["stale_reasons"][note][0], "src/main.py");
+
+    // Conserva el contenido: solo `updated` y `status: stale` → `draft`.
+    let reverify = "f=knowledge/modules/src.md; awk '{ if ($0 == \"status: stale\") print \"status: draft\"; else if ($0 ~ /^updated: /) print \"updated: 2026-10-14\"; else print }' $f > $f.tmp && mv $f.tmp $f; echo 'Re-verificada.'";
+    add_adapter(&sb, "verifica", reverify);
+    let out = sb.run(&["inspect", "--agent", "verifica", "--task", "T-002"]);
+    assert!(out.contains("✓ T-002"), "{out}");
+    assert!(out.contains("1 completada"), "{out}");
+    assert!(!out.contains("✗"), "{out}");
+
+    let text = fs::read_to_string(sb.root.join(note)).unwrap();
+    assert!(text.contains("status: draft"), "{text}");
+    let st = state();
+    assert!(
+        !st["stale_notes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|n| n == note),
+        "{st}"
+    );
+    assert!(st["stale_reasons"].get(note).is_none(), "{st}");
+    // La tarea ya no pide re-verificar esa nota.
+    let task = fs::read_to_string(sb.work().join("tasks/T-002.md")).unwrap();
+    assert!(
+        !task.contains("`knowledge/modules/src.md` — cambió"),
+        "{task}"
+    );
+    assert!(
+        !task.contains("# Validación del intento anterior"),
+        "{task}"
+    );
+}
+
+/// Formato de una corrida correcta en inglés: encabezado, una línea por
+/// tarea, resumen y siguiente paso.
+#[cfg(unix)]
+#[test]
+fn inspect_output_format_success_in_english() {
+    let sb = Sandbox::new();
+    fixture(&sb.root);
+    sb.run(&["init", "--yes", "--agent", "manual"]);
+    add_adapter(&sb, "fake", FAKE_AGENT);
+    sb.run(&["scan"]);
+    sb.run(&["plan"]);
+    let (out, _) = run_en(&sb, &["inspect", "--agent", "fake"], true);
+    let first = out.lines().next().unwrap_or_default();
+    assert!(
+        first.contains(" · fake · ") && first.contains("tasks to run"),
+        "{out}"
+    );
+    assert!(out.contains("✓ T-001  overview"), "{out}");
+    assert!(
+        out.contains("Summary") && out.contains("completed"),
+        "{out}"
+    );
+    assert!(!out.contains("failed"), "{out}");
+    assert!(out.contains("Logs") && out.contains("runs/"), "{out}");
+    assert_eq!(out.matches("Next step").count(), 1, "{out}");
+}
+
+// --- evidencias fuera de rango ---
+
+/// `check` sugiere `--fix` para los rangos que solo se pasan del final del
+/// archivo; `check --fix` los ajusta, lo informa y deja solo lo irreparable.
+#[test]
+fn check_fix_clamps_evidence_past_end_of_file() {
+    let sb = Sandbox::new();
+    fixture(&sb.root);
+    sb.run(&["init", "--yes"]);
+    // src/main.py tiene 2 líneas.
+    let note = sb.root.join("knowledge/features/f.md");
+    fs::write(
+        &note,
+        "---\nid: feat-f\ntype: feature\ntitle: f\nsources:\n  - src/main.py:1-10\n  - README.md:1\n---\n# F\n",
+    )
+    .unwrap();
+    let out = sb.cmd().arg("check").assert().failure();
+    let out = String::from_utf8_lossy(&out.get_output().stdout).to_string();
+    assert!(out.contains("✗ Evidencias"), "{out}");
+    assert!(out.contains("1 se puede ajustar automáticamente"), "{out}");
+    assert!(out.contains("→ adoc check --fix"), "{out}");
+    // Rutas relativas a la raíz del proyecto, nunca absolutas.
+    assert!(
+        out.contains("knowledge/features/f.md — evidencia fuera de rango: src/main.py:1-10"),
+        "{out}"
+    );
+    assert!(!out.contains(&sb.root.display().to_string()), "{out}");
+
+    let out = sb.run(&["check", "--fix"]);
+    assert!(out.contains("✓ Evidencias"), "{out}");
+    assert!(
+        out.contains("1 evidencia ajustada al final del archivo"),
+        "{out}"
+    );
+    assert!(
+        out.contains(
+            "knowledge/features/f.md — ajustado: src/main.py:1-10 → 1-2 (el archivo tiene 2 líneas)"
+        ),
+        "{out}"
+    );
+    assert_eq!(
+        fs::read_to_string(&note).unwrap(),
+        "---\nid: feat-f\ntype: feature\ntitle: f\nsources:\n  - src/main.py:1-2\n  - README.md:1\n---\n# F\n"
+    );
+    // Ya no queda nada que ajustar.
+    let out = sb.run(&["check"]);
+    assert!(!out.contains("--fix"), "{out}");
+
+    // Inicio más allá del final: --fix no lo toca y sigue fallando.
+    fs::write(
+        &note,
+        "---\nid: feat-f\ntype: feature\ntitle: f\nsources:\n  - src/main.py:5-10\n---\n",
+    )
+    .unwrap();
+    let out = sb.cmd().args(["check", "--fix"]).assert().failure();
+    let out = String::from_utf8_lossy(&out.get_output().stdout).to_string();
+    assert!(
+        out.contains("evidencia fuera de rango: src/main.py:5-10"),
+        "{out}"
+    );
+    assert!(!out.contains("ajustado"), "{out}");
+}
+
+/// Una tarea cuyas notas citan rangos redondeados hacia arriba (`1-50` en un
+/// archivo de 1 línea) termina bien: el rango se ajusta y queda como aviso
+/// en la salida de `inspect`, el log de la tarea y run.log.
+#[cfg(unix)]
+#[test]
+fn inspect_adjusts_clampable_evidence_instead_of_failing() {
+    let sb = Sandbox::new();
+    fixture(&sb.root);
+    sb.run(&["init", "--yes"]);
+    add_adapter(
+        &sb,
+        "redondea",
+        &FAKE_AGENT.replace("README.md:1", "README.md:1-50"),
+    );
+    sb.run(&["scan"]);
+    sb.run(&["plan"]);
+    let out = sb.run(&["inspect", "--agent", "redondea"]);
+    assert!(!out.contains("✗"), "{out}");
+    assert!(
+        out.contains("! ajustado: README.md:1-50 → 1 (el archivo tiene 1 líneas)"),
+        "{out}"
+    );
+    assert!(!sb.run(&["task", "list"]).contains("failed"));
+    let text = fs::read_to_string(sb.root.join("knowledge/modules/src.md")).unwrap();
+    assert!(text.contains("  - README.md:1\n"), "{text}");
+    let run = fs::read_dir(sb.work().join("runs"))
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap()
+        .path();
+    let log = fs::read_to_string(run.join("run.log")).unwrap();
+    assert!(log.contains("ajustado: README.md:1-50 → 1"), "{log}");
+    let task_log = fs::read_to_string(run.join("T-001.log")).unwrap();
+    assert!(task_log.contains("ajustado: README.md:1-50"), "{task_log}");
+    sb.run(&["check"]);
+}
+
+/// `task done` también ajusta y muestra rutas relativas.
+#[test]
+fn task_done_adjusts_clampable_evidence() {
+    let sb = Sandbox::new();
+    fixture(&sb.root);
+    sb.run(&["init", "--yes"]);
+    sb.run(&["scan"]);
+    sb.run(&["plan"]);
+    sb.run(&["inspect", "--agent", "manual"]);
+    fs::write(
+        sb.root.join("knowledge/modules/src.md"),
+        "---\nid: mod-src\ntype: module\ntitle: src\nsources:\n  - src/main.py:2-9\n---\n",
+    )
+    .unwrap();
+    let out = sb.cmd().args(["task", "done", "T-002"]).assert().success();
+    let err = String::from_utf8_lossy(&out.get_output().stderr).to_string();
+    assert!(
+        err.contains(
+            "knowledge/modules/src.md: ajustado: src/main.py:2-9 → 2 (el archivo tiene 2 líneas)"
+        ),
+        "{err}"
+    );
+    assert!(!err.contains(&sb.root.display().to_string()), "{err}");
+}
+
+// --- graph/init/projects delete ---
+
+/// Proyectos del registro aislado del sandbox (`projects list --format json`).
+fn registry_rows(sb: &Sandbox) -> Vec<serde_json::Value> {
+    serde_json::from_str(&sb.run(&["projects", "list", "--format", "json"])).unwrap()
+}
+
+/// `adoc graph` sin flags genera el HTML en el espacio de trabajo e intenta
+/// abrirlo (aquí desactivado con `ADOC_NO_OPEN`); `--json` y el antiguo
+/// `--format json` imprimen el JSON.
+#[test]
+fn graph_defaults_to_html_and_json_flags_print_json() {
+    let sb = Sandbox::new();
+    graph_fixture(&sb);
+    let out = sb
+        .cmd()
+        .env("ADOC_NO_OPEN", "1")
+        .arg("graph")
+        .assert()
+        .success();
+    let stdout = String::from_utf8_lossy(&out.get_output().stdout).to_string();
+    let html = sb.work().join("graph.html");
+    assert!(html.is_file(), "{stdout}");
+    assert!(stdout.contains("graph.html"), "{stdout}");
+    fs::remove_file(&html).unwrap();
+    sb.run(&["graph", "--no-open"]);
+    assert!(html.is_file());
+
+    let g: serde_json::Value = serde_json::from_str(&sb.run(&["graph", "--json"])).unwrap();
+    assert!(g["nodes"].as_array().is_some_and(|n| !n.is_empty()));
+    let old: serde_json::Value =
+        serde_json::from_str(&sb.run(&["graph", "--format", "json"])).unwrap();
+    assert_eq!(old["nodes"], g["nodes"]);
+
+    let file = sb.root.parent().unwrap().join("g.json");
+    sb.run(&["graph", "--json", "--out", file.to_str().unwrap()]);
+    let written: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&file).unwrap()).unwrap();
+    assert_eq!(written["nodes"], g["nodes"]);
+    // `--json` con un flag de HTML es un error de uso.
+    sb.cmd()
+        .args(["graph", "--json", "--no-open"])
+        .assert()
+        .failure();
+}
+
+#[test]
+fn init_twice_says_already_initialized() {
+    let sb = Sandbox::new();
+    sb.run(&["init", "--yes", "--agent", "manual"]);
+    let cfg = fs::read_to_string(sb.root.join("archeology-doc.toml")).unwrap();
+    let out = sb
+        .cmd()
+        .args(["init", "--yes", "--agent", "manual"])
+        .assert()
+        .failure();
+    let err = String::from_utf8_lossy(&out.get_output().stderr).to_string();
+    assert!(err.contains("ya está inicializado"), "{err}");
+    assert!(
+        err.contains("adoc status") && err.contains("--force"),
+        "{err}"
+    );
+    // Nada se sobrescribió ni se duplicó en el registro.
+    assert_eq!(
+        fs::read_to_string(sb.root.join("archeology-doc.toml")).unwrap(),
+        cfg
+    );
+    assert_eq!(registry_rows(&sb).len(), 1);
+    // `--force` reinicializa conservando el ID.
+    let id = registry_rows(&sb)[0]["id"].clone();
+    sb.run(&["init", "--yes", "--agent", "manual", "--force"]);
+    let rows = registry_rows(&sb);
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0]["id"], id);
+}
+
+#[test]
+fn init_rejects_same_name_at_other_path_and_name_flag_fixes_it() {
+    let sb = Sandbox::new();
+    sb.run(&["init", "--yes", "--agent", "manual"]);
+    let other = sb.root.parent().unwrap().join("b").join("proj");
+    fs::create_dir_all(&other).unwrap();
+    let out = sb
+        .cmd()
+        .args(["init", "--yes", "--agent", "manual", "--dir"])
+        .arg(&other)
+        .assert()
+        .failure();
+    let err = String::from_utf8_lossy(&out.get_output().stderr).to_string();
+    assert!(err.contains("'proj'") && err.contains("--name"), "{err}");
+    assert!(!other.join("archeology-doc.toml").exists());
+
+    sb.cmd()
+        .args([
+            "init", "--yes", "--agent", "manual", "--name", "proj2", "--dir",
+        ])
+        .arg(&other)
+        .assert()
+        .success();
+    let names: Vec<String> = registry_rows(&sb)
+        .iter()
+        .map(|r| r["name"].as_str().unwrap().to_string())
+        .collect();
+    assert_eq!(names.len(), 2, "{names:?}");
+    assert!(names.contains(&"proj".into()) && names.contains(&"proj2".into()));
+
+    // Si la carpeta del proyecto registrado ya no existe, se sugiere borrarlo.
+    fs::remove_dir_all(&other).unwrap();
+    let third = sb.root.parent().unwrap().join("c").join("proj2");
+    fs::create_dir_all(&third).unwrap();
+    let out = sb
+        .cmd()
+        .args(["init", "--yes", "--agent", "manual", "--dir"])
+        .arg(&third)
+        .assert()
+        .failure();
+    let err = String::from_utf8_lossy(&out.get_output().stderr).to_string();
+    assert!(err.contains("adoc projects delete"), "{err}");
+}
+
+/// Carpeta copiada (mismo ID): aviso y `--new-id` le da su propio ID.
+#[test]
+fn init_on_copied_folder_suggests_new_id() {
+    let sb = Sandbox::new();
+    sb.run(&["init", "--yes", "--agent", "manual"]);
+    let copy = sb.root.parent().unwrap().join("copia");
+    fs::create_dir_all(&copy).unwrap();
+    fs::copy(
+        sb.root.join("archeology-doc.toml"),
+        copy.join("archeology-doc.toml"),
+    )
+    .unwrap();
+    let out = sb
+        .cmd()
+        .args(["init", "--yes", "--dir"])
+        .arg(&copy)
+        .assert()
+        .failure();
+    let err = String::from_utf8_lossy(&out.get_output().stderr).to_string();
+    assert!(err.contains("--new-id"), "{err}");
+    // El original sigue registrado en su ruta.
+    let rows = registry_rows(&sb);
+    assert_eq!(rows.len(), 1);
+    assert!(!rows[0]["path"].as_str().unwrap().contains("copia"));
+
+    sb.cmd()
+        .args(["init", "--new-id", "--dir"])
+        .arg(&copy)
+        .assert()
+        .success();
+    let rows = registry_rows(&sb);
+    assert_eq!(rows.len(), 2);
+    assert_ne!(rows[0]["id"], rows[1]["id"]);
+    let cfg = fs::read_to_string(copy.join("archeology-doc.toml")).unwrap();
+    assert!(
+        cfg.contains(rows[1]["id"].as_str().unwrap())
+            || cfg.contains(rows[0]["id"].as_str().unwrap())
+    );
+}
+
+#[test]
+fn projects_delete_yes_removes_registry_and_workspace_but_keeps_files() {
+    let sb = Sandbox::new();
+    fixture(&sb.root);
+    sb.run(&["init", "--yes", "--agent", "manual"]);
+    sb.run(&["scan"]);
+    let work = sb.work();
+    let out = sb.run(&["projects", "delete", "proj", "--yes"]);
+    assert!(
+        out.contains("Se eliminará") && out.contains("espacio de trabajo"),
+        "{out}"
+    );
+    assert!(registry_rows(&sb).is_empty());
+    assert!(!work.exists());
+    assert!(sb.root.join("archeology-doc.toml").is_file());
+    assert!(sb.root.join("knowledge").is_dir());
+    assert!(sb.root.join("AGENTS.md").is_file());
+}
+
+#[test]
+fn projects_delete_files_removes_generated_but_keeps_user_content() {
+    let sb = Sandbox::new();
+    fixture(&sb.root);
+    sb.run(&["init", "--yes", "--agent", "manual", "--adapters", "claude"]);
+    sb.run(&["scan"]);
+    assert!(sb.root.join("CLAUDE.md").is_file() && sb.root.join(".agents").is_dir());
+    // Texto propio en AGENTS.md y una página propia en docs/.
+    let agents = fs::read_to_string(sb.root.join("AGENTS.md")).unwrap();
+    fs::write(
+        sb.root.join("AGENTS.md"),
+        format!("{agents}\n## Mis reglas\n\nNo tocar.\n"),
+    )
+    .unwrap();
+    fs::write(sb.root.join("docs/guides/mia.md"), "# Mía\n").unwrap();
+
+    let out = sb.run(&["projects", "delete", "proj", "-y", "-d"]);
+    assert!(out.contains("knowledge/"), "{out}");
+    assert!(registry_rows(&sb).is_empty());
+    for gone in [
+        "archeology-doc.toml",
+        "knowledge",
+        "llms.txt",
+        "CLAUDE.md",
+        ".agents",
+    ] {
+        assert!(!sb.root.join(gone).exists(), "{gone} sigue: {out}");
+    }
+    let agents = fs::read_to_string(sb.root.join("AGENTS.md")).unwrap();
+    assert!(agents.contains("No tocar."), "{agents}");
+    assert!(!agents.contains("archeology-doc:begin"), "{agents}");
+    assert!(sb.root.join("docs/guides/mia.md").is_file());
+    assert!(sb.root.join("src/main.py").is_file());
+}
+
+/// Sin páginas propias, el `docs/` que creó `init` se borra completo.
+#[test]
+fn projects_delete_files_removes_docs_created_by_init() {
+    let sb = Sandbox::new();
+    fixture(&sb.root);
+    sb.run(&["init", "--yes", "--agent", "manual"]);
+    assert!(sb.root.join("docs").is_dir());
+    sb.run(&["projects", "delete", "proj", "--yes", "--delete-files"]);
+    assert!(!sb.root.join("docs").exists());
+    assert!(!sb.root.join("AGENTS.md").exists());
+    assert!(sb.root.join("src/main.py").is_file());
+}
+
+#[test]
+fn projects_delete_without_yes_and_no_tty_fails() {
+    let sb = Sandbox::new();
+    sb.run(&["init", "--yes", "--agent", "manual"]);
+    sb.cmd()
+        .args(["projects", "delete", "proj"])
+        .assert()
+        .failure();
+    assert_eq!(registry_rows(&sb).len(), 1);
+    assert!(sb.work().is_dir());
+}
+
+// --- límites de agentes y modelos ---
+
+/// Proyecto planificado con un agente `nombre` que, en la tarea `task`,
+/// imprime `message` y sale con `code` (en las demás hace el trabajo como el
+/// agente falso). Cada invocación deja una línea en `calls.txt`.
+#[cfg(unix)]
+fn limited_agent_fixture(
+    name: &str,
+    task: &str,
+    message: &str,
+    code: i32,
+) -> (Sandbox, std::path::PathBuf) {
+    let sb = Sandbox::new();
+    fixture(&sb.root);
+    sb.run(&["init", "--yes", "--agent", "manual"]);
+    let calls = sb.root.parent().unwrap().join("calls.txt");
+    let script = format!(
+        "echo \"$1\" >> '{calls}'\ncase \"$1\" in *{task}.md) printf '%s\\n' 'trabajando...' '{message}' >&2; exit {code};; esac\n{FAKE_AGENT}",
+        calls = calls.display()
+    );
+    add_adapter(&sb, name, &script);
+    sb.run(&["scan"]);
+    sb.run(&["plan"]);
+    (sb, calls)
+}
+
+#[cfg(unix)]
+fn calls(path: &Path) -> usize {
+    fs::read_to_string(path).unwrap_or_default().lines().count()
+}
+
+/// Límite de uso (Claude Code): sin reintentos, la tarea vuelve a `pending`,
+/// la corrida se detiene y sale con 75 explicando el reinicio y qué hacer.
+#[cfg(unix)]
+#[test]
+fn inspect_stops_run_on_agent_usage_limit() {
+    let (sb, calls_file) = limited_agent_fixture(
+        "tope",
+        "T-002",
+        "Claude AI usage limit reached|1760466000",
+        1,
+    );
+    let out = sb
+        .cmd()
+        .args(["inspect", "--agent", "tope"])
+        .assert()
+        .code(75);
+    let stdout = String::from_utf8_lossy(&out.get_output().stdout).to_string();
+    assert!(stdout.contains("✓ T-001"), "{stdout}");
+    assert!(stdout.contains("detenida: límite de uso"), "{stdout}");
+    assert!(
+        stdout.contains("El agente alcanzó un límite · tope (límite de uso)"),
+        "{stdout}"
+    );
+    assert!(
+        stdout.contains("“Claude AI usage limit reached|1760466000”"),
+        "{stdout}"
+    );
+    assert!(stdout.contains("hora local"), "{stdout}");
+    assert!(stdout.contains("código de salida 75"), "{stdout}");
+    assert!(stdout.contains("adoc inspect --resume"), "{stdout}");
+    assert!(stdout.contains("adoc agent use"), "{stdout}");
+    assert!(stdout.contains("--agent"), "{stdout}");
+    assert!(!stdout.contains("✗"), "{stdout}");
+    // Una llamada para T-001 y una sola para T-002: ni reintentos ni más tareas.
+    assert_eq!(calls(&calls_file), 2);
+    let list = sb.run(&["task", "list"]);
+    assert!(list.contains("T-002    pending"), "{list}");
+    assert!(!list.contains("failed"), "{list}");
+    // Clasificación en run.log y en el log de la tarea.
+    let run = fs::read_dir(sb.work().join("runs"))
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap()
+        .path();
+    let log = fs::read_to_string(run.join("run.log")).unwrap();
+    assert!(log.contains("corrida detenida (usage_limit)"), "{log}");
+    let task_log = fs::read_to_string(run.join("T-002.log")).unwrap();
+    assert!(task_log.contains("[límite] usage_limit"), "{task_log}");
+    assert!(task_log.contains("2025-10-14T18:20:00+00:00"), "{task_log}");
+}
+
+/// Sin sesión: se detiene con 77 y dice cómo iniciar sesión.
+#[cfg(unix)]
+#[test]
+fn inspect_stops_run_when_agent_is_not_logged_in() {
+    let (sb, calls_file) = limited_agent_fixture(
+        "sinsesion",
+        "T-001",
+        "Invalid API key · Please run /login",
+        1,
+    );
+    let out = sb
+        .cmd()
+        .args(["inspect", "--agent", "sinsesion"])
+        .assert()
+        .code(77);
+    let stdout = String::from_utf8_lossy(&out.get_output().stdout).to_string();
+    assert!(
+        stdout.contains("El agente no tiene sesión iniciada · sinsesion"),
+        "{stdout}"
+    );
+    assert!(stdout.contains("Inicia sesión:"), "{stdout}");
+    assert!(stdout.contains("Luego: adoc inspect --resume"), "{stdout}");
+    assert_eq!(calls(&calls_file), 1);
+    let list = sb.run(&["task", "list"]);
+    assert!(list.contains("T-001    pending"), "{list}");
+}
+
+/// Contexto excedido: la tarea falla (sin reintentar) con la sugerencia de
+/// dividirla y la corrida sigue.
+#[cfg(unix)]
+#[test]
+fn inspect_context_limit_fails_task_with_split_hint_and_continues() {
+    let (sb, calls_file) = limited_agent_fixture(
+        "grande",
+        "T-002",
+        "API Error: 400 prompt is too long: 215000 tokens > 200000 maximum",
+        1,
+    );
+    let out = sb.run(&["inspect", "--agent", "grande"]);
+    assert!(out.contains("✗ T-002"), "{out}");
+    assert!(out.contains("límite de contexto del agente"), "{out}");
+    assert!(out.contains("max_files_per_task (ahora 40)"), "{out}");
+    assert!(out.contains("adoc plan --force"), "{out}");
+    // Sin bloque de límite: la corrida no se detuvo.
+    assert!(!out.contains("alcanzó un límite"), "{out}");
+    let list = sb.run(&["task", "list"]);
+    assert!(list.contains("T-002    failed"), "{list}");
+    // T-002 se intentó una sola vez (sin reintento) y la corrida siguió.
+    let all = fs::read_to_string(&calls_file).unwrap();
+    assert_eq!(all.matches("T-002.md").count(), 1, "{all}");
+}
+
+/// opencode: el modelo va como proveedor/modelo antes del mensaje, y
+/// `agent use` muestra el comando efectivo.
+#[test]
+fn agent_use_opencode_model_needs_provider_and_shows_command() {
+    let sb = Sandbox::new();
+    fixture(&sb.root);
+    sb.run(&["init", "--yes", "--agent", "manual"]);
+    let err = sb
+        .cmd()
+        .args(["agent", "use", "opencode", "--model", "claude-sonnet-4-5"])
+        .assert()
+        .failure();
+    let stderr = String::from_utf8_lossy(&err.get_output().stderr).to_string();
+    assert!(stderr.contains("proveedor/modelo"), "{stderr}");
+    assert!(stderr.contains("anthropic/claude-sonnet-4-5"), "{stderr}");
+    assert!(stderr.contains("opencode models"), "{stderr}");
+    let toml = fs::read_to_string(sb.root.join("archeology-doc.toml")).unwrap();
+    assert!(!toml.contains("claude-sonnet-4-5"), "{toml}");
+
+    let err = sb
+        .cmd()
+        .args(["agent", "use", "opencode", "--model", "Claude Sonnet 4.5"])
+        .assert()
+        .failure();
+    let stderr = String::from_utf8_lossy(&err.get_output().stderr).to_string();
+    assert!(stderr.contains("no llevan espacios"), "{stderr}");
+
+    let out = sb.run(&[
+        "agent",
+        "use",
+        "opencode",
+        "--model",
+        "anthropic/claude-sonnet-4-5",
+    ]);
+    assert!(
+        out.contains("Comando: opencode run --model anthropic/claude-sonnet-4-5 <prompt>"),
+        "{out}"
+    );
+    let out = sb.run(&["agent", "test", "--agent", "opencode"]);
+    assert!(
+        out.contains("opencode run --model anthropic/claude-sonnet-4-5 <prompt>"),
+        "{out}"
+    );
+}
+
+/// Un CLI que no permite elegir el modelo da un error explícito; `agent
+/// models` explica cómo se pasa el modelo cuando no hay comando para listarlos.
+#[test]
+fn unsupported_model_agent_errors_and_models_explains() {
+    let sb = Sandbox::new();
+    fixture(&sb.root);
+    sb.run(&["init", "--yes", "--agent", "manual"]);
+    let err = sb
+        .cmd()
+        .args(["agent", "use", "amp", "--model", "gpt-5"])
+        .assert()
+        .failure();
+    let stderr = String::from_utf8_lossy(&err.get_output().stderr).to_string();
+    assert!(
+        stderr.contains("amp no permite elegir el modelo"),
+        "{stderr}"
+    );
+    let out = sb.run(&["agent", "models", "claude"]);
+    assert!(out.contains("`--model <modelo>` antes del prompt"), "{out}");
+    assert!(out.contains("no tiene un comando para listar"), "{out}");
+    let out = sb.run(&["agent", "models", "amp"]);
+    assert!(out.contains("no permite elegir el modelo"), "{out}");
 }
