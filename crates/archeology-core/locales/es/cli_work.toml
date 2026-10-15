@@ -49,6 +49,10 @@ interactive_validation_failed = "\n✗ {id}: la salida no supera la validación 
 completed = "\n✓ {id} completada"
 
 [cli.agent]
+model_not_found = """el modelo '{model}' no existe en {agent}. Modelos parecidos:
+{suggestions}
+  → lista completa: {command}"""
+model_check_skipped = "aviso: no se pudo verificar el modelo (`{command}` falló o tardó demasiado); solo se comprobó su formato"
 trust_revoked = "aprobación de '{name}' retirada"
 not_trusted = "'{name}' no tenía aprobación en este proyecto"
 checking_agents = "Comprobando agentes…"

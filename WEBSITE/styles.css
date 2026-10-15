@@ -306,3 +306,6 @@ table.downloads td.hash { font-family: ui-monospace, SFMono-Regular, Menlo, mono
 /* Extensión: botón del Marketplace y bloque de código bajo una fila de botones. */
 .cta-tight { margin: 4px 0 0; }
 .code-gap { margin-top: 12px; }
+
+/* Bloque de código justo después de una rejilla de tarjetas (sección de privacidad). */
+.cards + .code { margin-top: 24px; }

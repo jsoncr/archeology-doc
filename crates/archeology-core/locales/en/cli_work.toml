@@ -48,6 +48,10 @@ interactive_validation_failed = "\n✗ {id}: the output fails validation ({count
 completed = "\n✓ {id} completed"
 
 [cli.agent]
+model_not_found = """the model '{model}' doesn't exist in {agent}. Similar models:
+{suggestions}
+  → full list: {command}"""
+model_check_skipped = "warning: couldn't verify the model (`{command}` failed or took too long); only its format was checked"
 trust_revoked = "approval of '{name}' revoked"
 not_trusted = "'{name}' was not approved in this project"
 checking_agents = "Checking agents…"

@@ -151,27 +151,36 @@ if [ -n "$docker_targets" ]; then
   elif ! docker info >/dev/null 2>&1; then
     warn "Docker no está disponible; omitidos:$docker_targets"
   else
+    # Otra compilación en marcha comparte target/docker: se bloquearían entre sí.
+    running="$(docker ps -q --filter label=archeology-doc.build=1)"
+    if [ -n "$running" ]; then
+      warn "ya hay una compilación de Docker en marcha ($running)."
+      warn "detenla con: docker stop $running"
+      exit 1
+    fi
+    # Imagen con los linkers cruzados ya instalados (scripts/Dockerfile.cross):
+    # apt solo se ejecuta al crearla, no en cada compilación. La etiqueta lleva
+    # un hash del Dockerfile y de RUST_IMAGE: si cambian, se reconstruye sola.
+    DOCKERFILE="$ROOT/scripts/Dockerfile.cross"
+    [ -f "$DOCKERFILE" ] || { echo "falta $DOCKERFILE" >&2; exit 1; }
+    if command -v sha256sum >/dev/null 2>&1; then sum="sha256sum"; else sum="shasum -a 256"; fi
+    cross_hash="$( { cat "$DOCKERFILE"; echo "$RUST_IMAGE"; } | $sum | cut -c1-12)"
+    CROSS_IMAGE="adoc-cross:${RUST_IMAGE#rust:}-$cross_hash"
+    if ! docker image inspect "$CROSS_IMAGE" >/dev/null 2>&1; then
+      say "preparando la imagen $CROSS_IMAGE (solo la primera vez; descarga ~150 MB)"
+      docker build --progress=plain --build-arg RUST_IMAGE="$RUST_IMAGE" \
+        -f "$DOCKERFILE" -t "$CROSS_IMAGE" "$ROOT/scripts"
+    fi
     say "compilando en Docker:$docker_targets"
     # Registro de cargo en un volumen: las siguientes ejecuciones no descargan todo.
-    docker run --rm \
+    # Linkers y CC por target: definidos en el Dockerfile.
+    docker run --rm --label archeology-doc.build=1 \
       -v "$ROOT":/work -w /work \
       -v adoc-cargo-registry:/usr/local/cargo/registry \
       -e CARGO_TARGET_DIR=/work/target/docker \
       -e TARGETS="$docker_targets" \
-      -e CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
-      -e CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc \
-      -e AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar \
-      -e CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc \
-      -e CC_x86_64_pc_windows_gnu=x86_64-w64-mingw32-gcc \
-      -e AR_x86_64_pc_windows_gnu=x86_64-w64-mingw32-ar \
-      "$RUST_IMAGE" sh -euc '
-        # Timeouts y reintentos: sin ellos, una conexión colgada con el mirror
-        # deja a apt esperando indefinidamente.
-        APT="-o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o Acquire::Retries=5"
-        apt-get $APT update -qq >/dev/null
-        apt-get $APT install -y -qq gcc-aarch64-linux-gnu gcc-mingw-w64-x86-64 >/dev/null
+      "$CROSS_IMAGE" sh -euc '
         for t in $TARGETS; do
-          rustup target add "$t" >/dev/null
           echo "--> $t"
           cargo build --release --locked -p archeology-cli --target "$t"
         done

@@ -390,6 +390,9 @@ fn use_agent(
     if let Some(a) = parsed.agent.adapters.get(name) {
         if a.mode == AdapterMode::Headless {
             archeology_agents::adapter::apply_model(a, &a.args)?;
+            if let Some(m) = model {
+                check_model_exists(&project.root, name, a, m)?;
+            }
         } else if model.is_some() {
             anyhow::bail!(t!("agents.model.export_mode"));
         }
@@ -452,6 +455,124 @@ fn use_agent(
         }
     }
     Ok(())
+}
+
+/// Comprueba que el modelo exista cuando el CLI sabe listarlos con un formato
+/// fiable (opencode: un `proveedor/modelo` por línea). Si la lista no se puede
+/// obtener (CLI ausente, sin aprobar, timeout), solo avisa: el formato ya se validó.
+fn check_model_exists(
+    root: &std::path::Path,
+    name: &str,
+    adapter: &archeology_core::config::AdapterConfig,
+    model: &str,
+) -> Result<()> {
+    use archeology_agents::adapter::{model_spec, ModelFormat};
+    let Some(spec) = model_spec(adapter) else {
+        return Ok(());
+    };
+    let (Some(list), ModelFormat::ProviderModel) = (spec.list_args, spec.format) else {
+        return Ok(());
+    };
+    let command = adapter.command.clone().unwrap_or_default();
+    let shown = format!("{command} {}", list.join(" "));
+    // Solo se ejecuta un adaptador de confianza (predefinido o aprobado).
+    if !archeology_core::trust::is_trusted(root, name, adapter) {
+        return Ok(());
+    }
+    let Some(output) =
+        run_with_timeout(adapter, &command, list, std::time::Duration::from_secs(20))
+    else {
+        eprintln!("{}", t!("cli.agent.model_check_skipped", command = shown));
+        return Ok(());
+    };
+    let available: Vec<&str> = output
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty() && l.contains('/') && !l.contains(' '))
+        .collect();
+    if available.is_empty() || available.contains(&model) {
+        return Ok(());
+    }
+    // Sugerencias: los que contienen lo escrito (sin proveedor) o comparten prefijo.
+    let needle = model.rsplit('/').next().unwrap_or(model).to_lowercase();
+    let mut similar: Vec<&str> = available
+        .iter()
+        .copied()
+        .filter(|m| m.to_lowercase().contains(&needle))
+        .collect();
+    if similar.is_empty() {
+        let prefix: String = needle.chars().take(4).collect();
+        similar = available
+            .iter()
+            .copied()
+            .filter(|m| {
+                m.rsplit('/')
+                    .next()
+                    .unwrap_or(m)
+                    .to_lowercase()
+                    .starts_with(&prefix)
+            })
+            .collect();
+    }
+    let suggestions = if similar.is_empty() {
+        available.iter().take(10).copied().collect::<Vec<_>>()
+    } else {
+        similar.into_iter().take(10).collect()
+    };
+    anyhow::bail!(t!(
+        "cli.agent.model_not_found",
+        model = model,
+        agent = name,
+        suggestions = suggestions
+            .iter()
+            .map(|s| format!("  · {s}"))
+            .collect::<Vec<_>>()
+            .join("\n"),
+        command = shown
+    ))
+}
+
+/// Ejecuta el comando del adaptador y devuelve su stdout, o `None` si falla o
+/// tarda más de `timeout` (en ese caso se mata el proceso).
+fn run_with_timeout(
+    adapter: &archeology_core::config::AdapterConfig,
+    command: &str,
+    args: &[&str],
+    timeout: std::time::Duration,
+) -> Option<String> {
+    use std::io::Read;
+    let mut child =
+        std::process::Command::new(archeology_agents::adapter::program_for(adapter, command))
+            .args(args)
+            .envs(&adapter.env)
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+            .ok()?;
+    let mut stdout = child.stdout.take()?;
+    let reader = std::thread::spawn(move || {
+        let mut buf = String::new();
+        let _ = stdout.read_to_string(&mut buf);
+        buf
+    });
+    let deadline = std::time::Instant::now() + timeout;
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                let out = reader.join().ok()?;
+                return status.success().then_some(out);
+            }
+            Ok(None) if std::time::Instant::now() < deadline => {
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+            _ => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return None;
+            }
+        }
+    }
 }
 
 /// `agent models`: cómo recibe el modelo el agente y, si su CLI tiene un

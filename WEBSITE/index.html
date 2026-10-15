@@ -392,8 +392,55 @@ adoc inspect --agent codex            <span class="c" data-i18n="code.agentOnce"
       </div>
     </section>
 
+    <!-- Privacidad: archivos y datos sensibles que se omiten -->
+    <section class="section alt" id="privacidad">
+      <div class="wrap">
+        <h2 data-i18n="privacy.title">Sensitive data stays out</h2>
+        <p class="sub" data-i18n="privacy.sub">archeology-doc never reads secret files and tells your agent not to either. This is what is left out by default:</p>
+        <div class="grid cards">
+          <article class="card">
+            <div class="icon">🔐</div>
+            <h3 data-i18n="privacy.secrets.title">Secret files skipped</h3>
+            <p data-i18n-html="privacy.secrets.text"><code>.env*</code>, <code>*.pem</code>, <code>*.key</code>, <code>credentials*</code>, SSH keys (<code>id_rsa</code>, <code>id_ed25519</code>…), keystores (<code>*.p12</code>, <code>*.pfx</code>, <code>*.jks</code>), <code>.npmrc</code>, <code>.netrc</code>, <code>.git-credentials</code>, <code>*.tfvars</code>, <code>*.tfstate</code>, <code>secrets.*</code>. They never reach the inventory or the prompts.</p>
+          </article>
+          <article class="card">
+            <div class="icon">🔒</div>
+            <h3 data-i18n="privacy.locked.title">Can't be switched off</h3>
+            <p data-i18n-html="privacy.locked.text">A repository's configuration can add patterns (<code>[scan] secrets_patterns</code>) but never remove the built-in ones.</p>
+          </article>
+          <article class="card">
+            <div class="icon">🤖</div>
+            <h3 data-i18n="privacy.agent.title">Rules for the agent</h3>
+            <p data-i18n="privacy.agent.text">Every task tells the agent not to read or cite those files, and never to copy keys, tokens, passwords or connection strings into the notes: only that they exist and where.</p>
+          </article>
+          <article class="card">
+            <div class="icon">🗂️</div>
+            <h3 data-i18n="privacy.ignore.title">Respects .gitignore</h3>
+            <p data-i18n-html="privacy.ignore.text">Plus <code>vendor/</code>, <code>node_modules/</code>, <code>target/</code>, <code>dist/</code> and minified files. Add your own with <code>[paths] exclude</code>. Symbolic links are not followed.</p>
+          </article>
+          <article class="card">
+            <div class="icon">🏠</div>
+            <h3 data-i18n="privacy.outside.title">Working state outside the repo</h3>
+            <p data-i18n-html="privacy.outside.text">Tasks, logs and approvals live in <code>~/.archeology-doc/</code>, not in your repository, and adoc never writes through a link that points outside the project.</p>
+          </article>
+          <article class="card">
+            <div class="icon">🛡️</div>
+            <h3 data-i18n="privacy.network.title">Your code isn't uploaded</h3>
+            <p data-i18n-html="privacy.network.text">adoc only talks to the network to check for updates (<code>adoc upgrade</code>, <code>adoc doctor</code>; turn it off with <code>ADOC_NO_UPDATE_CHECK=1</code>). The agent you choose talks to its own provider. Third-party adapters need your approval (<code>adoc agent trust</code>).</p>
+          </article>
+        </div>
+        <div class="code" data-copy><pre><code><span class="c" data-i18n="code.privacyConfig"># archeology-doc.toml: added to the built-in rules</span>
+[scan]
+secrets_patterns = ["*.vault", "config/prod.*"]
+
+[paths]
+exclude = ["**/fixtures/**", "legacy/generated/**"]</code></pre></div>
+        <p class="note" data-i18n="privacy.note">Detection works by file name: a secret hard-coded in regular source code can still reach the agent. The agent is told not to copy it, but rotate it anyway and move it to an excluded file.</p>
+      </div>
+    </section>
+
     <!-- Código abierto -->
-    <section class="section alt" id="codigo-abierto">
+    <section class="section" id="codigo-abierto">
       <div class="wrap">
         <h2 data-i18n="oss.title">Open source</h2>
         <p class="sub" data-i18n-html="oss.sub">The whole project lives on GitHub under the <a href="https://github.com/jsoncr/archeology-doc/blob/main/LICENSE-MIT" rel="noopener">MIT license</a>: use it, modify it and share it freely.</p>

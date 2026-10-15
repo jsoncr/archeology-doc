@@ -1,0 +1,40 @@
+# Imagen para compilar adoc para Linux (x86_64, aarch64) y Windows (x86_64)
+# desde macOS. La usa WEBSITE/dist.sh (vía scripts/build.sh) cuando no hay zig.
+#
+#   docker build -f scripts/Dockerfile.cross -t adoc-cross:1.90-bookworm .
+#
+# dist.sh la construye sola la primera vez y la reutiliza: apt solo se ejecuta
+# al crear la imagen, no en cada compilación.
+ARG RUST_IMAGE=rust:1.90-bookworm
+FROM ${RUST_IMAGE}
+
+# Con --no-install-recommends hay que pedir los headers de C de cada target
+# (libc6-dev-arm64-cross, mingw-w64-x86-64-dev); sin ellos, blake3/ring fallan
+# con "bits/wordsize.h: No such file or directory".
+# IPv4 forzado: Docker Desktop no suele tener salida IPv6 y apt se queda
+# esperando una conexión que nunca llega. Timeouts y reintentos por si el
+# mirror se cuelga.
+# Mirror por HTTPS: algunos filtros de red (p. ej. Cisco Meraki) bloquean
+# paquetes de deb.debian.org por HTTP y los redirigen a una página de bloqueo.
+RUN sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources \
+ && APT='-o Acquire::ForceIPv4=true -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o Acquire::Retries=5' \
+ && apt-get $APT update \
+ && apt-get $APT install -y --no-install-recommends \
+      gcc-aarch64-linux-gnu \
+      libc6-dev-arm64-cross \
+      gcc-mingw-w64-x86-64 \
+      mingw-w64-x86-64-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN rustup target add \
+      x86_64-unknown-linux-gnu \
+      aarch64-unknown-linux-gnu \
+      x86_64-pc-windows-gnu
+
+# Linkers y compiladores C por target: los necesita `ring` (dependencia de ureq).
+ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
+    CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc \
+    AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar \
+    CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc \
+    CC_x86_64_pc_windows_gnu=x86_64-w64-mingw32-gcc \
+    AR_x86_64_pc_windows_gnu=x86_64-w64-mingw32-ar

@@ -494,8 +494,10 @@ pub fn command_preview(cfg: &AdapterConfig, interactive: bool) -> Result<Option<
             quote(&shown)
         });
     }
+    // La tarea va por stdin (claude, codex, gemini…): se dice en palabras,
+    // `< <prompt>` confundía.
     if cfg.stdin && !interactive {
-        parts.push("< <prompt>".into());
+        parts.push(t!("agents.model.stdin_hint"));
     }
     Ok(Some(parts.join(" ")))
 }
@@ -1151,7 +1153,10 @@ mod tests {
         cfg.model = Some("opus".into());
         assert_eq!(
             command_preview(&cfg, false).unwrap().unwrap(),
-            "claude -p --permission-mode acceptEdits --model opus < <prompt>"
+            format!(
+                "claude -p --permission-mode acceptEdits --model opus {}",
+                t!("agents.model.stdin_hint")
+            )
         );
     }
 

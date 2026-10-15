@@ -33,6 +33,7 @@ aider = "exporta la API key del proveedor (p. ej. ANTHROPIC_API_KEY u OPENAI_API
 generic = "inicia sesión en el CLI del agente (o configura su API key) y vuelve a intentarlo"
 
 [agents.model]
+stdin_hint = "(tarea por stdin)"
 has_spaces = "modelo inválido ({model}): los ids de modelo no llevan espacios, usa el id y no el nombre visible"
 examples_suffix = " (p. ej. {examples})"
 list_suffix = ". Lista los disponibles con `{command}`"
