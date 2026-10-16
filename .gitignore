@@ -12,3 +12,6 @@ WEBSITE/download/*
 
 # Carpeta de subida que arma scripts/build.sh (copia de WEBSITE/ lista para Cloudflare Pages).
 /dist/
+
+# Página en español generada para la vista previa local (node WEBSITE/scripts/prerender.mjs).
+/WEBSITE/es/

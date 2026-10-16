@@ -1,13 +1,20 @@
-// Idiomas del sitio (inglés y español). Se carga en <head>, antes del primer pintado:
-// resuelve el idioma, ajusta <html lang> y, si no es el del HTML (inglés), oculta
-// el cuerpo hasta traducirlo al cargar el DOM, para no mostrar el idioma equivocado.
+// Idiomas del sitio (inglés y español). Cada idioma tiene su propia página
+// indexable: / (inglés, index.html) y /es/ (español, la genera
+// scripts/prerender.mjs aplicando el diccionario `es` en el servidor). Este
+// archivo guarda los diccionarios y, en el navegador:
+//   - expone AdocI18n.t() para los textos que genera main.js, en el idioma de la página;
+//   - convierte los enlaces antiguos ?lang=en|es en la página de ese idioma;
+//   - el selector EN | ES (enlaces) navega entre / y /es/ conservando el ancla y
+//     recuerda la elección (localStorage adoc-lang);
+//   - nunca redirige según el idioma del navegador: si el navegador prefiere el
+//     otro idioma y no hay elección guardada, muestra un aviso discreto que se
+//     puede cerrar.
 //
-// Marcado en index.html:
-//   data-i18n="clave"                     → textContent
-//   data-i18n-html="clave"                → innerHTML (solo cadenas fijas de este archivo)
-//   data-i18n-attr="attr:clave;attr2:clave2" → atributos (title, aria-label, alt, content…)
+// Marcado en index.html (lo aplica prerender.mjs):
+//   data-i18n="clave"                        → textContent
+//   data-i18n-html="clave"                   → innerHTML (solo cadenas fijas de este archivo)
+//   data-i18n-attr="attr:clave;attr2:clave2" → atributos (title, aria-label, alt, content, href…)
 //
-// Orden para elegir el idioma: ?lang=en|es > localStorage (adoc-lang) > navigator.languages > en.
 // WEBSITE/scripts/check-i18n.mjs comprueba que ambos diccionarios tengan las mismas claves.
 
 (function () {
@@ -16,14 +23,50 @@
   const SUPPORTED = ['en', 'es'];
   const DEFAULT_LANG = 'en';
   const STORAGE_KEY = 'adoc-lang';
+  // Ruta de la página de cada idioma, relativa a la raíz del sitio.
+  const PATHS = { en: './', es: 'es/' };
 
   const MESSAGES = {
     en: {
-      'meta.title': 'archeology-doc · document any project with your AI agents',
-      'meta.description': 'Rust CLI that inspects new or legacy projects and generates a knowledge base, VitePress documentation and context for AI agents, backed by verifiable evidence.',
+      // Metadatos: <title> ≤ 60 caracteres y descripción ≤ 155 (los cortan los buscadores).
+      'meta.title': 'archeology-doc: AI documentation generator for any codebase',
+      'meta.description': 'Open-source CLI that documents new or legacy code with Claude Code, Codex and other AI agents: knowledge base, docs and AGENTS.md, backed by evidence.',
+      'meta.ogTitle': 'archeology-doc · document any codebase with your AI agent',
       'meta.ogLocale': 'en_US',
+      'meta.ogLocaleAlt': 'es_ES',
+      'meta.url': 'https://archeology-doc.com/',
+      'meta.ogImage': 'https://archeology-doc.com/assets/og-image.png',
+      'meta.ogImageAlt': 'archeology-doc logo with the tagline “Document any codebase with your AI agent”',
       'lang.group': 'Language',
       'theme.toggle': 'Toggle theme',
+      'a11y.skip': 'Skip to content',
+      'nav.main': 'Main',
+      'hero.logoAlt': 'archeology-doc logo: a pickaxe cracking open a block of code',
+      'features.title': 'What archeology-doc gives you',
+
+      // Aviso discreto cuando el navegador prefiere el otro idioma (se muestra en ese idioma).
+      'banner.label': 'Language suggestion',
+      'banner.text': 'This page is also available in English.',
+      'banner.link': 'View in English',
+      'banner.dismiss': 'Dismiss',
+
+      // Preguntas frecuentes (sección visible y datos estructurados FAQPage).
+      'nav.faq': 'FAQ',
+      'faq.title': 'Frequently asked questions',
+      'faq.q1': 'What is archeology-doc?',
+      'faq.a1': 'An open-source command-line tool (<code>adoc</code>) written in Rust that documents new or legacy codebases with the AI coding agent you already use. It generates a Markdown knowledge base, VitePress documentation, findings and an <code>AGENTS.md</code> with context for agents, and every claim cites its source as <code>path:line</code>.',
+      'faq.q2': 'Which AI agents does it work with?',
+      'faq.a2': 'Claude Code, Codex, Devin, Gemini CLI, Qwen Code, OpenCode, Cursor, GitHub Copilot, Amp, goose and Aider. Switch agent or model with <code>adoc agent use</code>; without a CLI agent, <code>adoc agent use manual</code> exports the tasks so you can do them by hand.',
+      'faq.q3': 'Does it upload my code or read my secrets?',
+      'faq.a3': 'No. adoc runs on your machine and only uses the network to check for updates (turn it off with <code>ADOC_NO_UPDATE_CHECK=1</code>); the agent you choose talks to its own provider, as it already does. Secret files such as <code>.env*</code>, <code>*.pem</code> or SSH keys are skipped and never reach the prompts. See <a href="#privacidad">what is left out</a>.',
+      'faq.q4': 'Which programming languages and frameworks does it support?',
+      'faq.a4': 'It is language-agnostic: <code>adoc scan</code> detects the languages, modules, tests and CI in the repository, and your agent reads the code itself. It works with new or legacy projects, small or large.',
+      'faq.q5': 'Is it free?',
+      'faq.a5': 'Yes. archeology-doc is free and open source under the MIT license. The only cost is your AI agent’s usage, if your provider charges for it.',
+      'faq.q6': 'Is there a VS Code extension?',
+      'faq.a6': 'Yes: install <b>archeology-doc</b> from the Visual Studio Marketplace (<code>jcruz.archeology-doc</code>) or download the <code>.vsix</code>. It shows tasks, findings, the knowledge graph and questions in VS Code, Cursor, Windsurf and Devin Desktop.',
+      'faq.q7': 'How do I update it?',
+      'faq.a7': 'Run <code>adoc upgrade</code>: it downloads the latest version, verifies its SHA-256 and replaces the binaries. <code>adoc upgrade --check</code> only tells you whether a new version is available.',
 
       'nav.how': 'How it works',
       'nav.install': 'Install',
@@ -215,11 +258,42 @@
     },
 
     es: {
-      'meta.title': 'archeology-doc · documenta cualquier proyecto con tus agentes de IA',
-      'meta.description': 'CLI en Rust que inspecciona proyectos nuevos o legacy y genera base de conocimiento, documentación VitePress y contexto para agentes de IA, con evidencias verificables.',
+      'meta.title': 'archeology-doc: documentación con IA para código legacy',
+      'meta.description': 'CLI open source para documentar código legacy o nuevo con Claude Code, Codex y otros agentes de IA: base de conocimiento, docs y AGENTS.md con evidencias.',
+      'meta.ogTitle': 'archeology-doc · documenta cualquier código con tu agente de IA',
       'meta.ogLocale': 'es_ES',
+      'meta.ogLocaleAlt': 'en_US',
+      'meta.url': 'https://archeology-doc.com/es/',
+      'meta.ogImage': 'https://archeology-doc.com/assets/og-image-es.png',
+      'meta.ogImageAlt': 'Logo de archeology-doc con el lema «Documenta cualquier código con tu agente de IA»',
       'lang.group': 'Idioma',
       'theme.toggle': 'Cambiar tema',
+      'a11y.skip': 'Saltar al contenido',
+      'nav.main': 'Principal',
+      'hero.logoAlt': 'Logo de archeology-doc: un pico que abre un bloque de código',
+      'features.title': 'Qué te da archeology-doc',
+
+      'banner.label': 'Sugerencia de idioma',
+      'banner.text': 'Esta página también está disponible en español.',
+      'banner.link': 'Ver en español',
+      'banner.dismiss': 'Cerrar',
+
+      'nav.faq': 'Preguntas frecuentes',
+      'faq.title': 'Preguntas frecuentes',
+      'faq.q1': '¿Qué es archeology-doc?',
+      'faq.a1': 'Una herramienta de línea de comandos open source (<code>adoc</code>), escrita en Rust, que documenta código nuevo o legacy con el agente de IA que ya usas. Genera una base de conocimiento en Markdown, documentación VitePress, hallazgos y un <code>AGENTS.md</code> con contexto para agentes, y cada afirmación cita su fuente como <code>ruta:línea</code>.',
+      'faq.q2': '¿Con qué agentes de IA funciona?',
+      'faq.a2': 'Claude Code, Codex, Devin, Gemini CLI, Qwen Code, OpenCode, Cursor, GitHub Copilot, Amp, goose y Aider. Cambia de agente o de modelo con <code>adoc agent use</code>; sin un agente de CLI, <code>adoc agent use manual</code> exporta las tareas para hacerlas a mano.',
+      'faq.q3': '¿Sube mi código o lee mis secretos?',
+      'faq.a3': 'No. adoc se ejecuta en tu máquina y solo usa la red para buscar actualizaciones (se desactiva con <code>ADOC_NO_UPDATE_CHECK=1</code>); el agente que elijas habla con su propio proveedor, como ya lo hace. Los archivos de secretos como <code>.env*</code>, <code>*.pem</code> o las llaves SSH se omiten y nunca llegan a los prompts. Mira <a href="#privacidad">qué se deja fuera</a>.',
+      'faq.q4': '¿Qué lenguajes de programación y frameworks soporta?',
+      'faq.a4': 'Es agnóstico al lenguaje: <code>adoc scan</code> detecta los lenguajes, módulos, tests y CI del repositorio, y tu agente lee el código directamente. Sirve para proyectos nuevos o legacy, pequeños o grandes.',
+      'faq.q5': '¿Es gratis?',
+      'faq.a5': 'Sí. archeology-doc es gratuito y open source bajo licencia MIT. El único costo es el uso de tu agente de IA, si tu proveedor lo cobra.',
+      'faq.q6': '¿Hay extensión para VS Code?',
+      'faq.a6': 'Sí: instala <b>archeology-doc</b> desde el Visual Studio Marketplace (<code>jcruz.archeology-doc</code>) o descarga el <code>.vsix</code>. Muestra tareas, hallazgos, el grafo de conocimiento y las preguntas en VS Code, Cursor, Windsurf y Devin Desktop.',
+      'faq.q7': '¿Cómo lo actualizo?',
+      'faq.a7': 'Ejecuta <code>adoc upgrade</code>: descarga la última versión, verifica su SHA-256 y sustituye los binarios. <code>adoc upgrade --check</code> solo te dice si hay una versión nueva.',
 
       'nav.how': 'Cómo funciona',
       'nav.install': 'Instalar',
@@ -423,6 +497,14 @@
     }
   };
 
+  const store = (lang) => {
+    try {
+      localStorage.setItem(STORAGE_KEY, lang);
+    } catch {
+      /* sin persistencia */
+    }
+  };
+
   const readQuery = () => {
     try {
       return normalize(new URLSearchParams(location.search).get('lang'));
@@ -441,97 +523,102 @@
     return null;
   };
 
-  const resolveInitial = () => readQuery() || readStored() || readNavigator() || DEFAULT_LANG;
-
   let current = DEFAULT_LANG;
 
   // Traduce una clave; {nombre} se reemplaza con vars. Si falta, cae al inglés y luego a la clave.
-  const t = (key, vars) => {
-    const dict = MESSAGES[current] || MESSAGES[DEFAULT_LANG];
+  const t = (key, vars, lang) => {
+    const dict = MESSAGES[lang || current] || MESSAGES[DEFAULT_LANG];
     let text = key in dict ? dict[key] : key in MESSAGES[DEFAULT_LANG] ? MESSAGES[DEFAULT_LANG][key] : key;
     if (vars) text = text.replace(/\{(\w+)\}/g, (m, name) => (name in vars ? String(vars[name]) : m));
     return text;
   };
 
-  // Aplica el idioma a todo el documento y avisa a main.js (evento adoc:langchange).
-  const apply = (lang) => {
-    current = normalize(lang) || DEFAULT_LANG;
-    const root = document.documentElement;
-    root.lang = current;
-    document.querySelectorAll('[data-i18n]').forEach((el) => {
-      el.textContent = t(el.dataset.i18n);
-    });
-    document.querySelectorAll('[data-i18n-html]').forEach((el) => {
-      // Solo cadenas fijas de MESSAGES: nunca datos del usuario ni de la URL.
-      el.innerHTML = t(el.dataset.i18nHtml);
-    });
-    document.querySelectorAll('[data-i18n-attr]').forEach((el) => {
-      el.dataset.i18nAttr.split(';').forEach((pair) => {
-        const idx = pair.indexOf(':');
-        if (idx < 1) return;
-        el.setAttribute(pair.slice(0, idx).trim(), t(pair.slice(idx + 1).trim()));
-      });
-    });
-    document.querySelectorAll('[data-lang]').forEach((btn) => {
-      btn.setAttribute('aria-pressed', String(btn.dataset.lang === current));
-    });
-    document.dispatchEvent(new CustomEvent('adoc:langchange', { detail: { lang: current } }));
-  };
-
-  // Cambio por el usuario: se recuerda y, si la URL trae ?lang, se actualiza para que no lo pise al recargar.
-  const setLang = (lang) => {
-    const next = normalize(lang);
-    if (!next) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, next);
-    } catch {
-      /* sin persistencia */
-    }
-    try {
-      const url = new URL(location.href);
-      if (url.searchParams.has('lang')) {
-        url.searchParams.set('lang', next);
-        history.replaceState(null, '', url);
-      }
-    } catch {
-      /* URL no editable (p. ej. file://): se ignora */
-    }
-    apply(next);
-  };
-
-  // API mínima para main.js y para el script de comprobación.
+  // API mínima para main.js, prerender.mjs y el script de comprobación.
   const api = {
     SUPPORTED,
     DEFAULT_LANG,
     STORAGE_KEY,
+    PATHS,
     MESSAGES,
     t,
-    setLang,
     get lang() {
       return current;
     },
   };
   globalThis.AdocI18n = api;
 
-  // Fuera del navegador (comprobación con node) no hay DOM: solo se exponen los diccionarios.
+  // Fuera del navegador (node) no hay DOM: solo se exponen los diccionarios.
   if (typeof document === 'undefined') return;
 
-  const initial = resolveInitial();
-  current = initial;
   const root = document.documentElement;
-  root.lang = initial;
-  // El HTML ya está en inglés; en otro idioma se oculta hasta traducir (ver styles.css).
-  if (initial !== DEFAULT_LANG) root.setAttribute('data-i18n-pending', '');
+  // El idioma lo fija la página (<html lang>); /es/ declara además data-site-root="../".
+  current = normalize(root.getAttribute('lang')) || DEFAULT_LANG;
+  const isHttp = location.protocol === 'http:' || location.protocol === 'https:';
+  const siteRoot = new URL(root.dataset.siteRoot || './', location.href);
+  // URL de la página de un idioma, con la query (sin lang) y el ancla actuales.
+  const pageUrl = (lang) => {
+    const url = new URL(PATHS[lang], siteRoot);
+    const params = new URLSearchParams(location.search);
+    params.delete('lang');
+    url.search = params.toString();
+    url.hash = location.hash;
+    return url;
+  };
+
+  // Enlaces antiguos (?lang=es): llevan a la página de ese idioma; si ya es esta, se limpia la URL.
+  const query = readQuery();
+  if (query && isHttp) {
+    if (query !== current) {
+      location.replace(pageUrl(query).href);
+      return;
+    }
+    history.replaceState(null, '', pageUrl(current));
+  }
+
+  // Aviso discreto (abajo, fijo: no desplaza el contenido) para el otro idioma.
+  const suggest = (lang) => {
+    const box = document.createElement('aside');
+    box.className = 'lang-suggest';
+    box.lang = lang;
+    box.setAttribute('aria-label', t('banner.label', null, lang));
+    const text = document.createElement('p');
+    text.textContent = t('banner.text', null, lang);
+    const link = document.createElement('a');
+    link.href = pageUrl(lang).href;
+    link.hreflang = lang;
+    link.textContent = t('banner.link', null, lang);
+    link.addEventListener('click', () => store(lang));
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'lang-suggest-close';
+    close.setAttribute('aria-label', t('banner.dismiss', null, lang));
+    close.textContent = '×';
+    close.addEventListener('click', () => {
+      // Cerrar el aviso cuenta como elegir el idioma de esta página.
+      store(current);
+      box.remove();
+    });
+    text.append(' ', link);
+    box.append(text, close);
+    document.body.appendChild(box);
+  };
 
   const init = () => {
-    try {
-      apply(initial);
-    } finally {
-      root.removeAttribute('data-i18n-pending');
-    }
-    document.querySelectorAll('[data-lang]').forEach((btn) => {
-      btn.addEventListener('click', () => setLang(btn.dataset.lang));
+    // Selector EN | ES: enlaces reales (funcionan sin JS); aquí se conserva el ancla y se recuerda.
+    document.querySelectorAll('a[data-lang]').forEach((link) => {
+      const lang = normalize(link.dataset.lang);
+      if (!lang) return;
+      if (lang === current) link.setAttribute('aria-current', 'page');
+      else link.removeAttribute('aria-current');
+      link.addEventListener('click', (ev) => {
+        store(lang);
+        if (lang === current || !isHttp) return;
+        ev.preventDefault();
+        location.assign(pageUrl(lang).href);
+      });
     });
+    const preferred = readNavigator();
+    if (isHttp && !readStored() && preferred && preferred !== current) suggest(preferred);
   };
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init, { once: true });

@@ -4,29 +4,198 @@
   <meta charset="utf-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- Contenido por defecto en inglés (sin JS / buscadores); i18n.js aplica el idioma elegido. -->
-  <title data-i18n="meta.title">archeology-doc · document any project with your AI agents</title>
-  <meta name="description" data-i18n-attr="content:meta.description" content="Rust CLI that inspects new or legacy projects and generates a knowledge base, VitePress documentation and context for AI agents, backed by verifiable evidence.">
-  <meta property="og:title" data-i18n-attr="content:meta.title" content="archeology-doc · document any project with your AI agents">
-  <meta property="og:description" data-i18n-attr="content:meta.description" content="Rust CLI that inspects new or legacy projects and generates a knowledge base, VitePress documentation and context for AI agents, backed by verifiable evidence.">
+  <!-- Página en inglés. /es/ la genera scripts/prerender.mjs aplicando el diccionario `es` de i18n.js. -->
+  <title data-i18n="meta.title">archeology-doc: AI documentation generator for any codebase</title>
+  <meta name="description" data-i18n-attr="content:meta.description" content="Open-source CLI that documents new or legacy code with Claude Code, Codex and other AI agents: knowledge base, docs and AGENTS.md, backed by evidence.">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+  <meta name="author" content="archeology-doc contributors">
+  <link rel="canonical" data-i18n-attr="href:meta.url" href="https://archeology-doc.com/">
+  <link rel="alternate" hreflang="en" href="https://archeology-doc.com/">
+  <link rel="alternate" hreflang="es" href="https://archeology-doc.com/es/">
+  <link rel="alternate" hreflang="x-default" href="https://archeology-doc.com/">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#fbfbfa">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0f1c">
+  <!-- Open Graph y Twitter: tarjeta 1200×630 (scripts/make-images.mjs). -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="archeology-doc">
+  <meta property="og:title" data-i18n-attr="content:meta.ogTitle" content="archeology-doc · document any codebase with your AI agent">
+  <meta property="og:description" data-i18n-attr="content:meta.description" content="Open-source CLI that documents new or legacy code with Claude Code, Codex and other AI agents: knowledge base, docs and AGENTS.md, backed by evidence.">
+  <meta property="og:url" data-i18n-attr="content:meta.url" content="https://archeology-doc.com/">
   <meta property="og:locale" data-i18n-attr="content:meta.ogLocale" content="en_US">
-  <link rel="icon" href="assets/favicon.png" type="image/png">
-  <link rel="apple-touch-icon" href="assets/icon.png">
-  <meta property="og:image" content="assets/logo.png">
+  <meta property="og:locale:alternate" data-i18n-attr="content:meta.ogLocaleAlt" content="es_ES">
+  <meta property="og:image" data-i18n-attr="content:meta.ogImage" content="https://archeology-doc.com/assets/og-image.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" data-i18n-attr="content:meta.ogImageAlt" content="archeology-doc logo with the tagline “Document any codebase with your AI agent”">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" data-i18n-attr="content:meta.ogTitle" content="archeology-doc · document any codebase with your AI agent">
+  <meta name="twitter:description" data-i18n-attr="content:meta.description" content="Open-source CLI that documents new or legacy code with Claude Code, Codex and other AI agents: knowledge base, docs and AGENTS.md, backed by evidence.">
+  <meta name="twitter:image" data-i18n-attr="content:meta.ogImage" content="https://archeology-doc.com/assets/og-image.png">
+  <meta name="twitter:image:alt" data-i18n-attr="content:meta.ogImageAlt" content="archeology-doc logo with the tagline “Document any codebase with your AI agent”">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
   <link rel="stylesheet" href="styles.css">
   <!-- Aplica el tema guardado antes de pintar (evita el parpadeo). -->
   <script src="theme-init.js"></script>
-  <!-- Idioma (en/es): se resuelve antes de pintar y se aplica al cargar el DOM. -->
-  <script src="i18n.js"></script>
+  <!-- Diccionarios, selector de idioma y comportamiento de la página: no bloquean el pintado. -->
+  <script src="i18n.js" defer></script>
+  <script src="main.js" defer></script>
+  <!-- Datos estructurados (schema.org). Los genera scripts/prerender.mjs: no editar a mano. -->
+  <script type="application/ld+json" id="structured-data">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://archeology-doc.com/#website",
+        "url": "https://archeology-doc.com/",
+        "name": "archeology-doc",
+        "alternateName": "adoc",
+        "inLanguage": [
+          "en",
+          "es"
+        ]
+      },
+      {
+        "@type": "WebPage",
+        "@id": "https://archeology-doc.com/#webpage",
+        "url": "https://archeology-doc.com/",
+        "name": "archeology-doc: AI documentation generator for any codebase",
+        "description": "Open-source CLI that documents new or legacy code with Claude Code, Codex and other AI agents: knowledge base, docs and AGENTS.md, backed by evidence.",
+        "inLanguage": "en",
+        "isPartOf": {
+          "@id": "https://archeology-doc.com/#website"
+        },
+        "about": {
+          "@id": "https://archeology-doc.com/#software"
+        },
+        "primaryImageOfPage": {
+          "@type": "ImageObject",
+          "url": "https://archeology-doc.com/assets/og-image.png",
+          "width": 1200,
+          "height": 630
+        }
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://archeology-doc.com/#software",
+        "name": "archeology-doc",
+        "alternateName": "adoc",
+        "description": "Open-source CLI that documents new or legacy code with Claude Code, Codex and other AI agents: knowledge base, docs and AGENTS.md, backed by evidence.",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "macOS, Linux, Windows",
+        "url": "https://archeology-doc.com/",
+        "downloadUrl": "https://archeology-doc.com/download/",
+        "installUrl": "https://archeology-doc.com/#instalar",
+        "license": "https://github.com/jsoncr/archeology-doc/blob/main/LICENSE-MIT",
+        "isAccessibleForFree": true,
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "screenshot": "https://archeology-doc.com/assets/og-image.png",
+        "image": "https://archeology-doc.com/assets/og-image.png",
+        "sameAs": [
+          "https://github.com/jsoncr/archeology-doc",
+          "https://marketplace.visualstudio.com/items?itemName=jcruz.archeology-doc"
+        ],
+        "author": {
+          "@type": "Organization",
+          "name": "archeology-doc contributors",
+          "url": "https://github.com/jsoncr/archeology-doc"
+        }
+      },
+      {
+        "@type": "SoftwareSourceCode",
+        "@id": "https://archeology-doc.com/#source",
+        "name": "archeology-doc",
+        "codeRepository": "https://github.com/jsoncr/archeology-doc",
+        "programmingLanguage": "Rust",
+        "license": "https://github.com/jsoncr/archeology-doc/blob/main/LICENSE-MIT",
+        "targetProduct": {
+          "@id": "https://archeology-doc.com/#software"
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://archeology-doc.com/#faq",
+        "inLanguage": "en",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is archeology-doc?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "An open-source command-line tool (adoc) written in Rust that documents new or legacy codebases with the AI coding agent you already use. It generates a Markdown knowledge base, VitePress documentation, findings and an AGENTS.md with context for agents, and every claim cites its source as path:line."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Which AI agents does it work with?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Claude Code, Codex, Devin, Gemini CLI, Qwen Code, OpenCode, Cursor, GitHub Copilot, Amp, goose and Aider. Switch agent or model with adoc agent use; without a CLI agent, adoc agent use manual exports the tasks so you can do them by hand."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does it upload my code or read my secrets?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. adoc runs on your machine and only uses the network to check for updates (turn it off with ADOC_NO_UPDATE_CHECK=1); the agent you choose talks to its own provider, as it already does. Secret files such as .env*, *.pem or SSH keys are skipped and never reach the prompts. See what is left out."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Which programming languages and frameworks does it support?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "It is language-agnostic: adoc scan detects the languages, modules, tests and CI in the repository, and your agent reads the code itself. It works with new or legacy projects, small or large."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is it free?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. archeology-doc is free and open source under the MIT license. The only cost is your AI agent’s usage, if your provider charges for it."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is there a VS Code extension?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes: install archeology-doc from the Visual Studio Marketplace (jcruz.archeology-doc) or download the .vsix. It shows tasks, findings, the knowledge graph and questions in VS Code, Cursor, Windsurf and Devin Desktop."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I update it?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Run adoc upgrade: it downloads the latest version, verifies its SHA-256 and replaces the binaries. adoc upgrade --check only tells you whether a new version is available."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
 </head>
 <body>
+  <a class="skip-link" href="#main" data-i18n="a11y.skip">Skip to content</a>
   <header class="nav">
     <div class="wrap nav-inner">
-      <a class="brand" href="#">
-        <img src="assets/icon.png" alt="" width="30" height="30">
+      <a class="brand" href="./">
+        <picture><source type="image/webp" srcset="assets/icon-64.webp"><img src="assets/icon-64.png" alt="" width="30" height="30"></picture>
         <span>archeology-doc</span>
       </a>
-      <nav>
+      <nav aria-label="Main" data-i18n-attr="aria-label:nav.main">
         <a href="#como-funciona" data-i18n="nav.how">How it works</a>
         <a href="#instalar" data-i18n="nav.install">Install</a>
         <a href="#descargas" data-i18n="nav.downloads">Downloads</a>
@@ -38,31 +207,47 @@
       <div class="nav-tools">
         <!-- Repositorio en GitHub (icono SVG en línea, sin recursos externos). -->
         <a class="icon-btn" href="https://github.com/jsoncr/archeology-doc" rel="noopener" aria-label="GitHub repository" title="GitHub repository" data-i18n-attr="aria-label:repo.github;title:repo.github"><svg class="gh-mark" viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a>
+        <!-- Selector de idioma: enlaces entre / y /es/ (i18n.js conserva el ancla y recuerda la elección). -->
         <div class="lang" role="group" aria-label="Language" data-i18n-attr="aria-label:lang.group">
-          <button type="button" data-lang="en" aria-pressed="true" lang="en" title="English">EN</button>
-          <button type="button" data-lang="es" aria-pressed="false" lang="es" title="Español">ES</button>
+          <a href="./" data-lang="en" hreflang="en" lang="en" title="English" aria-current="page">EN</a>
+          <a href="es/" data-lang="es" hreflang="es" lang="es" title="Español">ES</a>
         </div>
         <button class="theme" id="theme" type="button" aria-label="Toggle theme" title="Toggle theme" data-i18n-attr="aria-label:theme.toggle;title:theme.toggle">◐</button>
       </div>
     </div>
   </header>
 
-  <main>
+  <main id="main" tabindex="-1">
     <!-- Hero -->
     <section class="hero">
       <div class="wrap hero-grid">
         <div class="hero-logo">
-          <img class="logo-light" src="assets/logo.png" alt="archeology-doc" width="540" height="363">
-          <img class="logo-dark" src="assets/logo-dark.png" alt="archeology-doc" width="540" height="363">
+          <!-- Logo según el tema del sistema; si el usuario fija el tema (botón ◐) se muestra la variante
+               forzada, que es diferida (loading="lazy") y no se descarga mientras está oculta. -->
+          <picture class="logo-auto">
+            <source type="image/webp" media="(prefers-color-scheme: dark)" srcset="assets/logo-dark-440.webp 440w, assets/logo-dark-880.webp 880w" sizes="(max-width: 860px) 300px, 440px">
+            <source type="image/webp" srcset="assets/logo-440.webp 440w, assets/logo-880.webp 880w" sizes="(max-width: 860px) 300px, 440px">
+            <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark-440.png">
+            <img src="assets/logo-440.png" alt="archeology-doc logo: a pickaxe cracking open a block of code" data-i18n-attr="alt:hero.logoAlt" width="440" height="296" fetchpriority="high">
+          </picture>
+          <picture class="logo-forced logo-forced-light">
+            <source type="image/webp" srcset="assets/logo-440.webp 440w, assets/logo-880.webp 880w" sizes="(max-width: 860px) 300px, 440px">
+            <img src="assets/logo-440.png" alt="archeology-doc logo: a pickaxe cracking open a block of code" data-i18n-attr="alt:hero.logoAlt" width="440" height="296" loading="lazy" decoding="async">
+          </picture>
+          <picture class="logo-forced logo-forced-dark">
+            <source type="image/webp" srcset="assets/logo-dark-440.webp 440w, assets/logo-dark-880.webp 880w" sizes="(max-width: 860px) 300px, 440px">
+            <img src="assets/logo-dark-440.png" alt="archeology-doc logo: a pickaxe cracking open a block of code" data-i18n-attr="alt:hero.logoAlt" width="440" height="296" loading="lazy" decoding="async">
+          </picture>
         </div>
         <div class="hero-text">
         <p class="eyebrow" data-i18n="hero.eyebrow">Open-source CLI · Rust · local-first</p>
         <h1><span data-i18n="hero.title1">Dig into any project.</span><br><span class="accent" data-i18n="hero.title2">Document it with evidence.</span></h1>
         <p class="lead" data-i18n-html="hero.lead"><strong>archeology-doc</strong> (<code>adoc</code>) inspects new or legacy projects and, with the AI agent you already use, generates a browsable knowledge base, documentation, findings and context for agents. Every claim cites its source as <code>path:line</code>.</p>
         <div class="install-hero">
-          <p class="os-hint" id="hero-os" hidden></p>
+          <!-- Pista del sistema detectado (main.js): ocupa su línea desde el inicio para no desplazar el contenido. -->
+          <p class="os-hint" id="hero-os"></p>
           <div class="code" data-copy>
-            <pre><code data-oneliner><span class="prompt">$</span> curl -fsSL <span data-base>https://your-site/download/</span>install.sh | sh</code></pre>
+            <pre><code data-oneliner><span class="prompt">$</span> curl -fsSL <span data-base>https://archeology-doc.com/download/</span>install.sh | sh</code></pre>
           </div>
         </div>
         <div class="cta">
@@ -74,36 +259,37 @@
     </section>
 
     <!-- Valor -->
-    <section class="section">
+    <section class="section" aria-labelledby="features-title">
       <div class="wrap">
+        <h2 class="visually-hidden" id="features-title" data-i18n="features.title">What archeology-doc gives you</h2>
         <div class="grid cards">
           <article class="card">
-            <div class="icon">🧭</div>
+            <div class="icon" aria-hidden="true">🧭</div>
             <h3 data-i18n="card.map.title">System map</h3>
             <p data-i18n="card.map.text">Modules, features, glossary and decisions in plain Markdown, browsable in Obsidian, VitePress or GitHub.</p>
           </article>
           <article class="card">
-            <div class="icon">🔎</div>
+            <div class="icon" aria-hidden="true">🔎</div>
             <h3 data-i18n="card.risks.title">Contradictions and risks</h3>
             <p data-i18n="card.risks.text">Findings by severity: outdated documentation, duplicated rules, conflicting configuration, dead code.</p>
           </article>
           <article class="card">
-            <div class="icon">🧪</div>
+            <div class="icon" aria-hidden="true">🧪</div>
             <h3 data-i18n="card.tests.title">Testing gaps</h3>
             <p data-i18n="card.tests.text">Features ↔ tests, covered and missing scenarios, disabled or empty tests.</p>
           </article>
           <article class="card">
-            <div class="icon">🤖</div>
+            <div class="icon" aria-hidden="true">🤖</div>
             <h3 data-i18n="card.agents.title">Context for agents</h3>
             <p data-i18n-html="card.agents.text"><code>AGENTS.md</code>, persistent memory and skills: every AI session starts knowing what exists and where.</p>
           </article>
           <article class="card">
-            <div class="icon">📐</div>
+            <div class="icon" aria-hidden="true">📐</div>
             <h3 data-i18n="card.specs.title">Specs with OpenSpec</h3>
             <p data-i18n="card.specs.text">Requirement compliance checked against the code, with abandoned changes flagged in review, status and check.</p>
           </article>
           <article class="card">
-            <div class="icon">✅</div>
+            <div class="icon" aria-hidden="true">✅</div>
             <h3 data-i18n="card.verify.title">Verifiable</h3>
             <p data-i18n-html="card.verify.text"><code>adoc check</code> validates evidence, links and outdated notes; ideal for CI.</p>
           </article>
@@ -157,7 +343,7 @@
 
         <div class="panel active" data-panel="macos" role="tabpanel" id="panel-macos" aria-labelledby="tab-macos">
           <p class="step-label">Terminal</p>
-          <div class="code" data-copy><pre><code><span class="prompt">$</span> curl -fsSL <span data-base>https://your-site/download/</span>install.sh | sh</code></pre></div>
+          <div class="code" data-copy><pre><code><span class="prompt">$</span> curl -fsSL <span data-base>https://archeology-doc.com/download/</span>install.sh | sh</code></pre></div>
           <p class="step-label" data-i18n="install.orDownload">or download the binary</p>
           <div class="downloads-row">
             <a class="btn dl" data-file="adoc-aarch64-apple-darwin.tar.gz" href="download/adoc-aarch64-apple-darwin.tar.gz" download>Apple Silicon (M1–M4) <small></small></a>
@@ -170,7 +356,7 @@
 
         <div class="panel" data-panel="linux" role="tabpanel" id="panel-linux" aria-labelledby="tab-linux">
           <p class="step-label">Terminal</p>
-          <div class="code" data-copy><pre><code><span class="prompt">$</span> curl -fsSL <span data-base>https://your-site/download/</span>install.sh | sh</code></pre></div>
+          <div class="code" data-copy><pre><code><span class="prompt">$</span> curl -fsSL <span data-base>https://archeology-doc.com/download/</span>install.sh | sh</code></pre></div>
           <p class="step-label" data-i18n="install.orDownload">or download the binary</p>
           <div class="downloads-row">
             <a class="btn dl" data-file="adoc-x86_64-unknown-linux-gnu.tar.gz" href="download/adoc-x86_64-unknown-linux-gnu.tar.gz" download>x86_64 <small></small></a>
@@ -181,7 +367,7 @@
 
         <div class="panel" data-panel="windows" role="tabpanel" id="panel-windows" aria-labelledby="tab-windows">
           <p class="step-label">PowerShell</p>
-          <div class="code" data-copy><pre><code><span class="prompt">&gt;</span> irm <span data-base>https://your-site/download/</span>install.ps1 | iex</code></pre></div>
+          <div class="code" data-copy><pre><code><span class="prompt">&gt;</span> irm <span data-base>https://archeology-doc.com/download/</span>install.ps1 | iex</code></pre></div>
           <p class="step-label" data-i18n="install.orDownload">or download the binary</p>
           <div class="downloads-row">
             <a class="btn dl" data-file="adoc-x86_64-pc-windows-gnu.zip" href="download/adoc-x86_64-pc-windows-gnu.zip" download>Windows x64 (.zip) <small></small></a>
@@ -210,7 +396,7 @@ cargo install --path crates/archeology-cli --locked</code></pre></div>
 
         <p class="step-label" data-i18n="install.extras">Extras</p>
         <div class="code" data-copy><pre><code><span class="c" data-i18n="code.extrasWith"># With shared VitePress and the VS Code extension</span>
-curl -fsSL <span data-base>https://your-site/download/</span>install.sh | sh -s -- --with-vitepress --with-vscode
+curl -fsSL <span data-base>https://archeology-doc.com/download/</span>install.sh | sh -s -- --with-vitepress --with-vscode
 
 <span class="c" data-i18n="code.doctor"># Checks requirements: git, Node, VitePress, OpenSpec and agents</span>
 adoc doctor
@@ -399,32 +585,32 @@ adoc inspect --agent codex            <span class="c" data-i18n="code.agentOnce"
         <p class="sub" data-i18n="privacy.sub">archeology-doc never reads secret files and tells your agent not to either. This is what is left out by default:</p>
         <div class="grid cards">
           <article class="card">
-            <div class="icon">🔐</div>
+            <div class="icon" aria-hidden="true">🔐</div>
             <h3 data-i18n="privacy.secrets.title">Secret files skipped</h3>
             <p data-i18n-html="privacy.secrets.text"><code>.env*</code>, <code>*.pem</code>, <code>*.key</code>, <code>credentials*</code>, SSH keys (<code>id_rsa</code>, <code>id_ed25519</code>…), keystores (<code>*.p12</code>, <code>*.pfx</code>, <code>*.jks</code>), <code>.npmrc</code>, <code>.netrc</code>, <code>.git-credentials</code>, <code>*.tfvars</code>, <code>*.tfstate</code>, <code>secrets.*</code>. They never reach the inventory or the prompts.</p>
           </article>
           <article class="card">
-            <div class="icon">🔒</div>
+            <div class="icon" aria-hidden="true">🔒</div>
             <h3 data-i18n="privacy.locked.title">Can't be switched off</h3>
             <p data-i18n-html="privacy.locked.text">A repository's configuration can add patterns (<code>[scan] secrets_patterns</code>) but never remove the built-in ones.</p>
           </article>
           <article class="card">
-            <div class="icon">🤖</div>
+            <div class="icon" aria-hidden="true">🤖</div>
             <h3 data-i18n="privacy.agent.title">Rules for the agent</h3>
             <p data-i18n="privacy.agent.text">Every task tells the agent not to read or cite those files, and never to copy keys, tokens, passwords or connection strings into the notes: only that they exist and where.</p>
           </article>
           <article class="card">
-            <div class="icon">🗂️</div>
+            <div class="icon" aria-hidden="true">🗂️</div>
             <h3 data-i18n="privacy.ignore.title">Respects .gitignore</h3>
             <p data-i18n-html="privacy.ignore.text">Plus <code>vendor/</code>, <code>node_modules/</code>, <code>target/</code>, <code>dist/</code> and minified files. Add your own with <code>[paths] exclude</code>. Symbolic links are not followed.</p>
           </article>
           <article class="card">
-            <div class="icon">🏠</div>
+            <div class="icon" aria-hidden="true">🏠</div>
             <h3 data-i18n="privacy.outside.title">Working state outside the repo</h3>
             <p data-i18n-html="privacy.outside.text">Tasks, logs and approvals live in <code>~/.archeology-doc/</code>, not in your repository, and adoc never writes through a link that points outside the project.</p>
           </article>
           <article class="card">
-            <div class="icon">🛡️</div>
+            <div class="icon" aria-hidden="true">🛡️</div>
             <h3 data-i18n="privacy.network.title">Your code isn't uploaded</h3>
             <p data-i18n-html="privacy.network.text">adoc only talks to the network to check for updates (<code>adoc upgrade</code>, <code>adoc doctor</code>; turn it off with <code>ADOC_NO_UPDATE_CHECK=1</code>). The agent you choose talks to its own provider. Third-party adapters need your approval (<code>adoc agent trust</code>).</p>
           </article>
@@ -493,6 +679,43 @@ npm run package</code></pre></div>
         </div>
       </div>
     </section>
+
+    <!-- Preguntas frecuentes (también en los datos estructurados FAQPage que genera prerender.mjs) -->
+    <section class="section alt" id="faq" aria-labelledby="faq-title">
+      <div class="wrap">
+        <h2 id="faq-title" data-i18n="faq.title">Frequently asked questions</h2>
+        <div class="faq">
+          <details open>
+            <summary data-i18n="faq.q1">What is archeology-doc?</summary>
+            <p data-i18n-html="faq.a1">An open-source command-line tool (<code>adoc</code>) written in Rust that documents new or legacy codebases with the AI coding agent you already use. It generates a Markdown knowledge base, VitePress documentation, findings and an <code>AGENTS.md</code> with context for agents, and every claim cites its source as <code>path:line</code>.</p>
+          </details>
+          <details>
+            <summary data-i18n="faq.q2">Which AI agents does it work with?</summary>
+            <p data-i18n-html="faq.a2">Claude Code, Codex, Devin, Gemini CLI, Qwen Code, OpenCode, Cursor, GitHub Copilot, Amp, goose and Aider. Switch agent or model with <code>adoc agent use</code>; without a CLI agent, <code>adoc agent use manual</code> exports the tasks so you can do them by hand.</p>
+          </details>
+          <details>
+            <summary data-i18n="faq.q3">Does it upload my code or read my secrets?</summary>
+            <p data-i18n-html="faq.a3">No. adoc runs on your machine and only uses the network to check for updates (turn it off with <code>ADOC_NO_UPDATE_CHECK=1</code>); the agent you choose talks to its own provider, as it already does. Secret files such as <code>.env*</code>, <code>*.pem</code> or SSH keys are skipped and never reach the prompts. See <a href="#privacidad">what is left out</a>.</p>
+          </details>
+          <details>
+            <summary data-i18n="faq.q4">Which programming languages and frameworks does it support?</summary>
+            <p data-i18n-html="faq.a4">It is language-agnostic: <code>adoc scan</code> detects the languages, modules, tests and CI in the repository, and your agent reads the code itself. It works with new or legacy projects, small or large.</p>
+          </details>
+          <details>
+            <summary data-i18n="faq.q5">Is it free?</summary>
+            <p data-i18n-html="faq.a5">Yes. archeology-doc is free and open source under the MIT license. The only cost is your AI agent’s usage, if your provider charges for it.</p>
+          </details>
+          <details>
+            <summary data-i18n="faq.q6">Is there a VS Code extension?</summary>
+            <p data-i18n-html="faq.a6">Yes: install <b>archeology-doc</b> from the Visual Studio Marketplace (<code>jcruz.archeology-doc</code>) or download the <code>.vsix</code>. It shows tasks, findings, the knowledge graph and questions in VS Code, Cursor, Windsurf and Devin Desktop.</p>
+          </details>
+          <details>
+            <summary data-i18n="faq.q7">How do I update it?</summary>
+            <p data-i18n-html="faq.a7">Run <code>adoc upgrade</code>: it downloads the latest version, verifies its SHA-256 and replaces the binaries. <code>adoc upgrade --check</code> only tells you whether a new version is available.</p>
+          </details>
+        </div>
+      </div>
+    </section>
   </main>
 
   <footer class="footer">
@@ -503,12 +726,12 @@ npm run package</code></pre></div>
         <a href="https://github.com/jsoncr/archeology-doc/releases" rel="noopener" data-i18n="footer.releases">Releases</a>
         <a href="https://marketplace.visualstudio.com/items?itemName=jcruz.archeology-doc" rel="noopener">VS Code Marketplace</a>
         <a href="https://github.com/jsoncr/archeology-doc/issues" rel="noopener" data-i18n="footer.issues">Issues</a>
+        <a href="#faq" data-i18n="nav.faq">FAQ</a>
         <a href="https://github.com/jsoncr/archeology-doc/blob/main/LICENSE-MIT" rel="noopener" data-i18n="footer.license">MIT License</a>
       </nav>
       <span class="muted" data-i18n="footer.made">Made with Rust 🦀</span>
     </div>
   </footer>
 
-  <script src="main.js"></script>
 </body>
 </html>

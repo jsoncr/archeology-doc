@@ -5,6 +5,43 @@
   Referrer-Policy: strict-origin-when-cross-origin
   X-Frame-Options: DENY
 
+# Imágenes e iconos: los nombres no llevan hash, así que la caché es moderada
+# (7 días) y se revalida en segundo plano.
+/assets/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+
+# CSS y JS sin hash: 1 hora, para que tras un despliegue no convivan mucho
+# tiempo con un HTML más nuevo.
+/*.css
+  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
+
+/*.js
+  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
+
+# HTML: caché corta; siempre se revalida.
+/
+  Cache-Control: public, max-age=0, must-revalidate
+
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/es/
+  Cache-Control: public, max-age=0, must-revalidate
+
+/es/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/robots.txt
+  Cache-Control: public, max-age=3600
+
+/sitemap.xml
+  Content-Type: application/xml; charset=utf-8
+  Cache-Control: public, max-age=3600
+
+/site.webmanifest
+  Content-Type: application/manifest+json; charset=utf-8
+  Cache-Control: public, max-age=86400
+
 # Instaladores como texto: `irm … | iex` necesita texto, no application/octet-stream.
 # Caché corta: tras un release, los usuarios deben bajar la versión nueva.
 /download/install.sh

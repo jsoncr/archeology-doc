@@ -28,6 +28,8 @@
     fn();
   };
   document.addEventListener('adoc:langchange', () => renderers.forEach((fn) => fn()));
+  // Prefijo hasta la raíz del sitio: '' en /, '../' en /es/ (atributo data-site-root de <html>).
+  const ROOT_PREFIX = document.documentElement.dataset.siteRoot || '';
 
   // Botón "Copiar" en cada bloque marcado con data-copy (sin prompts ni comentarios).
   document.querySelectorAll('[data-copy]').forEach((block) => {
@@ -118,7 +120,7 @@
   onLang(() => {
     const base =
       location.protocol === 'http:' || location.protocol === 'https:'
-        ? new URL('download/', location.href).href
+        ? new URL(`${ROOT_PREFIX}download/`, location.href).href
         : t('js.placeholderBase');
     document.querySelectorAll('[data-base]').forEach((el) => (el.textContent = base));
   });
@@ -146,7 +148,7 @@
     td.textContent = text;
     return td;
   };
-  fetch('download/latest.json', { cache: 'no-cache' })
+  fetch(`${ROOT_PREFIX}download/latest.json`, { cache: 'no-cache' })
     .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
     .then((manifest) => {
       document.getElementById('dl-version').textContent = `v${manifest.version}`;
@@ -164,7 +166,7 @@
         const tr = document.createElement('tr');
         const name = document.createElement('td');
         const link = document.createElement('a');
-        link.href = `download/${encodeURIComponent(f.file)}`;
+        link.href = `${ROOT_PREFIX}download/${encodeURIComponent(f.file)}`;
         link.textContent = f.file;
         link.setAttribute('download', '');
         name.appendChild(link);

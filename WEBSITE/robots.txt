@@ -1,0 +1,5 @@
+# archeology-doc.com: todo el sitio es público e indexable.
+User-agent: *
+Allow: /
+
+Sitemap: https://archeology-doc.com/sitemap.xml

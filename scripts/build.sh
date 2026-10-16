@@ -45,6 +45,8 @@ Compilación (se pasan a WEBSITE/dist.sh):
                          binarios de versiones anteriores)
 
 Publicación:
+  --site-only            solo el sitio: genera /es/, el sitemap y dist/site/ con lo que ya
+                         hay en WEBSITE/download (sin compilar ni cambiar la versión)
   --deploy               despliega dist/site en Cloudflare Pages con wrangler
                          (proyecto $CLOUDFLARE_PAGES_PROJECT o archeology-doc);
                          requiere `npx wrangler login` o CLOUDFLARE_API_TOKEN +
@@ -107,6 +109,7 @@ DEPLOY=0
 ASSUME_YES=0
 PRINT_TAG=0
 DRY_RUN=0
+SITE_ONLY=0
 
 set_mode() {
   [ -z "$VERSION_MODE" ] || die "usa solo una de --version, --bump o --no-bump"
@@ -133,12 +136,18 @@ while [ $# -gt 0 ]; do
     -y|--yes) ASSUME_YES=1 ;;
     --tag) PRINT_TAG=1 ;;
     --dry-run) DRY_RUN=1 ;;
+    --site-only) SITE_ONLY=1 ;;
     -h|--help) usage; exit 0 ;;
     *) printf 'opción desconocida: %s\n\n' "$1" >&2; usage >&2; exit 2 ;;
   esac
   shift
 done
 
+# Solo el sitio: nunca cambia la versión ni compila.
+if [ "$SITE_ONLY" = 1 ]; then
+  [ -z "$VERSION_MODE" ] || [ "$VERSION_MODE" = none ] || die "--site-only no cambia la versión: quita --version/--bump"
+  VERSION_MODE=none
+fi
 [ -n "$VERSION_MODE" ] || die "indica la versión: --version X.Y.Z, --bump patch|minor|major o --no-bump (ver --help)"
 [ -n "$TARGETS" ] || TARGETS="$ALL_TARGETS"
 for t in $TARGETS; do
@@ -218,12 +227,14 @@ has_zigbuild() {
 
 say "comprobando herramientas"
 missing=0
-if has cargo; then ok "cargo $(cargo --version | awk '{print $2}')"; else warn "falta cargo: instala Rust desde https://rustup.rs"; missing=1; fi
-if has rustup; then ok "rustup"; else warn "sin rustup: no se podrán añadir targets (rustup target add)"; fi
+if [ "$SITE_ONLY" = 1 ]; then :; elif has cargo; then ok "cargo $(cargo --version | awk '{print $2}')"; else warn "falta cargo: instala Rust desde https://rustup.rs"; missing=1; fi
+if [ "$SITE_ONLY" = 1 ]; then :; elif has rustup; then ok "rustup"; else warn "sin rustup: no se podrán añadir targets (rustup target add)"; fi
 HOST_TARGET=""
+[ "$SITE_ONLY" = 1 ] && TARGETS=""
 has rustc && HOST_TARGET="$(rustc -vV | sed -n 's/^host: //p')"
-if has node; then ok "node $(node --version)"; else warn "sin node: no se comprueban las traducciones del sitio"; fi
-if [ "$SKIP_VSIX" = 0 ] || [ "$VERSION_MODE" != none ] || [ "$DEPLOY" = 1 ]; then
+# node genera la página en español (/es/) y comprueba las traducciones del sitio.
+if has node; then ok "node $(node --version)"; else warn "falta node: hace falta para generar /es/ y comprobar las traducciones del sitio"; missing=1; fi
+if { [ "$SKIP_VSIX" = 0 ] && [ "$SITE_ONLY" = 0 ]; } || [ "$VERSION_MODE" != none ] || [ "$DEPLOY" = 1 ]; then
   if has npm; then ok "npm $(npm --version)"; else
     warn "falta npm (Node 18+): hace falta para la versión de la extensión, el .vsix y wrangler; usa --skip-vsix si no los necesitas"
     missing=1
@@ -333,6 +344,11 @@ DIST_ARGS=(--base-url "$BASE_URL" --targets "$TARGETS")
 [ "$SKIP_DOCKER" = 1 ] && DIST_ARGS+=(--skip-docker)
 [ "$SKIP_VSIX" = 1 ] && DIST_ARGS+=(--skip-vsix)
 
+if [ "$SITE_ONLY" = 1 ]; then
+  say "--site-only: sin compilar; se reutiliza WEBSITE/download"
+  [ -f "$DOWNLOAD_DIR/SHA256SUMS" ] || die "WEBSITE/download está vacío: compila una vez sin --site-only"
+  ok "versión publicada: $(sed -n 's/^  "version": "\(.*\)",$/\1/p' "$DOWNLOAD_DIR/latest.json" | head -1)"
+else
 say "compilando con WEBSITE/dist.sh"
 if [ "$CLEAN" = 1 ]; then
   run find "$DOWNLOAD_DIR" -mindepth 1 ! -name README.md -delete
@@ -340,9 +356,10 @@ fi
 BUILD_MARK="$(mktemp)"
 trap 'rm -f "$BUILD_MARK"' EXIT
 run "$SITE_SRC/dist.sh" "${DIST_ARGS[@]}"
+fi
 
 # Archivos de compilaciones anteriores que siguen en WEBSITE/download (otros targets).
-if [ "$DRY_RUN" = 0 ]; then
+if [ "$DRY_RUN" = 0 ] && [ "$SITE_ONLY" = 0 ]; then
   stale="$(find "$DOWNLOAD_DIR" -maxdepth 1 -type f \( -name 'adoc-*' -o -name '*.vsix' \) ! -newer "$BUILD_MARK" -exec basename {} \; | sort)"
   if [ -n "$stale" ]; then
     warn "archivos de una compilación anterior (no se recompilaron ahora; usa --clean para descartarlos):"
@@ -356,7 +373,13 @@ prepare_site() {
   rm -rf "$SITE_OUT"
   mkdir -p "$SITE_OUT"
   cp -R "$SITE_SRC/." "$SITE_OUT/"
-  rm -rf "$SITE_OUT/dist.sh" "$SITE_OUT/README.md" "$SITE_OUT/installers" "$SITE_OUT/scripts" "$SITE_OUT/download/README.md"
+  rm -rf "$SITE_OUT/dist.sh" "$SITE_OUT/README.md" "$SITE_OUT/installers" "$SITE_OUT/scripts" "$SITE_OUT/download/README.md" "$SITE_OUT/es"
+  # Páginas indexables por idioma: index.html (en, con la versión en el JSON-LD),
+  # es/index.html y sitemap.xml con la fecha de hoy. Antes, las traducciones deben estar completas.
+  node "$SITE_SRC/scripts/check-i18n.mjs" || die "traducciones del sitio incompletas (WEBSITE/scripts/check-i18n.mjs)"
+  node "$SITE_SRC/scripts/prerender.mjs" --out "$SITE_OUT" || die "no se pudo generar la página en español"
+  [ -f "$SITE_OUT/es/index.html" ] || die "falta es/index.html en el sitio"
+  ok "páginas en/es y sitemap.xml generadas"
   # Metadatos de macOS: no deben publicarse.
   find "$SITE_OUT" -name .DS_Store -delete
   [ -f "$SITE_OUT/i18n.js" ] || die "falta i18n.js en el sitio"
@@ -379,7 +402,9 @@ prepare_site() {
   [ "$manifest_version" = "$NEW_VERSION" ] || warn "latest.json dice $manifest_version y Cargo.toml $NEW_VERSION"
 }
 if [ "$DRY_RUN" = 1 ]; then
-  run "copiar WEBSITE/ a dist/site/ sin dist.sh, README.md, installers/, scripts/ ni download/README.md"
+  run "copiar WEBSITE/ a dist/site/ sin dist.sh, README.md, installers/, scripts/, es/ (vista previa) ni download/README.md"
+  run node "$SITE_SRC/scripts/check-i18n.mjs"
+  run node "$SITE_SRC/scripts/prerender.mjs" --out "$SITE_OUT"
   run "comprobar marcadores __ADOC_DOWNLOAD_BASE__, archivos > $MAX_FILE_MIB MiB y SHA256SUMS"
 else
   prepare_site

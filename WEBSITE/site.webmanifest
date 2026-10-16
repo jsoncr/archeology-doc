@@ -1,0 +1,14 @@
+{
+  "name": "archeology-doc",
+  "short_name": "adoc",
+  "description": "Open-source CLI that documents new or legacy code with your AI agent.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "browser",
+  "background_color": "#0a0f1c",
+  "theme_color": "#0b2347",
+  "icons": [
+    { "src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/assets/icon.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
