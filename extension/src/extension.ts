@@ -12,7 +12,8 @@ import * as i18n from './i18n';
 import { t } from './i18n';
 import { FindingDecorations } from './decorations';
 import { DashboardPanel } from './dashboard';
-import { FindingsTree, KnowledgeTree, ProjectNode, ProjectsTree, QuestionsTree, SpecsTree, TaskNode, TasksTree } from './trees';
+import { ProjectView } from './project';
+import { FindingsTree, KnowledgeTree, OtherProjectsTree, ProjectNode, QuestionsTree, SpecsTree, TaskNode, TasksTree } from './trees';
 import { matchProject } from './match';
 import { ProjectRow, Status } from './types';
 
@@ -39,7 +40,8 @@ class Controller implements vscode.Disposable {
   private readonly knowledge = new KnowledgeTree();
   private readonly specs = new SpecsTree();
   private readonly questions = new QuestionsTree();
-  private readonly projectsTree = new ProjectsTree();
+  private readonly projectView = new ProjectView();
+  private readonly otherProjects = new OtherProjectsTree();
   projects: ProjectRow[] = [];
   private rootWatcher: vscode.FileSystemWatcher | undefined;
   private readonly decorations = new FindingDecorations();
@@ -60,7 +62,8 @@ class Controller implements vscode.Disposable {
     registry.onDidCreate(() => this.scheduleRefresh());
     this.disposables.push(
       registry,
-      vscode.window.registerTreeDataProvider('adoc.projects', this.projectsTree),
+      vscode.window.registerWebviewViewProvider('adoc.myProject', this.projectView),
+      vscode.window.registerTreeDataProvider('adoc.otherProjects', this.otherProjects),
       vscode.window.registerTreeDataProvider('adoc.tasks', this.tasks),
       vscode.window.registerTreeDataProvider('adoc.findings', this.findings),
       vscode.window.registerTreeDataProvider('adoc.knowledge', this.knowledge),
@@ -189,7 +192,8 @@ class Controller implements vscode.Disposable {
   private apply(status: Status | undefined): void {
     this.status = status;
     DashboardPanel.update();
-    this.projectsTree.update(this.projects, status?.project.id, workspaceFolders());
+    this.projectView.update(status);
+    this.otherProjects.update(this.projects, status?.project.id, workspaceFolders());
     this.tasks.update(status);
     this.findings.update(status);
     this.knowledge.update(status);

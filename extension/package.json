@@ -2,7 +2,7 @@
   "name": "archeology-doc",
   "displayName": "Archeology Doc",
   "description": "%extension.description%",
-  "version": "0.10.30",
+  "version": "0.10.31",
   "publisher": "jcruz",
   "author": "jcruz",
   "license": "MIT",
@@ -63,8 +63,9 @@
     "views": {
       "archeology": [
         {
-          "id": "adoc.projects",
-          "name": "%view.projects.name%"
+          "id": "adoc.myProject",
+          "type": "webview",
+          "name": "%view.myProject.name%"
         },
         {
           "id": "adoc.tasks",
@@ -86,13 +87,32 @@
           "id": "adoc.specs",
           "name": "%view.specs.name%",
           "when": "adoc.hasSpecs"
+        },
+        {
+          "id": "adoc.otherProjects",
+          "name": "%view.otherProjects.name%"
         }
       ]
     },
     "viewsWelcome": [
       {
         "view": "adoc.tasks",
-        "contents": "%viewsWelcome.tasks.noProject%",
+        "contents": "%viewsWelcome.noProject%",
+        "when": "!adoc.hasProject"
+      },
+      {
+        "view": "adoc.findings",
+        "contents": "%viewsWelcome.noProject%",
+        "when": "!adoc.hasProject"
+      },
+      {
+        "view": "adoc.questions",
+        "contents": "%viewsWelcome.noProject%",
+        "when": "!adoc.hasProject"
+      },
+      {
+        "view": "adoc.knowledge",
+        "contents": "%viewsWelcome.noProject%",
         "when": "!adoc.hasProject"
       },
       {
@@ -101,8 +121,8 @@
         "when": "adoc.hasProject && !adoc.hasTasks"
       },
       {
-        "view": "adoc.projects",
-        "contents": "%viewsWelcome.projects.empty%"
+        "view": "adoc.otherProjects",
+        "contents": "%viewsWelcome.otherProjects.empty%"
       }
     ],
     "commands": [
@@ -279,7 +299,7 @@
       "view/title": [
         {
           "command": "adoc.dashboard",
-          "when": "view == adoc.tasks || view == adoc.projects",
+          "when": "view =~ /^adoc\\.(myProject|tasks|otherProjects)$/",
           "group": "navigation@0"
         },
         {
@@ -376,12 +396,12 @@
         },
         {
           "command": "adoc.openProjectFolder",
-          "when": "view == adoc.projects && viewItem == project.external",
+          "when": "view == adoc.otherProjects && viewItem == project.external",
           "group": "inline@1"
         },
         {
           "command": "adoc.openProjectFolder",
-          "when": "view == adoc.projects",
+          "when": "view == adoc.otherProjects",
           "group": "1_open@1"
         }
       ],

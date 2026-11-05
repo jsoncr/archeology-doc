@@ -109,11 +109,23 @@ const en = {
   'tree.pathNotFound': 'path not found',
   'tree.lastActivity': 'Last activity: {date} ({command})',
   'tree.useProject': 'Use this project',
+  'tree.openFolder': 'Open this folder',
   'tree.question.tooltip': '{task} is waiting for your answer. Click to answer.',
   'tree.answer': 'Answer',
   'tree.questions.agent': 'From the agent (blocking tasks)',
   'tree.questions.team': 'For the technical team',
   'tree.questions.faq': 'Frequently asked questions',
+
+  // ── Tarjeta "Mi proyecto" (project.ts) ──
+  'card.tasks': 'Tasks',
+  'card.findings': 'Open findings',
+  'card.notes': 'Notes',
+  'card.questions': 'Pending questions',
+  'card.failed': 'Failed',
+  'card.dashboard': 'Open dashboard',
+  'card.empty': 'There is no archeology-doc project for this folder.',
+  'card.init': 'Initialize here',
+  'card.pick': 'Choose a registered project',
 
   // ── Tipos de nota (árboles, dashboard y grafo) ──
   'kind.overview': 'Overview',
@@ -428,11 +440,23 @@ const es: Record<Key, string> = {
   'tree.pathNotFound': 'ruta no encontrada',
   'tree.lastActivity': 'Última actividad: {date} ({command})',
   'tree.useProject': 'Usar este proyecto',
+  'tree.openFolder': 'Abrir esta carpeta',
   'tree.question.tooltip': '{task} espera tu respuesta. Clic para responder.',
   'tree.answer': 'Responder',
   'tree.questions.agent': 'Del agente (bloquean tareas)',
   'tree.questions.team': 'Para el equipo técnico',
   'tree.questions.faq': 'Preguntas frecuentes',
+
+  // ── Tarjeta "Mi proyecto" (project.ts) ──
+  'card.tasks': 'Tareas',
+  'card.findings': 'Hallazgos abiertos',
+  'card.notes': 'Notas',
+  'card.questions': 'Preguntas pendientes',
+  'card.failed': 'Fallidas',
+  'card.dashboard': 'Abrir dashboard',
+  'card.empty': 'No hay un proyecto de archeology-doc para esta carpeta.',
+  'card.init': 'Inicializar aquí',
+  'card.pick': 'Elegir un proyecto registrado',
 
   // ── Tipos de nota (árboles, dashboard y grafo) ──
   'kind.overview': 'Overview',

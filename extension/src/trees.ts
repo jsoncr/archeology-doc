@@ -221,10 +221,10 @@ export class SpecsTree extends StatusTree {
   }
 }
 
-// ── Proyectos (registro global) ───────────────────────────────────────────
+// ── Otros proyectos (registro global, sin el activo) ──────────────────────
 
 export class ProjectNode extends vscode.TreeItem {
-  constructor(public readonly project: ProjectRow, active: boolean, inWorkspace: boolean) {
+  constructor(public readonly project: ProjectRow, inWorkspace: boolean) {
     super(project.name, vscode.TreeItemCollapsibleState.None);
     const parts: string[] = [];
     if (project.progress !== null) {
@@ -240,37 +240,39 @@ export class ProjectNode extends vscode.TreeItem {
       parts.push(t('tree.pathNotFound'));
     }
     this.description = parts.join(' · ');
-    this.iconPath = new vscode.ThemeIcon(
-      active ? 'circle-filled' : project.available ? 'circle-outline' : 'warning',
-      active ? new vscode.ThemeColor('charts.green') : undefined,
-    );
+    this.iconPath = new vscode.ThemeIcon(project.available ? 'circle-outline' : 'warning');
     this.tooltip = `${project.path}\n${t('tree.lastActivity', {
       date: project.last_activity.replace('T', ' ').slice(0, 16),
       command: project.last_command,
     })}`;
     this.contextValue = inWorkspace ? 'project.inWorkspace' : 'project.external';
+    // Fuera del workspace no se puede "usar" desde aquí: se abre su carpeta.
     if (project.available) {
-      this.command = { command: 'adoc.selectProject', title: t('tree.useProject'), arguments: [this] };
+      this.command = inWorkspace
+        ? { command: 'adoc.selectProject', title: t('tree.useProject'), arguments: [this] }
+        : { command: 'adoc.openProjectFolder', title: t('tree.openFolder'), arguments: [this] };
     }
   }
 }
 
-export class ProjectsTree implements vscode.TreeDataProvider<ProjectNode> {
+export class OtherProjectsTree implements vscode.TreeDataProvider<ProjectNode> {
   private readonly emitter = new vscode.EventEmitter<ProjectNode | undefined>();
   readonly onDidChangeTreeData = this.emitter.event;
   private nodes: ProjectNode[] = [];
 
+  /** El proyecto activo no aparece: esta lista es solo de "otros". */
   update(rows: ProjectRow[], activeId: string | undefined, workspaceFolders: string[]): void {
     const inside = (p: string) =>
       workspaceFolders.some((f) => p === f || p.startsWith(f + path.sep) || f.startsWith(p + path.sep));
     this.nodes = [...rows]
+      .filter((r) => r.id !== activeId)
       // Primero los del workspace abierto, luego por actividad reciente.
       .sort(
         (a, b) =>
           Number(inside(b.path)) - Number(inside(a.path)) ||
           b.last_activity.localeCompare(a.last_activity),
       )
-      .map((r) => new ProjectNode(r, r.id === activeId, inside(r.path)));
+      .map((r) => new ProjectNode(r, inside(r.path)));
     this.emitter.fire(undefined);
   }
 
